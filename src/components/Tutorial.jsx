@@ -24,7 +24,7 @@ const TUTORIAL_STEPS = [
     path: '/purge',
     selector: '#tutorial-flashcard-card',
     title: 'Flashcard Deck',
-    text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลองแตะที่การ์ดเบาๆ เพื่อเปิดเผยคำแปลภาษาอธิบายภาษาอังกฤษและตัวอย่างประโยค',
+    text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลองแตะที่การ์ดเบาๆ เพื่อเปิดเผยคำอธิบายภาษาอังกฤษและตัวอย่างประโยค',
     position: 'bottom'
   },
   {
@@ -73,9 +73,7 @@ export const Tutorial = () => {
   const [active, setActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightRect, setHighlightRect] = useState(null);
-
-  const lastTargetRef = useRef(null);
-  const originalStylesRef = useRef({});
+  const [viewportRect, setViewportRect] = useState(null);
 
   // Check if tutorial needs to run
   useEffect(() => {
@@ -195,6 +193,7 @@ export const Tutorial = () => {
     // Clear previous highlight while path switches
     if (location.pathname !== stepConf.path) {
       setHighlightRect(null);
+      setViewportRect(null);
       return;
     }
 
@@ -221,9 +220,18 @@ export const Tutorial = () => {
               width: rect.width,
               height: rect.height
             });
+            setViewportRect({
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              bottom: rect.bottom,
+              right: rect.right
+            });
           }
         } else {
           setHighlightRect(null);
+          setViewportRect(null);
         }
 
         if (Date.now() - startTime < duration) {
@@ -247,66 +255,10 @@ export const Tutorial = () => {
     };
   }, [currentStep, location.pathname, active]);
 
+  if (!active) return null;
+
   const stepConf = TUTORIAL_STEPS[currentStep];
   const isWrongPath = stepConf && location.pathname !== stepConf.path;
-
-  // Z-index elevation for spotlight target element (un-blurring)
-  useEffect(() => {
-    // 1. Cleanup previous elevated element
-    if (lastTargetRef.current) {
-      const el = lastTargetRef.current;
-      const styles = originalStylesRef.current;
-      el.style.zIndex = styles.zIndex || '';
-      el.style.position = styles.position || '';
-      el.style.pointerEvents = styles.pointerEvents || '';
-      lastTargetRef.current = null;
-      originalStylesRef.current = {};
-    }
-
-    if (!active) return;
-
-    if (!stepConf || isWrongPath) return;
-
-    // 2. Set style override on current target element
-    const timerId = setTimeout(() => {
-      const el = document.querySelector(stepConf.selector);
-      if (el) {
-        // Save original styles
-        originalStylesRef.current = {
-          zIndex: el.style.zIndex,
-          position: el.style.position,
-          pointerEvents: el.style.pointerEvents
-        };
-        // Set new styles
-        el.style.zIndex = '100002';
-        const computedStyle = window.getComputedStyle(el);
-        if (computedStyle.position === 'static') {
-          el.style.position = 'relative';
-        }
-        el.style.pointerEvents = 'auto';
-        lastTargetRef.current = el;
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(timerId);
-    };
-  }, [currentStep, active, isWrongPath]);
-
-  // Clean up styles on unmount
-  useEffect(() => {
-    return () => {
-      if (lastTargetRef.current) {
-        const el = lastTargetRef.current;
-        const styles = originalStylesRef.current;
-        el.style.zIndex = styles.zIndex || '';
-        el.style.position = styles.position || '';
-        el.style.pointerEvents = styles.pointerEvents || '';
-      }
-    };
-  }, []);
-
-  if (!active) return null;
 
   const handleNext = () => {
     if (currentStep < TUTORIAL_STEPS.length - 1) {
@@ -360,7 +312,7 @@ export const Tutorial = () => {
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 99999, pointerEvents: 'auto' }}>
-      {/* Dark Spotlight Backdrop Overlay */}
+      {/* Dark Spotlight Backdrop Overlay with clip-path Cutout */}
       <div 
         style={{
           position: 'fixed',
@@ -368,14 +320,12 @@ export const Tutorial = () => {
           background: 'rgba(0, 0, 0, 0.75)',
           backdropFilter: 'blur(3px)',
           zIndex: 100000,
-          pointerEvents: 'auto'
+          pointerEvents: 'auto',
+          clipPath: viewportRect && !isWrongPath
+            ? `polygon(evenodd, 0px 0px, 100% 0px, 100% 100%, 0px 100%, 0px 0px, ${viewportRect.left}px ${viewportRect.top}px, ${viewportRect.right}px ${viewportRect.top}px, ${viewportRect.right}px ${viewportRect.bottom}px, ${viewportRect.left}px ${viewportRect.bottom}px, ${viewportRect.left}px ${viewportRect.top}px)`
+            : 'none'
         }}
-        onClick={() => {
-          // Backdrop click only finishes/closes on the last step
-          if (currentStep === TUTORIAL_STEPS.length - 1) {
-            handleNext();
-          }
-        }}
+        onClick={handleNext}
       />
 
       {/* Spotlight highlight border around targeted element */}
@@ -458,29 +408,46 @@ export const Tutorial = () => {
             >
               Skip
             </button>
-            {/* Show Next/Finish button only on the last step */}
-            {currentStep === TUTORIAL_STEPS.length - 1 ? (
-              <button 
-                onClick={handleNext}
-                className="glass-button primary animate-scale"
-                style={{ 
-                  padding: '0.35rem 0.75rem', 
-                  borderRadius: '8px', 
-                  fontSize: '0.75rem', 
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2px'
-                }}
-              >
-                <span>Finish</span>
-                <ChevronRight size={12} />
-              </button>
-            ) : (
-              <span style={{ fontSize: '0.62rem', color: '#facc15', fontWeight: 700, letterSpacing: '0.2px' }}>
-                โปรดทำตามขั้นตอนเพื่อไปต่อ
-              </span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {currentStep < TUTORIAL_STEPS.length - 1 ? (
+                <button 
+                  onClick={handleNext}
+                  className="glass-button secondary animate-scale"
+                  style={{ 
+                    padding: '0.35rem 0.75rem', 
+                    borderRadius: '8px', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'white'
+                  }}
+                >
+                  <span>ถัดไป</span>
+                  <ChevronRight size={12} />
+                </button>
+              ) : (
+                <button 
+                  onClick={handleNext}
+                  className="glass-button primary animate-scale"
+                  style={{ 
+                    padding: '0.35rem 0.75rem', 
+                    borderRadius: '8px', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px'
+                  }}
+                >
+                  <span>Finish</span>
+                  <ChevronRight size={12} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>
