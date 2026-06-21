@@ -47,7 +47,7 @@ const DictionaryModal = () => {
     if (phoneticObj) {
       const audio = new Audio(phoneticObj.audio);
       audio.play();
-    } else {
+    } else if (window.speechSynthesis) {
       // Fallback to browser TTS
       const utterance = new SpeechSynthesisUtterance(currentWord);
       utterance.lang = 'en-US';

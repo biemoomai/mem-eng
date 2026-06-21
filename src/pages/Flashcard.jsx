@@ -42,6 +42,7 @@ const Flashcard = () => {
   };
 
   const playTTS = () => {
+    if (!window.speechSynthesis) return;
     const utterance = new SpeechSynthesisUtterance(mockCard.word);
     utterance.lang = 'en-US';
     window.speechSynthesis.speak(utterance);

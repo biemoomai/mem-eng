@@ -75,22 +75,31 @@ export const Tutorial = () => {
   const [highlightRect, setHighlightRect] = useState(null);
   const [viewportRect, setViewportRect] = useState(null);
 
-  // Check if tutorial needs to run
+  const hasInitializedRef = useRef(false);
+
+  // Check if tutorial needs to run on mount / login
   useEffect(() => {
     if (!user) {
+      hasInitializedRef.current = false;
       setActive(false);
       return;
     }
 
+    if (hasInitializedRef.current) return;
+
     const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
     if (!isDone) {
+      hasInitializedRef.current = true;
       setActive(true);
       setCurrentStep(0);
       if (location.pathname !== '/') {
         navigate('/');
       }
     }
+  }, [user]);
 
+  // Listen to hamburger trigger
+  useEffect(() => {
     const handleTrigger = () => {
       if (!user) return;
       localStorage.setItem('memeng_tutorial_done', 'false');
@@ -100,7 +109,7 @@ export const Tutorial = () => {
     };
     window.addEventListener('trigger-tutorial', handleTrigger);
     return () => window.removeEventListener('trigger-tutorial', handleTrigger);
-  }, [location.pathname, navigate, user]);
+  }, [user, navigate]);
 
   // Listen to interactive events to auto-advance steps
   useEffect(() => {
@@ -261,6 +270,19 @@ export const Tutorial = () => {
   const isWrongPath = stepConf && location.pathname !== stepConf.path;
 
   const handleNext = () => {
+    if (currentStep === 0) {
+      const textarea = document.querySelector('#tutorial-translate-input textarea');
+      if (textarea && textarea.value.trim().length === 0) {
+        window.dispatchEvent(new CustomEvent('tutorial-type-word', { detail: { word: 'hello' } }));
+        return;
+      }
+    }
+    
+    if (currentStep === 1) {
+      window.dispatchEvent(new Event('tutorial-save-word'));
+      return;
+    }
+
     if (currentStep < TUTORIAL_STEPS.length - 1) {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
@@ -312,21 +334,88 @@ export const Tutorial = () => {
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 99999, pointerEvents: 'auto' }}>
-      {/* Dark Spotlight Backdrop Overlay with clip-path Cutout */}
-      <div 
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(3px)',
-          zIndex: 100000,
-          pointerEvents: 'auto',
-          clipPath: viewportRect && !isWrongPath
-            ? `polygon(evenodd, 0px 0px, 100% 0px, 100% 100%, 0px 100%, 0px 0px, ${viewportRect.left}px ${viewportRect.top}px, ${viewportRect.right}px ${viewportRect.top}px, ${viewportRect.right}px ${viewportRect.bottom}px, ${viewportRect.left}px ${viewportRect.bottom}px, ${viewportRect.left}px ${viewportRect.top}px)`
-            : 'none'
-        }}
-        onClick={handleNext}
-      />
+      {/* Dark Spotlight Backdrop Overlay */}
+      {viewportRect && !isWrongPath ? (
+        <>
+          {/* Top Panel */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: `${viewportRect.top}px`,
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(3px)',
+              WebkitBackdropFilter: 'blur(3px)',
+              zIndex: 100000,
+              pointerEvents: 'auto'
+            }}
+            onClick={handleNext}
+          />
+          {/* Bottom Panel */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: `${viewportRect.bottom}px`,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(3px)',
+              WebkitBackdropFilter: 'blur(3px)',
+              zIndex: 100000,
+              pointerEvents: 'auto'
+            }}
+            onClick={handleNext}
+          />
+          {/* Left Panel */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: `${viewportRect.top}px`,
+              left: 0,
+              width: `${viewportRect.left}px`,
+              height: `${viewportRect.bottom - viewportRect.top}px`,
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(3px)',
+              WebkitBackdropFilter: 'blur(3px)',
+              zIndex: 100000,
+              pointerEvents: 'auto'
+            }}
+            onClick={handleNext}
+          />
+          {/* Right Panel */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: `${viewportRect.top}px`,
+              left: `${viewportRect.right}px`,
+              right: 0,
+              height: `${viewportRect.bottom - viewportRect.top}px`,
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(3px)',
+              WebkitBackdropFilter: 'blur(3px)',
+              zIndex: 100000,
+              pointerEvents: 'auto'
+            }}
+            onClick={handleNext}
+          />
+        </>
+      ) : (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(3px)',
+            WebkitBackdropFilter: 'blur(3px)',
+            zIndex: 100000,
+            pointerEvents: 'auto'
+          }}
+          onClick={handleNext}
+        />
+      )}
 
       {/* Spotlight highlight border around targeted element */}
       {highlightRect && !isWrongPath && (

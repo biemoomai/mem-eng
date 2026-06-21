@@ -693,7 +693,7 @@ function AppContent() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!selectedWord) return;
+                        if (!selectedWord || !window.speechSynthesis) return;
                         window.speechSynthesis.cancel();
                         const utterance = new SpeechSynthesisUtterance(selectedWord);
                         utterance.lang = 'en-US';

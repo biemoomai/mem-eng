@@ -392,6 +392,14 @@ const Purge = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
+  const speakText = (text) => {
+    if (!text || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    window.speechSynthesis.speak(utterance);
+  };
+
   // local active queue for this study session
   const [sessionQueue, setSessionQueue] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -521,7 +529,7 @@ const Purge = () => {
   const showThai = true;
 
   const handleSpeak = (text) => {
-    if (!text) return;
+    if (!text || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
@@ -1240,6 +1248,37 @@ const Purge = () => {
                                          {getNextReviewText(item.nextReviewDate)}
                                       </span>
                                     </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        speakText(item.word);
+                                      }}
+                                      style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'rgba(255, 255, 255, 0.45)',
+                                        cursor: 'pointer',
+                                        padding: '4px',
+                                        borderRadius: '6px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'color 0.2s, background 0.2s',
+                                        marginRight: '0.25rem'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#3b82f6';
+                                        e.currentTarget.style.background = 'rgba(59, 130, 246, 0.08)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)';
+                                        e.currentTarget.style.background = 'transparent';
+                                      }}
+                                      title="Pronounce word"
+                                    >
+                                      <Volume2 size={15} />
+                                    </button>
+
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1985,7 +2024,7 @@ const Purge = () => {
   }, [wordObj]);
 
   const handleSpeakWord = () => {
-    if (!wordObj || !wordObj.word) return;
+    if (!wordObj || !wordObj.word || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(wordObj.word);
     utterance.lang = 'en-US';

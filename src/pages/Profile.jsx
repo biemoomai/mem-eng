@@ -97,7 +97,7 @@ const Profile = () => {
   };
 
   const handleSpeak = (text) => {
-    if (!text) return;
+    if (!text || !window.speechSynthesis) return;
     try {
       window.speechSynthesis.cancel();
       const cleanText = text.replace(/\*\*/g, '');
@@ -2044,6 +2044,36 @@ const Profile = () => {
                                         >
                                           <Eye size={15} />
                                         </button>
+
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSpeak(item.word);
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'rgba(255, 255, 255, 0.45)',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            borderRadius: '6px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'color 0.2s, background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            e.currentTarget.style.color = '#3b82f6';
+                                            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.08)';
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)';
+                                            e.currentTarget.style.background = 'transparent';
+                                          }}
+                                          title="Pronounce word"
+                                        >
+                                          <Volume2 size={15} />
+                                        </button>
                                         
                                         <button
                                           onClick={(e) => {
@@ -2181,6 +2211,36 @@ const Profile = () => {
                                           title="View full details"
                                         >
                                           <Eye size={15} />
+                                        </button>
+
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSpeak(item.word);
+                                          }}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'rgba(255, 255, 255, 0.45)',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            borderRadius: '6px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'color 0.2s, background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            e.currentTarget.style.color = '#3b82f6';
+                                            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.08)';
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)';
+                                            e.currentTarget.style.background = 'transparent';
+                                          }}
+                                          title="Pronounce word"
+                                        >
+                                          <Volume2 size={15} />
                                         </button>
                                         
                                         <button

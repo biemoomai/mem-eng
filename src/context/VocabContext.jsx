@@ -200,9 +200,11 @@ export const VocabProvider = ({ children }) => {
         .eq('user_id', userId);
 
       if (!fetchError && remoteDecks) {
-        const merged = remoteDecks.map(ud => {
-          let parsedMeaning = ud.global_dictionary.meaning;
-          let parsedRichData = ud.global_dictionary.rich_data;
+        const merged = remoteDecks
+          .filter(ud => ud.global_dictionary)
+          .map(ud => {
+            let parsedMeaning = ud.global_dictionary.meaning;
+            let parsedRichData = ud.global_dictionary.rich_data;
           try {
             if (typeof parsedMeaning === 'string') parsedMeaning = JSON.parse(parsedMeaning);
           } catch (e) {}
@@ -216,6 +218,7 @@ export const VocabProvider = ({ children }) => {
             pos: ud.global_dictionary.pos,
             meaning: parsedMeaning,
             richCardData: parsedRichData || parsedMeaning,
+            videoUrl: parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
             srsLevel: ud.srs_level,
             repetition: ud.repetition,
             interval: ud.interval,
@@ -634,7 +637,7 @@ export const VocabProvider = ({ children }) => {
             cefrLevel: item.cefr_level || 'B2',
             category: category,
             curriculum: curriculumName,
-            videoUrl: '',
+            videoUrl: details?.savedSceneImages?.[0] || '',
             srsLevel: 'Learning',
             nextReviewDate: new Date(Date.now() - 60000).toISOString(),
             stability: 1.0,

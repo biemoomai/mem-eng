@@ -913,13 +913,76 @@ const AddWord = () => {
   };
 
   const handleSpeak = (text) => {
-    if (!text) return;
+    if (!text || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const cleanText = text.replace(/\*\*/g, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'en-US';
     window.speechSynthesis.speak(utterance);
   };
+
+  useEffect(() => {
+    const handleTypeWordEvent = async (e) => {
+      const targetWord = e.detail?.word || 'hello';
+      setWordInput('');
+      
+      let typed = '';
+      for (let i = 0; i < targetWord.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        typed += targetWord[i];
+        setWordInput(typed);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 400));
+      performTranslation(targetWord);
+    };
+
+    const handleSaveWordEvent = async () => {
+      if (isSuccess || isExiting || !richCardData) return;
+      
+      const targetWord = richCardData.word ? richCardData.word.trim().toLowerCase() : wordInput.trim().toLowerCase();
+      const selectedUrls = sceneImages.map(img => img?.url || null);
+      const savedSceneImages = [...selectedUrls];
+      
+      const isExplicitlyPinned = selectedPrimaryImageIdx !== null;
+      let primaryIdx = selectedPrimaryImageIdx;
+      if (primaryIdx === null) {
+        primaryIdx = Math.floor(Math.random() * Math.min(2, savedSceneImages.length));
+      }
+      if (primaryIdx === 1 && savedSceneImages.length > 1) {
+        const temp = savedSceneImages[0];
+        savedSceneImages[0] = savedSceneImages[1];
+        savedSceneImages[1] = temp;
+      }
+      
+      const updatedRichData = {
+        ...richCardData,
+        savedSceneImages: savedSceneImages,
+        hasPinnedImage: isExplicitlyPinned
+      };
+      
+      setIsExiting(true);
+      const res = await addWordToDeck(targetWord, updatedRichData);
+      if (res.success) {
+        setIsSuccess(true);
+        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+        setSourceToast({
+          message: `Saved to deck!`,
+          type: 'live'
+        });
+        setTimeout(() => {
+          handleClear();
+        }, 300);
+      }
+    };
+
+    window.addEventListener('tutorial-type-word', handleTypeWordEvent);
+    window.addEventListener('tutorial-save-word', handleSaveWordEvent);
+    return () => {
+      window.removeEventListener('tutorial-type-word', handleTypeWordEvent);
+      window.removeEventListener('tutorial-save-word', handleSaveWordEvent);
+    };
+  }, [vocab, richCardData, sceneImages, selectedPrimaryImageIdx]);
 
   const handleClear = () => {
     setWordInput('');
