@@ -251,10 +251,20 @@ export const Tutorial = () => {
       // Run initial check and start frame loop
       updatePosition();
 
-      // Smooth scroll if element exists
-      const el = document.querySelector(stepConf.selector);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Smooth scroll showcase behavior
+      if (currentStep === 1) {
+        const scrollContainer = document.querySelector('.scrollable-content');
+        if (scrollContainer) {
+          scrollContainer.scrollTo({ top: 400, behavior: 'smooth' });
+          setTimeout(() => {
+            scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 1800);
+        }
+      } else {
+        const el = document.querySelector(stepConf.selector);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     }, 450);
 

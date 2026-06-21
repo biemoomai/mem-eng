@@ -940,6 +940,19 @@ const AddWord = () => {
     const handleSaveWordEvent = async () => {
       if (isSuccess || isExiting || !richCardData) return;
       
+      if (isAlreadyInDeck) {
+        setIsExiting(true);
+        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+        setSourceToast({
+          message: `Saved to deck!`,
+          type: 'live'
+        });
+        setTimeout(() => {
+          handleClear();
+        }, 300);
+        return;
+      }
+      
       const targetWord = richCardData.word ? richCardData.word.trim().toLowerCase() : wordInput.trim().toLowerCase();
       const selectedUrls = sceneImages.map(img => img?.url || null);
       const savedSceneImages = [...selectedUrls];
@@ -982,7 +995,7 @@ const AddWord = () => {
       window.removeEventListener('tutorial-type-word', handleTypeWordEvent);
       window.removeEventListener('tutorial-save-word', handleSaveWordEvent);
     };
-  }, [vocab, richCardData, sceneImages, selectedPrimaryImageIdx]);
+  }, [vocab, richCardData, sceneImages, selectedPrimaryImageIdx, isAlreadyInDeck, wordInput]);
 
   const handleClear = () => {
     setWordInput('');
