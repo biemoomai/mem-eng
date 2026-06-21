@@ -491,7 +491,7 @@ const AddWord = () => {
 
   const handleTranslateDragEnd = async (event, info) => {
     if (isSuccess || isExiting) return;
-    const threshold = 140;
+    const threshold = 80;
     const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
     if (info.offset.x > threshold) {
       if (isTutorialActive) {
@@ -503,9 +503,6 @@ const AddWord = () => {
             message: `Saved to deck! (Mock)`,
             type: 'live'
           });
-          setTimeout(() => {
-            handleClear();
-          }, 300);
         }, 500);
         return;
       }
@@ -979,9 +976,6 @@ const AddWord = () => {
             message: `Saved to deck! (Mock)`,
             type: 'live'
           });
-          setTimeout(() => {
-            handleClear();
-          }, 300);
         }, 500);
         return;
       }

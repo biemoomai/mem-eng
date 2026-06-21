@@ -371,8 +371,6 @@ export const Tutorial = () => {
               right: 0,
               height: `${viewportRect.top}px`,
               background: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(3px)',
-              WebkitBackdropFilter: 'blur(3px)',
               zIndex: 100000,
               pointerEvents: 'auto'
             }}
@@ -387,8 +385,6 @@ export const Tutorial = () => {
               right: 0,
               bottom: 0,
               background: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(3px)',
-              WebkitBackdropFilter: 'blur(3px)',
               zIndex: 100000,
               pointerEvents: 'auto'
             }}
@@ -403,8 +399,6 @@ export const Tutorial = () => {
               width: `${viewportRect.left}px`,
               height: `${viewportRect.bottom - viewportRect.top}px`,
               background: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(3px)',
-              WebkitBackdropFilter: 'blur(3px)',
               zIndex: 100000,
               pointerEvents: 'auto'
             }}
@@ -419,8 +413,6 @@ export const Tutorial = () => {
               right: 0,
               height: `${viewportRect.bottom - viewportRect.top}px`,
               background: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(3px)',
-              WebkitBackdropFilter: 'blur(3px)',
               zIndex: 100000,
               pointerEvents: 'auto'
             }}
@@ -433,8 +425,6 @@ export const Tutorial = () => {
             position: 'fixed',
             inset: 0,
             background: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(3px)',
-            WebkitBackdropFilter: 'blur(3px)',
             zIndex: 100000,
             pointerEvents: 'auto'
           }}
