@@ -331,13 +331,27 @@ export const Tutorial = () => {
     // Get container dimensions to constrain tooltip within the app frame boundaries
     const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
     const containerWidth = containerEl ? containerEl.clientWidth : window.innerWidth;
+    const containerHeight = containerEl ? containerEl.clientHeight : window.innerHeight;
+    
+    const calculatedTop = isTop 
+      ? Math.max(10, top - 180) 
+      : (top + height + 15);
+
+    // If bottom positioning would overflow the visible viewport/container
+    if (!isTop && calculatedTop + 180 > containerHeight) {
+      return {
+        position: 'absolute',
+        left: `${Math.max(10, Math.min(containerWidth - 310, left + width / 2 - 150))}px`,
+        bottom: '90px',
+        width: '300px',
+        zIndex: 100004,
+      };
+    }
     
     return {
       position: 'absolute',
       left: `${Math.max(10, Math.min(containerWidth - 310, left + width / 2 - 150))}px`,
-      top: isTop 
-        ? `${Math.max(10, top - 180)}px` 
-        : `${top + height + 15}px`,
+      top: `${calculatedTop}px`,
       width: '300px',
       zIndex: 100004,
     };
