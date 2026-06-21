@@ -378,7 +378,7 @@ export const VocabProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(localDeck);
         // Normalize all existing cards to lowercase and inject FSRS fields if missing
-        const normalized = Array.isArray(parsed) ? parsed.map(item => {
+        const normalized = Array.isArray(parsed) ? parsed.filter(Boolean).map(item => {
           const reps = typeof item.reps === 'number' ? item.reps : (item.repetition || 0);
           const easeFactor = typeof item.easeFactor === 'number' ? item.easeFactor : 2.5;
           const stability = typeof item.stability === 'number' ? item.stability : (item.interval || 1.0);
@@ -873,7 +873,7 @@ export const VocabProvider = ({ children }) => {
 
     // Save cognitive hesitation reviews log
     const newLog = {
-      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2),
       word: itemToUpdate.word,
       rating: actionOrLevel,
       response_time_ms: typeof responseTimeMs === 'number' ? responseTimeMs : 1500,
