@@ -887,6 +887,8 @@ const Purge = () => {
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [statusSearchQuery, setStatusSearchQuery] = useState('');
 
+  const wordObj = sessionQueue[0];
+
   const revealTimeRef = useRef(null);
   const cardShowTimeRef = useRef(null);
 
@@ -1038,8 +1040,6 @@ const Purge = () => {
       }
     }
   }, [vocab, sessionQueue]);
-
-  const wordObj = sessionQueue[0];
   
   let richCardData = wordObj ? parseMeaningField(wordObj.meaning) : null;
 
