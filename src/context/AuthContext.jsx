@@ -51,7 +51,6 @@ export const AuthProvider = ({ children }) => {
             id: authUser.id,
             email: authUser.email,
             display_name: authUser.email.split('@')[0],
-            xp: 0,
             streak_days: 1,
             last_login_date: new Date().toISOString()
           })
@@ -113,9 +112,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateXp = async (amount) => {
-    // XP system disabled
-  };
+
 
   // Helpful functions
   const signUp = async (email, password) => {
@@ -140,7 +137,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, updateXp, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, profile, signUp, signIn, signInWithGoogle, signOut }}>
       {!loading && children}
     </AuthContext.Provider>
   );

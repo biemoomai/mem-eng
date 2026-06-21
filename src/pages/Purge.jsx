@@ -2000,6 +2000,7 @@ const Purge = () => {
 
   const handleSrsChoice = (choice) => {
     if (!wordObj) return;
+    window.dispatchEvent(new CustomEvent('tutorial-srs-clicked', { detail: choice }));
     
     let durationMs = 1500;
     if (revealTimeRef.current) {
@@ -2850,6 +2851,7 @@ const Purge = () => {
 
         <motion.div
           key={wordObj.id}
+          id="tutorial-flashcard-card"
           className="snap-card"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2880,6 +2882,7 @@ const Purge = () => {
             }
             if (revealStep === 0) {
               setRevealStep(1);
+              window.dispatchEvent(new Event('tutorial-card-revealed'));
             } else if (revealStep === 1) {
               setRevealStep(2);
             }

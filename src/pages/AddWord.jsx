@@ -2199,7 +2199,7 @@ const AddWord = () => {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 800 }}>
-                            <span>{scene.title}</span>
+                            <span>{(scene.title || '').replace(/\p{Extended_Pictographic}/gu, '').trim()}</span>
                           </div>
                           <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{scene.situation}</p>
                           

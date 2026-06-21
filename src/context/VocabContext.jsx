@@ -63,7 +63,6 @@ export const useVocab = () => useContext(VocabContext);
 
 export const VocabProvider = ({ children }) => {
   const [vocab, setVocab] = useState([]);
-  const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(1);
   const [loading, setLoading] = useState(true);
   const [reviewLogs, setReviewLogs] = useState(() => {
@@ -94,31 +93,25 @@ export const VocabProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      // Fetch user profile stats (XP, Streak)
+      // Fetch user profile stats (Streak)
       const { data: userProfile, error: profileError } = await supabase
         .from('users')
-        .select('xp, streak_days')
+        .select('streak_days')
         .eq('id', userId)
         .maybeSingle();
 
       if (!profileError && userProfile) {
-        const remoteXp = userProfile.xp || 0;
         const remoteStreak = userProfile.streak_days || 1;
-
-        const localXpVal = parseInt(localStorage.getItem('chatgpt_anki_xp') || '0', 10);
-        const finalXp = Math.max(remoteXp, localXpVal);
-        setXp(finalXp);
-        localStorage.setItem('chatgpt_anki_xp', finalXp.toString());
 
         const localStreakVal = parseInt(localStorage.getItem('chatgpt_anki_streak') || '1', 10);
         const finalStreak = Math.max(remoteStreak, localStreakVal);
         setStreak(finalStreak);
         localStorage.setItem('chatgpt_anki_streak', finalStreak.toString());
 
-        if (localXpVal > remoteXp || localStreakVal > remoteStreak) {
+        if (localStreakVal > remoteStreak) {
           await supabase
             .from('users')
-            .update({ xp: finalXp, streak_days: finalStreak })
+            .update({ streak_days: finalStreak })
             .eq('id', userId);
         }
       }
@@ -405,11 +398,6 @@ export const VocabProvider = ({ children }) => {
       }
     }
     
-    const localXp = localStorage.getItem('chatgpt_anki_xp');
-    if (localXp) {
-      setXp(parseInt(localXp, 10) || 0);
-    }
-
     const localStreak = localStorage.getItem('chatgpt_anki_streak');
     if (localStreak) {
       setStreak(parseInt(localStreak, 10) || 1);
@@ -420,10 +408,6 @@ export const VocabProvider = ({ children }) => {
 
   const saveDeckToLocal = (newVocab) => {
     localStorage.setItem('chatgpt_anki_deck', JSON.stringify(newVocab));
-  };
-
-  const updateXp = async (amount) => {
-    // XP system disabled
   };
 
   const updateStreak = async (days) => {
@@ -1045,17 +1029,15 @@ export const VocabProvider = ({ children }) => {
 
   const clearDeckAndResetStats = async () => {
     setVocab([]);
-    setXp(0);
     setStreak(1);
     localStorage.removeItem('chatgpt_anki_deck');
-    localStorage.removeItem('chatgpt_anki_xp');
     localStorage.removeItem('chatgpt_anki_streak');
 
     if (user) {
       try {
         await supabase.from('user_decks').delete().eq('user_id', user.id);
         await supabase.from('user_review_logs').delete().eq('user_id', user.id);
-        await supabase.from('users').update({ xp: 0, streak_days: 1 }).eq('id', user.id);
+        await supabase.from('users').update({ streak_days: 1 }).eq('id', user.id);
       } catch (e) {
         console.error("Failed to clear remote database:", e);
       }
@@ -1066,9 +1048,7 @@ export const VocabProvider = ({ children }) => {
     <VocabContext.Provider value={{
       vocab,
       setVocab,
-      xp,
       streak,
-      updateXp,
       updateStreak,
       updateWordSrs, 
       reviewLogs,

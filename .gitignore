@@ -28,3 +28,9 @@ scratch/
 test_imagen.cjs
 test_imagen_output.jpg
 test_imagen_output.png
+
+# Backups
+backup-stable-v1/
+backup-v1-stable/
+backup-v2-tutorial-complete/
+scripts/

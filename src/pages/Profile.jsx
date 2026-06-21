@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, BookOpen, Trash2, User, Menu, X, Search, Calendar, Filter, Trophy, ChevronDown, TrendingUp, Eye, ArrowUpZA, ArrowDownAZ, Plus, Loader2 } from 'lucide-react';
+import { Volume2, BookOpen, Trash2, User, Menu, X, Search, Calendar, Filter, Trophy, ChevronDown, TrendingUp, Eye, ArrowUpZA, ArrowDownAZ, Plus, Loader2, MessageSquare } from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getVerbForms } from '../utils/textUtils';
 
 const srsTapColors = {
   'Learning': '#cbd5e1', // Silver/white
@@ -161,6 +162,11 @@ const Profile = () => {
       gradient: 'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
       border: '1px solid #7c3aed',
       glow: '0 12px 30px rgba(167, 139, 250, 0.35)'
+    },
+    'Daily Phrases': {
+      gradient: 'linear-gradient(135deg, #34d399 0%, #059669 100%)',
+      border: '1px solid #059669',
+      glow: '0 12px 30px rgba(52, 211, 153, 0.35)'
     }
   };
 
@@ -208,6 +214,30 @@ const Profile = () => {
     }
   }, [stats.streak]);
 
+  // Automatically show details if tutorial is active
+  useEffect(() => {
+    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
+    if (!isDone) {
+      setShowDetails(true);
+    }
+
+    const handleTrigger = () => {
+      setShowDetails(true);
+    };
+    window.addEventListener('trigger-tutorial', handleTrigger);
+    return () => window.removeEventListener('trigger-tutorial', handleTrigger);
+  }, []);
+
+  // Automatically close modals on tutorial request
+  useEffect(() => {
+    const handleCloseModals = () => {
+      setShowCurriculumModal(false);
+      setSelectedLevel(null);
+    };
+    window.addEventListener('tutorial-close-modals', handleCloseModals);
+    return () => window.removeEventListener('tutorial-close-modals', handleCloseModals);
+  }, []);
+
   const getCefr = (wordObj) => (wordObj.cefrLevel || 'A1');
 
   const getCefrTarget = (cefrId) => {
@@ -237,16 +267,32 @@ const Profile = () => {
     { id: 'C2', name: 'Mastery', color: '#ffffff' }
   ];
 
+  const getWaitingCount = () => {
+    if (activeCurriculum === 'Self-Study only' || !curriculumList || curriculumList.length === 0) return 0;
+    const activeVocabWords = new Set(activeVocab.map(w => w.word.toLowerCase().trim()));
+    return curriculumList.filter(item => !activeVocabWords.has(item.word.toLowerCase().trim())).length;
+  };
+  const waitingCount = getWaitingCount();
+
   const cefrLevels = cefrTiers.map(tier => {
     const count = activeVocab.filter(w => getCefr(w) === tier.id).length;
-    return { ...tier, count };
+    const totalInCurriculum = (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0)
+      ? curriculumList.filter(w => (w.cefr_level || '').toUpperCase() === tier.id.toUpperCase()).length
+      : 0;
+    return { ...tier, count, totalInCurriculum };
   });
 
   const srsLevels = [
-    { level: 'Learning', count: activeVocab.filter(w => w.srsLevel === 'Learning').length, color: '#334155' },
-    { level: 'Hard', count: counts.hard, color: '#64748b' },
-    { level: 'Normal', count: counts.normal, color: '#94a3b8' },
+    { 
+      level: 'Learning', 
+      count: activeVocab.filter(w => w.srsLevel === 'Learning').length + waitingCount, 
+      color: '#334155',
+      actualLearning: activeVocab.filter(w => w.srsLevel === 'Learning').length,
+      waiting: waitingCount
+    },
     { level: 'Easy', count: counts.easy + counts.superEasy, color: '#cbd5e1' },
+    { level: 'Normal', count: counts.normal, color: '#94a3b8' },
+    { level: 'Hard', count: counts.hard, color: '#64748b' },
     { level: 'Mastered', count: counts.mastered, color: '#ffffff' }
   ];
 
@@ -256,6 +302,7 @@ const Profile = () => {
     setSearchQuery('');
     setActiveCategory('All Categories');
     setActivePos('All POS');
+    window.dispatchEvent(new CustomEvent('tutorial-srs-modal-opened', { detail: { level, type } }));
   };
 
   const getModalList = () => {
@@ -266,6 +313,26 @@ const Profile = () => {
     if (levelType === 'srs') {
       if (selectedLevel === 'Total') {
         list = activeVocab;
+      } else if (selectedLevel === 'Learning') {
+        const studyingList = activeVocab.filter(w => w.srsLevel === 'Learning');
+        if (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0) {
+          const activeVocabWords = new Set(activeVocab.map(w => w.word.toLowerCase().trim()));
+          const waitingWords = curriculumList
+            .filter(item => !activeVocabWords.has(item.word.toLowerCase().trim()))
+            .map(currItem => ({
+              id: `waiting-${currItem.word.toLowerCase().trim()}`,
+              word: currItem.word.toLowerCase().trim(),
+              pos: currItem.pos || 'n.',
+              cefrLevel: currItem.cefr_level || 'A1',
+              srsLevel: 'Waiting',
+              meaning: '',
+              example: '',
+              isWaiting: true
+            }));
+          list = [...studyingList, ...waitingWords];
+        } else {
+          list = studyingList;
+        }
       } else {
         list = activeVocab.filter(w => {
           if (selectedLevel === 'Easy') {
@@ -465,6 +532,13 @@ const Profile = () => {
                       desc: 'Academic & university prep', 
                       icon: Trophy,
                       color: '#a78bfa' 
+                    },
+                    { 
+                      id: 'Daily Phrases', 
+                      label: 'Daily Phrases', 
+                      desc: 'Common phrases for everyday use', 
+                      icon: MessageSquare,
+                      color: '#34d399' 
                     }
                   ].map(item => {
                     const isActive = activeCurriculum === item.id;
@@ -845,6 +919,8 @@ const Profile = () => {
                 ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(249, 115, 22, 0.08) 50%, rgba(167, 139, 250, 0.08) 100%)'
                 : activeCurriculum === 'IELTS Academic' 
                 ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(236, 72, 153, 0.08) 50%, rgba(99, 102, 241, 0.08) 100%)'
+                : activeCurriculum === 'Daily Phrases'
+                ? 'linear-gradient(135deg, rgba(52, 211, 153, 0.12) 0%, rgba(5, 150, 105, 0.08) 50%, rgba(16, 185, 129, 0.08) 100%)'
                 : 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(148, 163, 184, 0.05) 50%, rgba(71, 85, 105, 0.05) 100%)',
               filter: 'blur(75px)',
               pointerEvents: 'none',
@@ -869,9 +945,11 @@ const Profile = () => {
           {/* Compact Curriculum Trigger */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.6rem', marginTop: '0px' }}>
             <button
+              id="tutorial-profile-curriculum"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowCurriculumModal(true);
+                window.dispatchEvent(new Event('tutorial-curriculum-opened'));
               }}
               style={{
                 padding: '0.22rem 0.6rem',
@@ -894,7 +972,8 @@ const Profile = () => {
                   'Self-Study only': '#cbd5e1',
                   'Oxford 5000': '#3b82f6',
                   'TOEIC Essential': '#ef4444',
-                  'IELTS Academic': '#a78bfa'
+                  'IELTS Academic': '#a78bfa',
+                  'Daily Phrases': '#34d399'
                 };
                 const activeColor = colors[activeCurriculum] || '#cbd5e1';
                 e.currentTarget.style.background = `${activeColor}10`;
@@ -1027,7 +1106,7 @@ const Profile = () => {
               style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
             >
               {/* SRS Stages Section */}
-              <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.25rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.05)', width: '100%' }}>
+              <div id="tutorial-profile-srs" className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.25rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.05)', width: '100%' }}>
                 <h3 style={{ margin: '0 0 0.85rem 0', fontSize: '1.05rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
                   <TrendingUp size={16} color="#cbd5e1" style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.2))' }} /> SRS Stages
                 </h3>
@@ -1106,12 +1185,23 @@ const Profile = () => {
                            textTransform: 'uppercase',
                            transition: 'color 0.25s ease, opacity 0.25s ease'
                          }}>{lvl.level}</div>
-                         <div style={{ 
-                           fontSize: '1rem', 
-                           color: isHovered ? srsTapColors[lvl.level] : '#ffffff', 
-                           fontWeight: 900,
-                           transition: 'color 0.25s ease'
-                         }}>{lvl.count}</div>
+                          <div style={{ 
+                            fontSize: '1rem', 
+                            color: isHovered ? srsTapColors[lvl.level] : '#ffffff', 
+                            fontWeight: 900,
+                            transition: 'color 0.25s ease'
+                          }}>
+                            {lvl.level === 'Learning' && lvl.waiting > 0 ? (
+                              <>
+                                {lvl.actualLearning}
+                                <span style={{ fontSize: '0.62rem', color: '#fbbf24', display: 'block', fontWeight: 500, marginTop: '2px' }}>
+                                  ({lvl.waiting} wait)
+                                </span>
+                              </>
+                            ) : (
+                              lvl.count
+                            )}
+                          </div>
                       </motion.div>
                     );
                   })}
@@ -1300,11 +1390,20 @@ const Profile = () => {
                                transition: 'color 0.2s, opacity 0.2s'
                              }}>{item.id}</div>
                              <div style={{ 
-                               fontSize: '0.9rem', 
+                               fontSize: '0.85rem', 
                                color: isActive ? brandColor : '#ffffff', 
                                fontWeight: 900,
                                transition: 'color 0.2s'
-                             }}>{item.count}</div>
+                             }}>
+                               {activeCurriculum === 'Self-Study only' ? (
+                                 item.count
+                               ) : (
+                                 <>
+                                   {item.count}
+                                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 500 }}> / {item.totalInCurriculum}</span>
+                                 </>
+                               )}
+                             </div>
                           </motion.div>
                         );
                       })}
@@ -1316,6 +1415,7 @@ const Profile = () => {
               {/* Oxford 5000 CEFR Coverage Panel */}
               {activeCurriculum !== 'Self-Study only' && (
                 <div 
+                  id="tutorial-profile-progress"
                   className="glass-panel" 
                   onMouseEnter={() => setProgressHovered(true)}
                   onMouseLeave={() => setProgressHovered(false)}
@@ -1337,7 +1437,7 @@ const Profile = () => {
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
-                  {(() => {
+                    {(() => {
                     const displayedLevelId = oxfordHoveredLevel || oxfordActiveLevel;
                     if (displayedLevelId) {
                       const tier = cefrTiers.find(t => t.id === displayedLevelId);
@@ -1359,22 +1459,25 @@ const Profile = () => {
                         </div>
                       );
                     } else {
-                      const getCurriculumTarget = () => {
-                        if (activeCurriculum === 'TOEIC Essential') return 2000;
-                        if (activeCurriculum === 'IELTS Academic') return 3000;
-                        return 5500; // default / Oxford 5000
-                      };
-                      const targetLimit = getCurriculumTarget();
-                      const pct = Math.min((counts.total / targetLimit) * 100, 100);
+                      // Use real curriculum count from database, fallback to hardcoded only if curriculumList is empty
+                      const targetLimit = (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0) 
+                        ? curriculumList.length 
+                        : (activeCurriculum === 'Self-Study only' ? Math.max(counts.total, 1) : 0);
+                      const pct = targetLimit > 0 ? Math.min((counts.total / targetLimit) * 100, 100) : 0;
+                      const waitingCount = (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0)
+                        ? Math.max(0, curriculumList.length - counts.total)
+                        : 0;
                       return (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', height: '18px' }}>
-                          <h4 style={{ margin: 0, color: 'white', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800 }}>
-                            <TrendingUp size={12} color="#cbd5e1" /> 
-                            <span>{activeCurriculum === 'Self-Study only' ? 'Self-Study' : activeCurriculum} Progress</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', minHeight: '18px', height: 'auto', flexWrap: 'wrap', gap: '4px' }}>
+                          <h4 style={{ margin: 0, color: 'white', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 800, fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
+                            <TrendingUp size={11} color="#cbd5e1" /> 
+                            <span>{activeCurriculum === 'Self-Study only' ? 'Self-Study' : activeCurriculum}</span>
                           </h4>
-                          <div style={{ fontWeight: 800, color: '#ffffff' }}>
-                            {counts.total} <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>/ {targetLimit} words</span>
-                            <span style={{ marginLeft: '8px', color: '#cbd5e1', fontSize: '0.7rem' }}>{pct.toFixed(1)}%</span>
+                          <div style={{ fontWeight: 800, color: '#ffffff', fontSize: '0.7rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span>{counts.total}</span>
+                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>/ {targetLimit}</span>
+                            {waitingCount > 0 && <span style={{ color: '#fbbf24', fontSize: '0.62rem', fontWeight: 700 }}>({waitingCount} wait)</span>}
+                            <span style={{ color: '#cbd5e1', fontSize: '0.65rem', marginLeft: '2px' }}>{pct.toFixed(1)}%</span>
                           </div>
                         </div>
                       );
@@ -1450,47 +1553,7 @@ const Profile = () => {
           )}
         </AnimatePresence>
 
-        {/* Danger Zone: Reset Deck */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-panel"
-          style={{
-            marginTop: '1.5rem',
-            padding: '1.25rem',
-            background: 'rgba(239, 68, 68, 0.03)',
-            border: '1px solid rgba(239, 68, 68, 0.15)',
-            borderRadius: '24px',
-            textAlign: 'center'
-          }}
-        >
-          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: 800, color: '#f87171' }}>
-            Danger Zone
-          </h4>
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-            Permanently delete all words and review history from local cache and Supabase cloud database.
-          </p>
-          <button
-            onClick={async () => {
-              if (confirm('คุณต้องการลบข้อมูลคำศัพท์และประวัติการเรียนทั้งหมดในโปรไฟล์นี้ใช่ไหม? (ข้อมูลทั้งบนเครื่องและบน Supabase จะหายไปทั้งหมดและย้อนกลับคืนไม่ได้)')) {
-                await clearDeckAndResetStats();
-              }
-            }}
-            className="glass-button animate-scale"
-            style={{
-              background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'white',
-              fontWeight: 800,
-              fontSize: '0.75rem',
-              padding: '0.55rem 1.5rem',
-              borderRadius: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            Reset Deck & Stats
-          </button>
-        </motion.div>
+
       </div>
 
       {/* Interactive Word List Modal */}
@@ -2349,6 +2412,49 @@ const Profile = () => {
                         <div style={{ fontSize: '0.95rem', color: getModalColor(), fontWeight: 800, fontStyle: 'italic', lineHeight: '1.45', marginTop: '0.2rem', textShadow: `0 0 10px ${getModalColor()}30` }}>"{currentItem.example}"</div>
                       </div>
                     )}
+
+                    {parsedMeaning?.takeaway && (
+                      <div style={{ width: '100%', background: 'rgba(16,185,129,0.02)', border: '1px solid rgba(16,185,129,0.12)', padding: '0.55rem 0.75rem', borderRadius: '12px', boxSizing: 'border-box' }}>
+                        <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', color: '#34d399', fontWeight: 800, display: 'block', marginBottom: '0.1rem' }}>
+                          Key Takeaway
+                        </span>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.3 }}>{parsedMeaning.takeaway}</p>
+                      </div>
+                    )}
+
+                    {(() => {
+                      let verbForms = parsedMeaning?.verbForms;
+                      if (!verbForms) {
+                        verbForms = getVerbForms(currentItem.word, currentItem.pos);
+                      }
+                      if (!verbForms || !Array.isArray(verbForms) || verbForms.length < 3) return null;
+                      const [v1, v2, v3] = verbForms;
+                      return (
+                        <div style={{ width: '100%', background: 'rgba(255, 255, 255, 0.012)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '0.65rem 0.85rem', borderRadius: '12px', boxSizing: 'border-box' }}>
+                          <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', letterSpacing: '0.5px', marginBottom: '0.35rem' }}>
+                            Verb Forms (Tenses)
+                          </span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '0.78rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                              <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, letterSpacing: '0.2px' }}>V1</span>
+                              <span style={{ color: 'white', fontWeight: 900, fontSize: '1.05rem' }}>{v1}</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, alignItems: 'center' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+                                <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, letterSpacing: '0.2px' }}>V2</span>
+                                <span style={{ color: 'white', fontWeight: 900, fontSize: '1.05rem' }}>{v2}</span>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, alignItems: 'flex-end' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+                                <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, letterSpacing: '0.2px' }}>V3</span>
+                                <span style={{ color: 'white', fontWeight: 900, fontSize: '1.05rem' }}>{v3}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {previewShowThai ? (
                       <div style={{ 

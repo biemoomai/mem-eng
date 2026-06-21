@@ -43,6 +43,9 @@ CRITICAL INSTRUCTIONS FOR "imagePrompts":
 - The "imagePrompts" array MUST contain exactly 2 highly descriptive, concrete visual search terms (1-3 words each, e.g., "divider", "zipper splitting", "fences dividing") that represent the visual definition/meaning of the target word directly.
 - DO NOT base "imagePrompts" on the scenes! For example, if the scenes take place in a classroom or a kitchen, DO NOT write "classroom" or "kitchen". The prompts must represent the word's definition directly so that searching them yields images explaining the word itself.
 
+CRITICAL INSTRUCTIONS FOR FORMATTING AND TEXT CONTENT:
+- DO NOT include any emojis, icons, or pictorial representations in the title, situation, dialogue, meaning, takeaway, or any other output fields. Keep them strictly as clean, standard plain text.
+
 Return a JSON object with this exact structure:
 {
   "validation": {
@@ -62,20 +65,18 @@ Return a JSON object with this exact structure:
   "scenes": [
     // Include exactly 2 scene objects. Empty array [] if invalid.
     {
-      "title": "Scene 1: Title",
-      "emoji": "2 emojis",
-      "situation": "Brief description of the context/situation",
+      "title": "Scene 1: Title (no emojis, plain text)",
+      "situation": "Brief description of the context/situation (no emojis, plain text)",
       "dialogue": "A short, concise, and natural example sentence or dialogue illustrating the word in English. Keep it brief, simple, and easy to understand (normally 5-10 words, clear context, no prefix like 'Person:').",
-      "meaning": "Brief explanation of dialogue in Thai",
+      "meaning": "Brief explanation of dialogue in Thai (no emojis, plain text)",
       "thaiWordUsed": "The exact Thai word or short phrase inside the 'meaning' sentence that translates the target English word. (e.g., if target is 'jogging' and meaning is 'ฉันชอบไปวิ่งจ๊อกกิ้ง...', write 'วิ่งจ๊อกกิ้ง')",
       "imageTag": "Single concrete English noun representing the location or object in the scene (e.g. 'cafe', 'classroom')"
     },
     {
-      "title": "Scene 2: Title",
-      "emoji": "2 emojis",
-      "situation": "Brief description of the context/situation",
+      "title": "Scene 2: Title (no emojis, plain text)",
+      "situation": "Brief description of the context/situation (no emojis, plain text)",
       "dialogue": "A short, concise, and natural example sentence or dialogue illustrating the word in English. Keep it brief, simple, and easy to understand (normally 5-10 words, clear context, no prefix like 'Person:').",
-      "meaning": "Brief explanation of dialogue in Thai",
+      "meaning": "Brief explanation of dialogue in Thai (no emojis, plain text)",
       "thaiWordUsed": "The exact Thai word or short phrase inside the 'meaning' sentence that translates the target English word.",
       "imageTag": "Single concrete English noun representing the location or object in the scene"
     }
