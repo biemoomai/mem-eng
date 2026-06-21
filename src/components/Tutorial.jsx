@@ -77,7 +77,7 @@ export const Tutorial = () => {
 
   const hasInitializedRef = useRef(false);
 
-  // Check if tutorial needs to run on mount / login
+  // Check if tutorial needs to run on visiting /purge or manually triggered
   useEffect(() => {
     if (!user) {
       hasInitializedRef.current = false;
@@ -85,18 +85,14 @@ export const Tutorial = () => {
       return;
     }
 
-    if (hasInitializedRef.current) return;
-
     const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone) {
+    if (!isDone && location.pathname === '/purge' && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
       setActive(true);
       setCurrentStep(0);
-      if (location.pathname !== '/') {
-        navigate('/');
-      }
+      navigate('/');
     }
-  }, [user]);
+  }, [user, location.pathname]);
 
   // Listen to hamburger trigger
   useEffect(() => {
@@ -118,7 +114,7 @@ export const Tutorial = () => {
     const handleTranslated = () => {
       if (currentStep === 0) {
         setTimeout(() => {
-          handleNext();
+          setCurrentStep(1);
         }, 800);
       }
     };
@@ -126,7 +122,8 @@ export const Tutorial = () => {
     const handleWordSaved = () => {
       if (currentStep === 1) {
         setTimeout(() => {
-          handleNext();
+          setCurrentStep(2);
+          navigate('/purge');
         }, 800);
       }
     };
@@ -134,7 +131,7 @@ export const Tutorial = () => {
     const handleCardRevealed = () => {
       if (currentStep === 2) {
         setTimeout(() => {
-          handleNext();
+          setCurrentStep(3);
         }, 800);
       }
     };
@@ -142,7 +139,7 @@ export const Tutorial = () => {
     const handleCardFullyRevealed = () => {
       if (currentStep === 3) {
         setTimeout(() => {
-          handleNext();
+          setCurrentStep(4);
         }, 800);
       }
     };
@@ -150,7 +147,8 @@ export const Tutorial = () => {
     const handleSrsClicked = () => {
       if (currentStep === 4) {
         setTimeout(() => {
-          handleNext();
+          setCurrentStep(5);
+          navigate('/profile');
         }, 800);
       }
     };
@@ -159,7 +157,7 @@ export const Tutorial = () => {
       if (currentStep === 5) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
-          handleNext();
+          setCurrentStep(6);
         }, 1500);
       }
     };
@@ -168,7 +166,7 @@ export const Tutorial = () => {
       if (currentStep === 6) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
-          handleNext();
+          setCurrentStep(7);
         }, 2000);
       }
     };
