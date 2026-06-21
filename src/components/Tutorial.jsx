@@ -1,43 +1,65 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X, ChevronRight, HelpCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const TUTORIAL_STEPS = [
+  {
+    path: '/',
+    selector: '#tutorial-translate-input',
+    title: 'Translate Word',
+    text: 'พิมพ์คำศัพท์ที่ต้องการเรียนรู้ลงในช่องค้นหา เช่น hello แล้วกดปุ่มแปลภาษาหรือกด Enter',
+    position: 'bottom'
+  },
+  {
+    path: '/',
+    selector: '.results-drag-wrapper',
+    title: 'Swipe to Save',
+    text: 'ลองปัดการ์ดผลลัพธ์นี้ไปทางขวา เพื่อบันทึกคำศัพท์เข้าสู่เด็คทบทวนของคุณ',
+    position: 'bottom'
+  },
   {
     path: '/purge',
     selector: '#tutorial-flashcard-card',
     title: 'Flashcard Deck',
-    text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลองแตะที่การ์ดเบาๆ เพื่อเปิดเผยคำแปลภาษาไทยและตัวอย่างประโยค',
+    text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลองแตะที่การ์ดเบาๆ เพื่อเปิดเผยคำแปลภาษาอธิบายภาษาอังกฤษและตัวอย่างประโยค',
+    position: 'bottom'
+  },
+  {
+    path: '/purge',
+    selector: '#tutorial-flashcard-card',
+    title: 'Reveal Thai Translation',
+    text: 'ลองแตะที่การ์ดอีกครั้ง เพื่อเปิดเผยคำแปลภาษาไทยและแถบปุ่มระบบช่วยจำ',
     position: 'bottom'
   },
   {
     path: '/purge',
     selector: '#tutorial-srs-buttons',
-    title: 'ระบบช่วยจำ (SRS)',
-    text: 'เลือกยากง่ายเพื่อเว้นระยะทบทวน ลองกดปุ่มระดับความจำปุ่มใดก็ได้ (เช่น Easy หรือ Normal) เพื่อเรียนรู้ต่อ',
+    title: 'SRS Memory Rating',
+    text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น Easy หรือ Normal เพื่อเรียนรู้ต่อ',
     position: 'top'
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-curriculum',
-    title: 'โปรไฟล์คำศัพท์ (Curriculum)',
+    title: 'Curriculum Switcher',
     text: 'กดเลือกปุ่มหลักสูตรนี้ เพื่อเปิดตัวเลือกการสลับโหมดคำศัพท์ เช่น Oxford 5000 หรือ TOEIC',
     position: 'bottom'
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-srs',
-    title: 'ระดับความจำ (SRS Stages)',
-    text: 'ลองกดที่ปุ่มระดับความจำปุ่มใดก็ได้ (เช่น Learning หรือ Mastered) เพื่อแสดงรายชื่อคำศัพท์ของกลุ่มนั้น',
+    title: 'SRS Memory Stages',
+    text: 'ลองกดที่ปุ่มระดับความจำกลุ่มใดก็ได้ เช่น Learning หรือ Mastered เพื่อแสดงรายชื่อคำศัพท์ของกลุ่มนั้น',
     position: 'bottom'
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-progress',
-    title: 'ความคืบหน้า (Curriculum Progress)',
-    text: 'แถบแสดงจำนวนคำศัพท์ที่เพิ่มเข้าสู่การเรียนรู้จริงเปรียบเทียบกับคำศัพท์ทั้งหมด ยินดีด้วย! ทัวร์สอนใช้งานเสร็จสิ้นแล้ว กดปุ่ม Finish เพื่อเริ่มใช้งานจริงได้เลย',
+    title: 'Curriculum Progress',
+    text: 'แถบแสดงจำนวนคำศัพท์ที่เพิ่มเข้าสู่การเรียนรู้จริงเปรียบเทียบกับคำศัพท์ทั้งหมด ยินดีด้วย! การแนะนำโปรแกรมเสร็จสิ้นแล้ว กดปุ่ม Finish เพื่อเริ่มใช้งานจริงได้เลย',
     position: 'top'
   }
 ];
@@ -46,74 +68,117 @@ export const Tutorial = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme } = useTheme();
+  const { user } = useAuth();
   
   const [active, setActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightRect, setHighlightRect] = useState(null);
 
+  const lastTargetRef = useRef(null);
+  const originalStylesRef = useRef({});
+
   // Check if tutorial needs to run
   useEffect(() => {
+    if (!user) {
+      setActive(false);
+      return;
+    }
+
     const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone && (location.pathname === '/purge' || location.pathname === '/profile')) {
+    if (!isDone) {
       setActive(true);
-      setCurrentStep(location.pathname === '/purge' ? 0 : 2);
+      setCurrentStep(0);
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
     }
 
     const handleTrigger = () => {
+      if (!user) return;
       localStorage.setItem('memeng_tutorial_done', 'false');
       setActive(true);
       setCurrentStep(0);
-      navigate('/purge');
+      navigate('/');
     };
     window.addEventListener('trigger-tutorial', handleTrigger);
     return () => window.removeEventListener('trigger-tutorial', handleTrigger);
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, user]);
 
   // Listen to interactive events to auto-advance steps
   useEffect(() => {
     if (!active) return;
 
-    const handleCardRevealed = () => {
+    const handleTranslated = () => {
       if (currentStep === 0) {
         setTimeout(() => {
           handleNext();
-        }, 800); // Delay to let them see translation
+        }, 800);
+      }
+    };
+
+    const handleWordSaved = () => {
+      if (currentStep === 1) {
+        setTimeout(() => {
+          handleNext();
+        }, 800);
+      }
+    };
+
+    const handleCardRevealed = () => {
+      if (currentStep === 2) {
+        setTimeout(() => {
+          handleNext();
+        }, 800);
+      }
+    };
+
+    const handleCardFullyRevealed = () => {
+      if (currentStep === 3) {
+        setTimeout(() => {
+          handleNext();
+        }, 800);
       }
     };
 
     const handleSrsClicked = () => {
-      if (currentStep === 1) {
+      if (currentStep === 4) {
         setTimeout(() => {
           handleNext();
-        }, 800); // Delay to let them see button feedback
+        }, 800);
       }
     };
 
     const handleCurriculumOpened = () => {
-      if (currentStep === 2) {
+      if (currentStep === 5) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
           handleNext();
-        }, 1500); // Let them look at choices briefly, then auto-close and proceed
+        }, 1500);
       }
     };
 
     const handleSrsModalOpened = () => {
-      if (currentStep === 3) {
+      if (currentStep === 6) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
           handleNext();
-        }, 2000); // Let them browse the modal words briefly, then auto-close and proceed
+        }, 2000);
       }
     };
 
+    window.addEventListener('tutorial-translated', handleTranslated);
+    window.addEventListener('tutorial-word-saved', handleWordSaved);
     window.addEventListener('tutorial-card-revealed', handleCardRevealed);
+    window.addEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
     window.addEventListener('tutorial-srs-clicked', handleSrsClicked);
     window.addEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
     window.addEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
 
     return () => {
+      window.removeEventListener('tutorial-translated', handleTranslated);
+      window.removeEventListener('tutorial-word-saved', handleWordSaved);
       window.removeEventListener('tutorial-card-revealed', handleCardRevealed);
+      window.removeEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
       window.removeEventListener('tutorial-srs-clicked', handleSrsClicked);
       window.removeEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
       window.removeEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
@@ -182,10 +247,66 @@ export const Tutorial = () => {
     };
   }, [currentStep, location.pathname, active]);
 
-  if (!active) return null;
-
   const stepConf = TUTORIAL_STEPS[currentStep];
   const isWrongPath = stepConf && location.pathname !== stepConf.path;
+
+  // Z-index elevation for spotlight target element (un-blurring)
+  useEffect(() => {
+    // 1. Cleanup previous elevated element
+    if (lastTargetRef.current) {
+      const el = lastTargetRef.current;
+      const styles = originalStylesRef.current;
+      el.style.zIndex = styles.zIndex || '';
+      el.style.position = styles.position || '';
+      el.style.pointerEvents = styles.pointerEvents || '';
+      lastTargetRef.current = null;
+      originalStylesRef.current = {};
+    }
+
+    if (!active) return;
+
+    if (!stepConf || isWrongPath) return;
+
+    // 2. Set style override on current target element
+    const timerId = setTimeout(() => {
+      const el = document.querySelector(stepConf.selector);
+      if (el) {
+        // Save original styles
+        originalStylesRef.current = {
+          zIndex: el.style.zIndex,
+          position: el.style.position,
+          pointerEvents: el.style.pointerEvents
+        };
+        // Set new styles
+        el.style.zIndex = '100002';
+        const computedStyle = window.getComputedStyle(el);
+        if (computedStyle.position === 'static') {
+          el.style.position = 'relative';
+        }
+        el.style.pointerEvents = 'auto';
+        lastTargetRef.current = el;
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [currentStep, active, isWrongPath]);
+
+  // Clean up styles on unmount
+  useEffect(() => {
+    return () => {
+      if (lastTargetRef.current) {
+        const el = lastTargetRef.current;
+        const styles = originalStylesRef.current;
+        el.style.zIndex = styles.zIndex || '';
+        el.style.position = styles.position || '';
+        el.style.pointerEvents = styles.pointerEvents || '';
+      }
+    };
+  }, []);
+
+  if (!active) return null;
 
   const handleNext = () => {
     if (currentStep < TUTORIAL_STEPS.length - 1) {
@@ -215,7 +336,7 @@ export const Tutorial = () => {
         transform: 'translate(-50%, -50%)',
         width: '90%',
         maxWidth: '320px',
-        zIndex: 100001
+        zIndex: 100004
       };
     }
 
@@ -233,7 +354,7 @@ export const Tutorial = () => {
         ? `${Math.max(10, top - 180)}px` 
         : `${top + height + 15}px`,
       width: '300px',
-      zIndex: 100001,
+      zIndex: 100004,
     };
   };
 
@@ -249,7 +370,12 @@ export const Tutorial = () => {
           zIndex: 100000,
           pointerEvents: 'auto'
         }}
-        onClick={handleNext}
+        onClick={() => {
+          // Backdrop click only finishes/closes on the last step
+          if (currentStep === TUTORIAL_STEPS.length - 1) {
+            handleNext();
+          }
+        }}
       />
 
       {/* Spotlight highlight border around targeted element */}
@@ -267,7 +393,7 @@ export const Tutorial = () => {
             borderRadius: '16px',
             border: '3px solid #fbbf24',
             boxShadow: '0 0 20px #fbbf2460, 0 0 0 9999px rgba(0,0,0,0.5)',
-            zIndex: 100000,
+            zIndex: 100003,
             pointerEvents: 'none'
           }}
         />
@@ -310,7 +436,7 @@ export const Tutorial = () => {
                 สลับหน้าจอเพื่อเรียนรู้ต่อ
               </h4>
               <p style={{ margin: 0, fontSize: '0.78rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-                กรุณากดเลือกแถบนำทางที่ {stepConf.path === '/purge' ? 'Flashcards' : 'Profile'} ด้านล่างของจอเพื่อดูขั้นตอนสอนการใช้งานถัดไปครับ!
+                กรุณากดเลือกแถบนำทางที่ {stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'Profile' : 'Translate')} ด้านล่างของจอเพื่อดูขั้นตอนสอนการใช้งานถัดไปครับ!
               </p>
             </div>
           ) : (
@@ -332,7 +458,7 @@ export const Tutorial = () => {
             >
               Skip
             </button>
-            {/* Show Next button only on the last step, other steps are interactive progression */}
+            {/* Show Next/Finish button only on the last step */}
             {currentStep === TUTORIAL_STEPS.length - 1 ? (
               <button 
                 onClick={handleNext}

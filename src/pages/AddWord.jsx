@@ -519,6 +519,7 @@ const AddWord = () => {
               };
               
               await addWordToDeck(suggestion.trim().toLowerCase(), updatedRichData);
+              window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
               setSourceToast({
                 message: `Saved "${suggestion.toLowerCase()}" to deck!`,
                 type: 'live'
@@ -532,6 +533,7 @@ const AddWord = () => {
             }
           })();
         }
+        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
         setTimeout(() => {
           handleClear();
         }, 300);
@@ -540,6 +542,7 @@ const AddWord = () => {
 
       if (isAlreadyInDeck) {
         setIsExiting(true);
+        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
         setTimeout(() => {
           handleClear();
         }, 300);
@@ -571,6 +574,7 @@ const AddWord = () => {
       const res = await addWordToDeck(targetWord, updatedRichData);
       if (res.success) {
         setIsSuccess(true);
+        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
         setSourceToast({
           message: `Saved to deck!`,
           type: 'live'
@@ -997,6 +1001,7 @@ const AddWord = () => {
         setExistingCard(existing);
         setIsAlreadyInDeck(true);
         setIsFilling(false);
+        window.dispatchEvent(new CustomEvent('tutorial-translated'));
         return;
       }
     }
@@ -1108,6 +1113,7 @@ const AddWord = () => {
             message: `Translated via ${details._provider || 'Gemini'} API in ${duration}s`,
             type: 'live'
           });
+          window.dispatchEvent(new CustomEvent('tutorial-translated'));
         }
       } else {
         setErrorMsg('Failed to translate word. Please verify your Gemini API Key in .env.local.');
@@ -1317,6 +1323,7 @@ const AddWord = () => {
           {/* Google Translate Style Large Input Area */}
         {(!richCardData || isFilling) && (
           <div 
+            id="tutorial-translate-input"
             className="glass-panel" 
             style={{ 
               padding: '1.25rem', 

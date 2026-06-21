@@ -2885,6 +2885,7 @@ const Purge = () => {
               window.dispatchEvent(new Event('tutorial-card-revealed'));
             } else if (revealStep === 1) {
               setRevealStep(2);
+              window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
             }
           }}
           style={{
@@ -3493,6 +3494,7 @@ const Purge = () => {
         <AnimatePresence>
           {revealStep >= 2 && (
             <motion.div
+              id="tutorial-srs-buttons"
               initial={{ y: 70, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 70, opacity: 0 }}
