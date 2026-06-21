@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 800">
+  <rect width="500" height="800" fill="#ffffff" />
+  <text x="250" y="80" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#000000">accountant</text>
+  <style>
+    @keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    @keyframes stress { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-2px, 1px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-1px, -1px); } 80% { transform: translate(2px, 1px); } }
+    @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.3; } }
+    .wiggle { animation: wiggle 0.6s ease-in-out infinite; transform-origin: 160px 360px; }
+    .bounce { animation: bounce 0.8s ease-in-out infinite; }
+    .stress { animation: stress 0.15s ease-in-out infinite; }
+    .pulse { animation: pulse 1s ease-in-out infinite; }
+  </style>
+  <rect x="100" y="480" width="300" height="15" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" />
+  <g class="wiggle">
+    <circle cx="160" cy="360" r="22" stroke="#000000" stroke-width="3" fill="#ffffff" />
+    <circle cx="155" cy="345" r="2" stroke="#000000" stroke-width="3" fill="#000000" />
+    <circle cx="165" cy="345" r="2" stroke="#000000" stroke-width="3" fill="#000000" />
+    <path d="M 160 375 Q 155 380 160 385" stroke="#000000" stroke-width="3" fill="none" />
+  </g>
+  <g class="stress">
+    <line x1="160" y1="382" x2="160" y2="470" stroke="#000000" stroke-width="3" />
+    <line x1="160" y1="470" x2="200" y2="470" stroke="#000000" stroke-width="3" />
+    <line x1="200" y1="470" x2="200" y2="540" stroke="#000000" stroke-width="3" />
+  </g>
+  <rect x="120" y="420" width="50" height="30" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" />
+  <rect x="180" y="420" width="50" height="30" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" fill-opacity="0.2" fill="#10b981" />
+  <rect x="240" y="420" width="50" height="30" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" fill-opacity="0.2" fill="#3b82f6" />
+  <rect x="150" y="450" width="20" height="10" rx="2" stroke="#000000" stroke-width="2" fill="#ffffff" fill-opacity="0.2" fill="#ef4444" />
+</svg>

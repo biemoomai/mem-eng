@@ -1,0 +1,37 @@
+<svg width="500" height="800" viewBox="0 0 500 800" xmlns="http://www.w3.org/2000/svg">
+  <rect width="500" height="800" fill="#ffffff" />
+  
+  <!-- Title Word -->
+  <text x="250" y="80" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#000000">accountant</text>
+  
+  <!-- Desk Surface -->
+  <g class="stress">
+    <rect x="100" y="480" width="300" height="15" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" />
+  </g>
+  
+  <!-- Sitting Figure -->
+  <g class="wiggle">
+    <circle cx="160" cy="360" r="22" stroke="#000000" stroke-width="3" fill="#ffffff" />
+    <line x1="160" y1="382" x2="160" y2="470" stroke="#000000" stroke-width="3" />
+    <line x1="160" y1="470" x2="200" y2="470" stroke="#000000" stroke-width="3" />
+    <line x1="200" y1="470" x2="200" y2="540" stroke="#000000" stroke-width="3" />
+  </g>
+  
+  <!-- Desk elements -->
+  <rect x="120" y="420" width="50" height="20" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" />
+  <rect x="190" y="420" width="50" height="20" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" />
+  <rect x="260" y="420" width="50" height="20" rx="3" stroke="#000000" stroke-width="3" fill="#ffffff" />
+  <circle cx="140" y="460" r="10" stroke="#000000" stroke-width="3" fill="#000000" />
+  <rect x="220" y="460" width="30" height="20" rx="3" stroke="#000000" stroke-width="3" fill="#3b82f6" />
+  
+  <style>
+    @keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    @keyframes stress { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-2px, 1px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-1px, -1px); } 80% { transform: translate(2px, 1px); } }
+    @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.3; } }
+    .wiggle { animation: wiggle 0.6s ease-in-out infinite; transform-origin: 160px 360px; }
+    .bounce { animation: bounce 0.8s ease-in-out infinite; }
+    .stress { animation: stress 0.15s ease-in-out infinite; }
+    .pulse { animation: pulse 1s ease-in-out infinite; }
+  </style>
+</svg>

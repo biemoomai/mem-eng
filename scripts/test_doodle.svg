@@ -1,0 +1,36 @@
+<svg viewBox="0 0 500 800" xmlns="http://www.w3.org/2000/svg">
+  <rect width="500" height="800" fill="#ffffff" />
+
+  <!-- The word "abandon" -->
+  <text x="50" y="100" font-family="monospace" font-size="60" fill="#000000" stroke="#000000" stroke-width="1" style="font-weight: bold; transform: rotate(-5deg); transform-origin: 50% 50%;">abandon</text>
+
+  <!-- Ground line -->
+  <line x1="0" y1="650" x2="500" y2="650" stroke="#000000" stroke-width="4" />
+
+  <!-- Abandoned, sad little blob -->
+  <circle cx="120" cy="620" r="30" stroke="#000000" stroke-width="4" fill="#ffffff" />
+  <!-- Eyes -->
+  <circle cx="110" cy="610" r="3" fill="#000000" />
+  <circle cx="130" cy="610" r="3" fill="#000000" />
+  <!-- Sad mouth -->
+  <path d="M110 630 Q120 635 130 630" stroke="#000000" stroke-width="4" fill="none" />
+  <!-- Tear -->
+  <path d="M105 615 L100 625 L108 623 Z" fill="#000000" stroke="#000000" stroke-width="1"/>
+
+  <!-- Running stick figure -->
+  <!-- Head -->
+  <circle cx="380" cy="480" r="30" stroke="#000000" stroke-width="4" fill="#ffffff" />
+  <!-- Body -->
+  <line x1="380" y1="510" x2="380" y2="580" stroke="#000000" stroke-width="4" />
+  <!-- Arms -->
+  <line x1="380" y1="520" x2="330" y2="550" stroke="#000000" stroke-width="4" /> <!-- Back arm -->
+  <line x1="380" y1="530" x2="430" y2="520" stroke="#000000" stroke-width="4" /> <!-- Front arm -->
+  <!-- Legs -->
+  <line x1="380" y1="580" x2="360" y2="640" stroke="#000000" stroke-width="4" /> <!-- Back leg -->
+  <line x1="380" y1="580" x2="400" y2="620" stroke="#000000" stroke-width="4" /> <!-- Front leg -->
+  <!-- Eyes -->
+  <circle cx="370" cy="475" r="4" fill="#000000" />
+  <circle cx="390" cy="475" r="4" fill="#000000" />
+  <!-- Mouth (simple line for speed) -->
+  <line x1="375" y1="490" x2="385" y2="490" stroke="#000000" stroke-width="4" />
+</svg>
