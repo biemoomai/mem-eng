@@ -156,13 +156,18 @@ export default function NongMem() {
       utterance.lang = 'th-TH';
 
       const voices = window.speechSynthesis.getVoices();
-      const thaiVoice = voices.find(v => v.lang.includes('th') || v.lang.includes('TH'));
+      // Prioritize Google Thai voice or Premium voices if available (usually sound much more natural than default system voices)
+      let thaiVoice = voices.find(v => (v.lang.includes('th') || v.lang.includes('TH')) && (v.name.includes('Google') || v.name.includes('Premium') || v.name.includes('Natural')));
+      if (!thaiVoice) {
+        thaiVoice = voices.find(v => v.lang.includes('th') || v.lang.includes('TH'));
+      }
+      
       if (thaiVoice) {
         utterance.voice = thaiVoice;
       }
 
-      utterance.rate = 1.05;
-      utterance.pitch = 1.15; // cute high pitch
+      utterance.rate = 1.1; // slightly faster for a more natural flow
+      utterance.pitch = 1.2; // slightly higher pitch to sound cute and energetic
       
       window.speechSynthesis.speak(utterance);
     } catch (err) {
