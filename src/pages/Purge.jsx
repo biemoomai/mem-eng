@@ -2173,6 +2173,39 @@ const Purge = () => {
     if (!isTutorialActive) {
       updateWordSrs(wordObj.id, choice, durationMs);
 
+      // Update Nong Mem Stats
+      const richCardData = parseMeaningField(wordObj.meaning);
+      let verbForms = undefined;
+      if (richCardData && 'verbForms' in richCardData) {
+        verbForms = richCardData.verbForms;
+      } else {
+        verbForms = getVerbForms(wordObj.word, wordObj.pos);
+      }
+
+      window.nongMemStats = window.nongMemStats || {
+        studiedCount: 0,
+        lastWord: '',
+        lastRating: '',
+        avgResponseTime: 0,
+        isHesitating: false,
+        responseTimes: [],
+        streak: 1
+      };
+      
+      window.nongMemStats.studiedCount = (window.nongMemStats.studiedCount || 0) + 1;
+      window.nongMemStats.lastWord = wordObj.word;
+      window.nongMemStats.lastRating = choice;
+      window.nongMemStats.lastWordTenses = (verbForms && verbForms.length >= 3) ? verbForms : null;
+      window.nongMemStats.streak = streak || 1;
+      
+      const rTimes = window.nongMemStats.responseTimes || [];
+      rTimes.push(durationMs);
+      window.nongMemStats.responseTimes = rTimes;
+      
+      const sum = rTimes.reduce((a, b) => a + b, 0);
+      window.nongMemStats.avgResponseTime = sum / rTimes.length;
+      window.nongMemStats.isHesitating = durationMs > 8000;
+
       // Nong Mem comments on user rating choice
       let comment = '';
       let mood = 'mocking';

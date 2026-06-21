@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, X, Trash2, Sparkles } from 'lucide-react';
+import { Send, X, Trash2, Sparkles, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -31,10 +31,16 @@ export default function NongMem() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem('nongmem_chat_history');
-    return saved ? JSON.parse(saved) : [
-      { sender: 'bot', text: 'ไงยัยตัวดี! วันนี้พร้อมให้ฉันจิกกัดเรื่องเรียนอังกฤษหรือยังล่ะ? 😜', timestamp: Date.now() }
-    ];
+    try {
+      const saved = localStorage.getItem('nongmem_chat_history');
+      return saved ? JSON.parse(saved) : [
+        { sender: 'bot', text: 'ไงยัยตัวดี! วันนี้พร้อมให้ฉันจิกกัดเรื่องเรียนอังกฤษหรือยังล่ะ? 😜', timestamp: Date.now() }
+      ];
+    } catch (e) {
+      return [
+        { sender: 'bot', text: 'ไงยัยตัวดี! วันนี้พร้อมให้ฉันจิกกัดเรื่องเรียนอังกฤษหรือยังล่ะ? 😜', timestamp: Date.now() }
+      ];
+    }
   });
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +49,17 @@ export default function NongMem() {
   const [mood, setMood] = useState('idle');
   const [bubbleText, setBubbleText] = useState('');
   const [showBubble, setShowBubble] = useState(false);
+
+  // Web Speech API - Text-to-Speech (Mute state) and Speech-to-Text (Listening state)
+  const [isMuted, setIsMuted] = useState(() => {
+    try {
+      return localStorage.getItem('memeng_nong_mem_muted') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
 
   const bubbleTimeoutRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -55,6 +72,109 @@ export default function NongMem() {
       return true;
     }
   });
+
+  // Load SpeechRecognition and voices
+  useEffect(() => {
+    // 1. Setup speech synthesis voices workaround
+    if ('speechSynthesis' in window) {
+      const loadVoices = () => {
+        window.speechSynthesis.getVoices();
+      };
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    // 2. Setup speech recognition
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        rec.continuous = false;
+        rec.interimResults = false;
+        rec.lang = 'th-TH';
+
+        rec.onstart = () => {
+          setIsListening(true);
+          setMood('thinking');
+        };
+        
+        rec.onend = () => {
+          setIsListening(false);
+          setMood('idle');
+        };
+        
+        rec.onerror = (e) => {
+          console.error('Speech recognition error:', e.error);
+          setIsListening(false);
+          setMood('idle');
+        };
+        
+        rec.onresult = (e) => {
+          const transcript = e.results[0][0].transcript;
+          if (transcript) {
+            setInputVal(transcript);
+          }
+        };
+
+        recognitionRef.current = rec;
+      }
+    } catch (e) {
+      console.warn('SpeechRecognition initialization failed:', e);
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert('Browser ของคุณไม่รองรับการพูดสั่งการด้วยเสียงจ้าา!');
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
+    }
+  };
+
+  const speak = (text) => {
+    if (isMuted || !('speechSynthesis' in window)) return;
+    
+    try {
+      window.speechSynthesis.cancel();
+
+      // Clean emojis and markdown characters from spoken text
+      const cleanText = text
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        .replace(/[*_`~]/g, '');
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'th-TH';
+
+      const voices = window.speechSynthesis.getVoices();
+      const thaiVoice = voices.find(v => v.lang.includes('th') || v.lang.includes('TH'));
+      if (thaiVoice) {
+        utterance.voice = thaiVoice;
+      }
+
+      utterance.rate = 1.05;
+      utterance.pitch = 1.15; // cute high pitch
+      
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.error('TTS speak error:', err);
+    }
+  };
+
+  // Toggle mute state
+  const toggleMute = () => {
+    const val = !isMuted;
+    setIsMuted(val);
+    try {
+      localStorage.setItem('memeng_nong_mem_muted', val.toString());
+      if (val) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (err) {}
+  };
 
   // Listen to visibility change event
   useEffect(() => {
@@ -91,7 +211,7 @@ export default function NongMem() {
     return () => {
       window.removeEventListener('nongmem-comment', handleCommentEvent);
     };
-  }, []);
+  }, [isMuted]);
 
   const triggerBubble = (text, newMood = 'mocking', duration = 4000) => {
     if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current);
@@ -99,10 +219,57 @@ export default function NongMem() {
     setMood(newMood);
     setShowBubble(true);
 
+    // Speak out comments
+    speak(text);
+
     bubbleTimeoutRef.current = setTimeout(() => {
       setShowBubble(false);
       setMood('idle');
     }, duration);
+  };
+
+  // Personalized system prompt injector
+  const getPersonalizedSystemInstruction = () => {
+    const stats = window.nongMemStats || {};
+    const userDisplayName = profile?.display_name || 'ยัยตัวดี';
+    const userStreak = profile?.streak_days || stats.streak || 1;
+    
+    let statsSummary = '';
+    if (stats.studiedCount !== undefined) {
+      statsSummary += `- วันนี้มึงปัดการ์ดไปเรียนแล้วทั้งหมด: ${stats.studiedCount} คำ\n`;
+    }
+    if (stats.lastWord) {
+      statsSummary += `- คำศัพท์ล่าสุดที่มึงกำลังเรียน/เพิ่งปัดผ่าน: "${stats.lastWord}"\n`;
+    }
+    if (stats.lastRating) {
+      const ratingMap = {
+        'again': 'ตอบว่า "ลืมแล้ว/จำไม่ได้" (Again)',
+        'hard': 'ตอบว่า "ยากอยู่นะ" (Hard)',
+        'normal': 'ตอบว่า "ปกติพอจำได้" (Normal)',
+        'easy': 'ตอบว่า "ง่ายโครตๆ" (Easy)'
+      };
+      statsSummary += `- ผลลัพธ์ปัดการ์ดล่าสุด: ${ratingMap[stats.lastRating] || stats.lastRating}\n`;
+    }
+    if (stats.avgResponseTime) {
+      statsSummary += `- เวลาเฉลี่ยในการจำคำศัพท์ของมึง: ${(stats.avgResponseTime / 1000).toFixed(1)} วินาทีต่อคำ\n`;
+    }
+    if (stats.isHesitating) {
+      statsSummary += `- สถานะตอบคำล่าสุด: มึงนั่งลังเลนานมาก (คิดเกิน 8 วินาทีเลยจ้าา แอบหลับหรอ!)\n`;
+    }
+
+    return `
+${NONG_MEM_SYSTEM_INSTRUCTION}
+
+มึงกำลังแชทสดคุยอยู่กับผู้ใช้ชื่อ "${userDisplayName}"
+ข้อมูลพฤติกรรมการเรียนแฟลชการ์ดอังกฤษสดๆ ของมัน (มึงสามารถเอาข้อมูลจริงพวกนี้ไปด่า แซว หรือจิกกัดประชดประชันมันได้เต็มที่เลยย่ะ):
+- จำนวนวันสตรีคสะสม (Streak): ${userStreak} วัน
+${statsSummary}
+
+กฎเหล็กเรื่องกริยาการสื่อสาร:
+- มึงสามารถใช้คำหยาบระดับเป็นกันเองของอินเทอร์เน็ตไทย (เช่น กู, มึง, โง่, สภาพพพ, กระจอก, ขี้เกียจชิบหาย, คิดช้าปัญญาอ่อน) ได้อย่างเสรี เพื่อความตลกกวนประสาทสไตล์ SimSimi แสบๆ
+- ตอบสั้นๆ ห้วนๆ 1-2 ประโยคเด็ดขาด ห้ามพิมพ์อธิบายยาวเป็นเรียงความ 
+- ถ้ายอดคำเรียนวันนี้เป็น 0 ให้ด่ามันว่าวันๆ ไม่ยอมเรียนแฟลชการ์ด เอาแต่นั่งว่างงานไปเรื่อย
+`;
   };
 
   // Pre-defined sassy trigger messages
@@ -137,7 +304,7 @@ export default function NongMem() {
 
       const model = genAI.getGenerativeModel({ 
         model: 'gemini-1.5-flash',
-        systemInstruction: NONG_MEM_SYSTEM_INSTRUCTION
+        systemInstruction: getPersonalizedSystemInstruction()
       });
 
       // Prepare conversation history context
@@ -154,6 +321,7 @@ export default function NongMem() {
       const replyText = response.response.text().trim();
 
       setMessages(prev => [...prev, { sender: 'bot', text: replyText, timestamp: Date.now() }]);
+      speak(replyText); // Speak out bot reply
       
       // Select mood based on response cues
       if (replyText.includes('หรอ') || replyText.includes('กระจอก') || replyText.includes('สภาพ')) {
@@ -180,6 +348,7 @@ export default function NongMem() {
       }
 
       setMessages(prev => [...prev, { sender: 'bot', text: errorReply, timestamp: Date.now() }]);
+      speak(errorReply); // Speak out error reply
       setMood('angry');
       setTimeout(() => setMood('idle'), 4000);
     } finally {
@@ -313,6 +482,13 @@ export default function NongMem() {
         }
         .custom-nong-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(255, 255, 255, 0.4);
+        }
+        @keyframes pulse-red {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .mic-listening {
+          animation: pulse-red 1s infinite;
         }
       `}</style>
 
@@ -517,6 +693,22 @@ export default function NongMem() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
+                  onClick={toggleMute}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    color: theme === 'theme-3' ? '#475569' : '#94a3b8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={isMuted ? "เปิดเสียง" : "ปิดเสียง"}
+                >
+                  {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                </button>
+                <button
                   onClick={clearChat}
                   style={{
                     background: 'none',
@@ -681,6 +873,31 @@ export default function NongMem() {
                   marginRight: '8px'
                 }}
               />
+              <button
+                type="button"
+                onClick={toggleListening}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: isListening 
+                    ? '#ef4444' 
+                    : (theme === 'theme-3' ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.05)'),
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: isListening ? '#ffffff' : (theme === 'theme-3' ? '#475569' : '#cbd5e1'),
+                  marginRight: '8px',
+                  opacity: isLoading ? 0.5 : 1
+                }}
+                disabled={isLoading}
+                className={isListening ? "mic-listening" : ""}
+                title={isListening ? "กำลังฟัง (กดเพื่อหยุด)" : "พิมพ์ด้วยเสียง"}
+              >
+                {isListening ? <MicOff size={14} /> : <Mic size={14} />}
+              </button>
               <button
                 type="submit"
                 disabled={isLoading || !inputVal.trim()}
