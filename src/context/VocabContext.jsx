@@ -68,7 +68,13 @@ export const VocabProvider = ({ children }) => {
   const [reviewLogs, setReviewLogs] = useState(() => {
     try {
       const saved = localStorage.getItem('vocab_review_logs');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+      return [];
     } catch (e) {
       return [];
     }

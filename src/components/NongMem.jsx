@@ -33,7 +33,13 @@ export default function NongMem() {
   const [messages, setMessages] = useState(() => {
     try {
       const saved = localStorage.getItem('nongmem_chat_history');
-      return saved ? JSON.parse(saved) : [
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+      return [
         { sender: 'bot', text: 'ไงยัยตัวดี! วันนี้พร้อมให้ฉันจิกกัดเรื่องเรียนอังกฤษหรือยังล่ะ? 😜', timestamp: Date.now() }
       ];
     } catch (e) {
