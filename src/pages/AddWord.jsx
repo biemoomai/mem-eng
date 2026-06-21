@@ -492,7 +492,23 @@ const AddWord = () => {
   const handleTranslateDragEnd = async (event, info) => {
     if (isSuccess || isExiting) return;
     const threshold = 140;
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
     if (info.offset.x > threshold) {
+      if (isTutorialActive) {
+        setIsExiting(true);
+        setTimeout(() => {
+          setIsSuccess(true);
+          window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+          setSourceToast({
+            message: `Saved to deck! (Mock)`,
+            type: 'live'
+          });
+          setTimeout(() => {
+            handleClear();
+          }, 300);
+        }, 500);
+        return;
+      }
       // Swipe Right
       if (richCardData?.validation?.isInvalid) {
         const suggestion = richCardData.validation.suggestion;
@@ -805,7 +821,20 @@ const AddWord = () => {
       }, 350);
 
       // Fetch real photos for scenes in background (non-blocking)
-      if (!richCardData.validation?.isInvalid && richCardData.scenes?.length) {
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+      if (isTutorialActive) {
+        setSceneImages([
+          {
+            url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
+            source: 'Unsplash (Mock)'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop',
+            source: 'Unsplash (Mock)'
+          }
+        ]);
+        setSceneImagesLoading(false);
+      } else if (!richCardData.validation?.isInvalid && richCardData.scenes?.length) {
         setSceneImages([]);
         setSceneImagesLoading(true);
         Promise.all(
@@ -940,6 +969,23 @@ const AddWord = () => {
     const handleSaveWordEvent = async () => {
       if (isSuccess || isExiting || !richCardData) return;
       
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+      if (isTutorialActive) {
+        setIsExiting(true);
+        setTimeout(() => {
+          setIsSuccess(true);
+          window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+          setSourceToast({
+            message: `Saved to deck! (Mock)`,
+            type: 'live'
+          });
+          setTimeout(() => {
+            handleClear();
+          }, 300);
+        }, 500);
+        return;
+      }
+      
       if (isAlreadyInDeck) {
         setIsExiting(true);
         window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
@@ -1037,6 +1083,69 @@ const AddWord = () => {
     setIsAlreadyInDeck(false);
     setExistingCard(null);
     setErrorMsg('');
+
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+    if (isTutorialActive) {
+      setTimeout(() => {
+        const mockDetails = {
+          word: targetWord || 'hello',
+          pos: 'interjection',
+          cefrLevel: 'A1',
+          _provider: 'Offline Tutorial Mock',
+          englishExplanation: {
+            definition: 'Used as a greeting or to begin a telephone conversation.',
+            phrase: 'Hello! How are you doing today?',
+            phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
+          },
+          thaiTranslation: {
+            word: 'สวัสดี',
+            phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
+          },
+          scenes: [
+            {
+              situation: 'A warm greeting between friends meeting at a cafe',
+              thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ'
+            },
+            {
+              situation: 'Greeting someone on a phone call politely',
+              thaiDescription: 'การทักทายใครบางคนทางโทรศัพท์อย่างสุภาพ'
+            }
+          ],
+          imagePrompts: [
+            'A warm greeting between friends meeting at a cafe',
+            'Greeting someone on a phone call politely'
+          ],
+          validation: {
+            isInvalid: false,
+            suggestion: null
+          }
+        };
+
+        setRichCardData(mockDetails);
+        setIsSuccess(false);
+        setSourceToast({
+          message: `Translated via Offline Tutorial Mock API in 0.5s`,
+          type: 'live'
+        });
+        
+        setSceneImages([
+          {
+            url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
+            source: 'Unsplash (Mock)'
+          },
+          {
+            url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop',
+            source: 'Unsplash (Mock)'
+          }
+        ]);
+        setSceneImagesLoading(false);
+        setIsFilling(false);
+
+        // Advance tutorial step 1 -> step 2
+        window.dispatchEvent(new CustomEvent('tutorial-translated'));
+      }, 600);
+      return;
+    }
 
     const isThaiInput = /[\u0e00-\u0e7f]/.test(targetWord);
 

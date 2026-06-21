@@ -309,6 +309,7 @@ export const Tutorial = () => {
     localStorage.setItem('memeng_tutorial_done', 'true');
     // Ensure all modals are closed when exiting tutorial
     window.dispatchEvent(new Event('tutorial-close-modals'));
+    window.dispatchEvent(new Event('exit-study-session'));
   };
 
   const getTooltipStyle = () => {

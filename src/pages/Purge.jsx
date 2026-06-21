@@ -916,6 +916,57 @@ const Purge = () => {
 
   // Initialize queue once when vocab is loaded
   useEffect(() => {
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+    if (isTutorialActive) {
+      const mockCard = {
+        id: 'tutorial-mock-hello',
+        word: 'hello',
+        pos: 'interjection',
+        cefrLevel: 'A1',
+        meaning: JSON.stringify({
+          word: 'hello',
+          pos: 'interjection',
+          cefrLevel: 'A1',
+          _provider: 'Offline Tutorial Mock',
+          englishExplanation: {
+            definition: 'Used as a greeting or to begin a telephone conversation.',
+            phrase: 'Hello! How are you doing today?',
+            phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
+          },
+          thaiTranslation: {
+            word: 'สวัสดี',
+            phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
+          },
+          scenes: [
+            {
+              situation: 'A warm greeting between friends meeting at a cafe',
+              thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ'
+            },
+            {
+              situation: 'Greeting someone on a phone call politely',
+              thaiDescription: 'การทักทายใครบางคนทางโทรศัพท์อย่างสุภาพ'
+            }
+          ],
+          imagePrompts: [
+            'A warm greeting between friends meeting at a cafe',
+            'Greeting someone on a phone call politely'
+          ],
+          validation: {
+            isInvalid: false,
+            suggestion: null
+          }
+        }),
+        videoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
+        isImageSaved: true,
+        srsLevel: 'Learning',
+        nextReviewDate: new Date().toISOString()
+      };
+      setSessionQueue([mockCard]);
+      setIsStudying(true);
+      setIsInitialized(true);
+      return;
+    }
+
     if (!loading && !isInitialized) {
       const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
       setSessionQueue(due);
@@ -2054,7 +2105,10 @@ const Purge = () => {
     }
     
     // Save FSRS backend calculations
-    updateWordSrs(wordObj.id, choice, durationMs);
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+    if (!isTutorialActive) {
+      updateWordSrs(wordObj.id, choice, durationMs);
+    }
 
     setTimeout(() => {
       setRevealStep(0);
