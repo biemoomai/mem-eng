@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, Plus, XCircle, Palette, Trash2, HelpCircle } from 'lucide-react';
+import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, Plus, XCircle, Palette, Trash2, HelpCircle, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VocabProvider, useVocab } from './context/VocabContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -12,6 +12,8 @@ import Login from './pages/Login';
 import Profile from './pages/Profile';
 import { playClickSound, playSwipeSound } from './utils/soundHelper';
 import { Tutorial } from './components/Tutorial';
+import NongMem from './components/NongMem';
+
 
 function AppContent() {
   const { user, signOut } = useAuth();
@@ -145,6 +147,13 @@ function AppContent() {
       return localStorage.getItem('chatgpt_anki_reminder') || '20:00';
     } catch (e) {
       return '20:00';
+    }
+  });
+  const [showNongMem, setShowNongMem] = useState(() => {
+    try {
+      return localStorage.getItem('memeng_show_nong_mem') !== 'false';
+    } catch (e) {
+      return true;
     }
   });
 
@@ -1215,6 +1224,57 @@ function AppContent() {
                 </div>
               </div>
 
+              {/* Compact Setting 3: Nong Mem Mascot Toggle */}
+              <div
+                onClick={() => {
+                  const val = !showNongMem;
+                  setShowNongMem(val);
+                  try {
+                    localStorage.setItem('memeng_show_nong_mem', val.toString());
+                  } catch (err) {}
+                  window.dispatchEvent(new CustomEvent('nongmem-visibility-change', { detail: val }));
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
+                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
+                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
+                  cursor: 'pointer',
+                  marginBottom: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Bot size={14} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>Nong Mem Mascot</span>
+                </div>
+                {/* Visual Toggle Switch */}
+                <div style={{
+                  width: '28px',
+                  height: '16px',
+                  borderRadius: theme === 'theme-3' ? '0px' : '8px',
+                  background: showNongMem ? (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.2)') : (theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)'),
+                  position: 'relative',
+                  transition: 'background-color 0.2s',
+                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.08)'
+                }}>
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: theme === 'theme-3' ? '0px' : '50%',
+                    background: showNongMem ? '#ffffff' : (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.3)'),
+                    position: 'absolute',
+                    top: '2px',
+                    left: showNongMem ? '14px' : '2px',
+                    transition: 'left 0.2s',
+                    boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+              </div>
+
               {/* Restart Tutorial */}
               <motion.div
                 variants={itemVariants}
@@ -1348,6 +1408,7 @@ function AppContent() {
         )}
       </AnimatePresence>
       
+      <NongMem />
       <Tutorial />
     </div>
   );

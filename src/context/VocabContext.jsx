@@ -272,14 +272,34 @@ export const VocabProvider = ({ children }) => {
     const fetchCurriculumWords = async () => {
       try {
         setLoadingCurriculumWords(true);
-        const { data, error } = await supabase
-          .from('curriculum_words')
-          .select('word, pos, cefr_level')
-          .eq('curriculum_name', activeCurriculum);
+        let allWords = [];
+        let start = 0;
+        const limit = 1000;
+        let hasMore = true;
+
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('curriculum_words')
+            .select('word, pos, cefr_level')
+            .eq('curriculum_name', activeCurriculum)
+            .range(start, start + limit - 1);
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            allWords = allWords.concat(data);
+            start += limit;
+            if (data.length < limit) {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+          }
+        }
         
-        if (!error && data && isMounted) {
-          setCurriculumList(data);
-          const wordSet = new Set(data.map(item => item.word.toLowerCase().trim()));
+        if (isMounted) {
+          setCurriculumList(allWords);
+          const wordSet = new Set(allWords.map(item => item.word.toLowerCase().trim()));
           setCurriculumWords(wordSet);
         }
       } catch (err) {
@@ -981,6 +1001,34 @@ export const VocabProvider = ({ children }) => {
 
   // Retrieve rich card details using Edge Function with 3-tier server-side fallback
   const getAiWordRichDetails = async (word, forceValid = false) => {
+    const normalizedWord = word.toLowerCase().trim();
+    
+    // 1. Check if word exists in global_dictionary cache (if not forcing validation)
+    if (!forceValid) {
+      try {
+        const { data: existingWord, error: fetchErr } = await supabase
+          .from('global_dictionary')
+          .select('rich_data')
+          .eq('word', normalizedWord)
+          .maybeSingle();
+
+        if (!fetchErr && existingWord && existingWord.rich_data) {
+          console.log(`✅ Rich card data loaded from DB cache for "${word}"`);
+          const parsed = typeof existingWord.rich_data === 'string'
+            ? JSON.parse(existingWord.rich_data)
+            : existingWord.rich_data;
+          
+          // Ensure it has a _provider metadata tag
+          if (parsed && !parsed._provider) {
+            parsed._provider = 'DB Cache';
+          }
+          return parsed;
+        }
+      } catch (cacheErr) {
+        console.warn('⚠️ global_dictionary cache lookup failed, falling back to AI:', cacheErr);
+      }
+    }
+
     let details = null;
     try {
       console.log(`🔮 Requesting word translation via Edge Function: "${word}" (forceValid: ${forceValid})...`);

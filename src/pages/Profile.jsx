@@ -214,6 +214,65 @@ const Profile = () => {
     }
   }, [stats.streak]);
 
+  // Nong Mem comment trigger on mount/stats load
+  useEffect(() => {
+    // Wait slightly for vocab and profile to load
+    const timer = setTimeout(() => {
+      if (!vocab) return;
+      const dueCount = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()).length;
+      const streakVal = profile?.streak_days ?? 0;
+      
+      let comment = '';
+      let mood = 'mocking';
+
+      if (dueCount > 0) {
+        const dueComments = [
+          `มีคำศัพท์ค้างทบทวนตั้ง ${dueCount} คำแน่ะ ขี้เกียจจังยัยตัวดี! 🙄`,
+          `ยังเหลือทบทวนอีกตั้ง ${dueCount} คำนะย่ะ มัวแต่มาส่องโปรไฟล์อยู่ได้!`,
+          `สภาพพพพ มีคำค้างเรียนอยู่ ${dueCount} คำ ดองไว้ทำเค็มหรอจ๊ะ?`,
+          `มีตั้ง ${dueCount} คำที่ต้องเคลียร์ ไปเคลียร์เดี๋ยวนี้นะย่ะ!`
+        ];
+        comment = dueComments[Math.floor(Math.random() * dueComments.length)];
+        mood = 'mocking';
+      } else if (streakVal === 0 || streakVal === 1) {
+        const streakComments = [
+          "สตรีคแค่นี้ อย่าเรียกว่าเข้ามาเรียนเลยน้อง ขำกลิ้ง 🤭",
+          "สตรีคเหี่ยวแห้งเหมือนผักชีเลยจ้าาา ขยันหน่อยสิย่ะ!",
+          "พึ่งสตรีคได้แค่นี้เองหรอ สภาพพพพ ปวดเฮดเลยเจ้",
+          "หนูจ๋า... สตรีคเหี่ยวเฉาขนาดนี้ แถวบ้านเจ้เรียกขี้เกียจนะจ๊ะ"
+        ];
+        comment = streakComments[Math.floor(Math.random() * streakComments.length)];
+        mood = 'angry';
+      } else if (streakVal >= 7) {
+        const highStreakComments = [
+          `โอ้โห สตรีคตั้ง ${streakVal} วัน! แอบโกงระบบปะเนี่ย เก่งเกินปุยมุ้ย! 🎉`,
+          `สตรีค ${streakVal} วันละเรอะ! ชื่นชมนะ แต่ก็แอบหมั่นไส้อยู่ดีย่ะ`,
+          `เรียนติดต่อกัน ${streakVal} วัน! วันนี้ฝนจะตกหิมะจะตกหรือเปล่าเนี่ยยย`,
+          `เก่งมากจ้าสตรีค ${streakVal} วัน เอาถ้วยรางวัลกระดาษไปเลยยย!`
+        ];
+        comment = highStreakComments[Math.floor(Math.random() * highStreakComments.length)];
+        mood = 'happy';
+      } else {
+        const normalComments = [
+          `สตรีค ${streakVal} วันแล้วหรอ พยายามรักษามันไว้ให้ได้ล่ะแก๊`,
+          `โปรไฟล์ก็ดูดีขึ้นนะ แต่ขยันได้มากกว่านี้อีกย่ะ!`,
+          `เข้ามาดูโปรไฟล์บ่อยๆ เดี๋ยวก็ฉลาดขึ้นเองแหละ... มั้งนะ?`,
+          "มีอะไรให้ช่วยบ่นไหมจ๊ะ ทักแชทคุยกับเจ้ได้เสมอนะ"
+        ];
+        comment = normalComments[Math.floor(Math.random() * normalComments.length)];
+        mood = 'idle';
+      }
+
+      if (comment) {
+        window.dispatchEvent(new CustomEvent('nongmem-comment', { 
+          detail: { text: comment, mood, duration: 4500 } 
+        }));
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [vocab, profile]);
+
   // Automatically show details if tutorial is active
   useEffect(() => {
     const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
