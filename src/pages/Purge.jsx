@@ -974,7 +974,7 @@ const Purge = () => {
     }
   }, [vocab, loading, isInitialized]);
 
-  // Listener to handle exiting custom study sessions from Hamburger menu
+  // Listeners for custom study session exits, tutorial step syncs, and resets
   useEffect(() => {
     const handleExitSession = () => {
       const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
@@ -986,11 +986,50 @@ const Purge = () => {
       } catch (err) {}
     };
 
+    const handleStepChanged = (e) => {
+      const step = e.detail?.step;
+      // Step 3 (index 2): English explanation -> revealStep = 1
+      // Step 4 (index 3): Thai translation -> revealStep = 2
+      // Step 5 (index 4): SRS buttons -> revealStep = 2
+      if (step === 2) {
+        setRevealStep(1);
+      } else if (step === 3 || step === 4) {
+        setRevealStep(2);
+      }
+    };
+
+    const handleResetEvent = () => {
+      setRevealStep(0);
+      const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
+      if (isDone) {
+        const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
+        setSessionQueue(due);
+        setIsStudying(false);
+      }
+    };
+
     window.addEventListener('exit-study-session', handleExitSession);
+    window.addEventListener('tutorial-step-changed', handleStepChanged);
+    window.addEventListener('tutorial-reset', handleResetEvent);
     return () => {
       window.removeEventListener('exit-study-session', handleExitSession);
+      window.removeEventListener('tutorial-step-changed', handleStepChanged);
+      window.removeEventListener('tutorial-reset', handleResetEvent);
     };
   }, [vocab]);
+
+  // Self-correcting mock card purge on mount/update if tutorial is finished
+  useEffect(() => {
+    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
+    if (isDone) {
+      const hasMock = sessionQueue.some(c => c.id === 'tutorial-mock-hello');
+      if (hasMock) {
+        const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
+        setSessionQueue(due);
+        setIsStudying(false);
+      }
+    }
+  }, [vocab, sessionQueue]);
 
   const wordObj = sessionQueue[0];
   

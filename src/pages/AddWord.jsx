@@ -805,6 +805,14 @@ const AddWord = () => {
     }
   };
 
+  // Self-correcting mock card cleanup when tutorial is completed/reset
+  useEffect(() => {
+    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
+    if (isDone && richCardData?._provider === 'Offline Tutorial Mock') {
+      handleClear();
+    }
+  }, [richCardData]);
+
   // Auto-scroll to center first card when translation completes
   useEffect(() => {
     if (richCardData) {
@@ -1029,11 +1037,17 @@ const AddWord = () => {
       }
     };
 
+    const handleResetEvent = () => {
+      handleClear();
+    };
+
     window.addEventListener('tutorial-type-word', handleTypeWordEvent);
     window.addEventListener('tutorial-save-word', handleSaveWordEvent);
+    window.addEventListener('tutorial-reset', handleResetEvent);
     return () => {
       window.removeEventListener('tutorial-type-word', handleTypeWordEvent);
       window.removeEventListener('tutorial-save-word', handleSaveWordEvent);
+      window.removeEventListener('tutorial-reset', handleResetEvent);
     };
   }, [vocab, richCardData, sceneImages, selectedPrimaryImageIdx, isAlreadyInDeck, wordInput]);
 
@@ -1390,7 +1404,7 @@ const AddWord = () => {
     >
       {/* Fixed Swipe Feedback Overlay */}
       {!isSuccess && !isExiting && richCardData && (
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1000 }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 100002 }}>
           {/* Green and Red background glows on swipe */}
           <motion.div style={{ position: 'absolute', inset: 0, background: 'rgba(16, 185, 129, 0.4)', opacity: overlayTranslateGreen, mixBlendMode: 'overlay' }} />
           <motion.div style={{ position: 'absolute', inset: 0, background: 'rgba(239, 68, 68, 0.4)', opacity: overlayTranslateRed, mixBlendMode: 'overlay' }} />
@@ -1706,7 +1720,10 @@ const AddWord = () => {
                   x: translateX,
                   rotate: rotateTranslate,
                   touchAction: 'pan-y',
-                  position: 'relative'
+                  position: 'relative',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  cursor: isExiting ? 'default' : 'grab'
                 }}
               >
                 {/* Swipe Overlay indicators for Suggestion Card */}
@@ -1798,7 +1815,10 @@ const AddWord = () => {
                   flexDirection: 'column', 
                   width: '100%',
                   touchAction: 'pan-y',
-                  position: 'relative'
+                  position: 'relative',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  cursor: isSuccess || isExiting ? 'default' : 'grab'
                 }}
               >
                 {/* Top spacer to allow vertical centering of the first card */}

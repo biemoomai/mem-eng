@@ -25,14 +25,14 @@ const TUTORIAL_STEPS = [
     selector: '#tutorial-flashcard-card',
     title: 'Flashcard Deck',
     text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลองแตะที่การ์ดเบาๆ เพื่อเปิดเผยคำอธิบายภาษาอังกฤษและตัวอย่างประโยค',
-    position: 'bottom'
+    position: 'top'
   },
   {
     path: '/purge',
     selector: '#tutorial-flashcard-card',
     title: 'Reveal Thai Translation',
     text: 'ลองแตะที่การ์ดอีกครั้ง เพื่อเปิดเผยคำแปลภาษาไทยและแถบปุ่มระบบช่วยจำ',
-    position: 'bottom'
+    position: 'top'
   },
   {
     path: '/purge',
@@ -106,6 +106,13 @@ export const Tutorial = () => {
     window.addEventListener('trigger-tutorial', handleTrigger);
     return () => window.removeEventListener('trigger-tutorial', handleTrigger);
   }, [user, navigate]);
+
+  // Dispatch custom event to notify pages of step transitions (e.g. to programmatically reveal cards)
+  useEffect(() => {
+    if (active) {
+      window.dispatchEvent(new CustomEvent('tutorial-step-changed', { detail: { step: currentStep } }));
+    }
+  }, [currentStep, active]);
 
   // Listen to interactive events to auto-advance steps
   useEffect(() => {
@@ -308,6 +315,7 @@ export const Tutorial = () => {
     // Ensure all modals are closed when exiting tutorial
     window.dispatchEvent(new Event('tutorial-close-modals'));
     window.dispatchEvent(new Event('exit-study-session'));
+    window.dispatchEvent(new Event('tutorial-reset'));
   };
 
   const getTooltipStyle = () => {
@@ -355,8 +363,11 @@ export const Tutorial = () => {
     };
   };
 
+  const isSwipeStep = currentStep === 1;
+  const backdropPointerEvents = isSwipeStep ? 'none' : 'auto';
+
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 99999, pointerEvents: 'auto' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 99999, pointerEvents: 'none' }}>
       {/* Dark Spotlight Backdrop Overlay */}
       {viewportRect && !isWrongPath ? (
         <>
@@ -370,9 +381,8 @@ export const Tutorial = () => {
               height: `${viewportRect.top}px`,
               background: 'rgba(0, 0, 0, 0.75)',
               zIndex: 100000,
-              pointerEvents: 'auto'
+              pointerEvents: backdropPointerEvents
             }}
-            onClick={handleNext}
           />
           {/* Bottom Panel */}
           <div 
@@ -384,9 +394,8 @@ export const Tutorial = () => {
               bottom: 0,
               background: 'rgba(0, 0, 0, 0.75)',
               zIndex: 100000,
-              pointerEvents: 'auto'
+              pointerEvents: backdropPointerEvents
             }}
-            onClick={handleNext}
           />
           {/* Left Panel */}
           <div 
@@ -398,9 +407,8 @@ export const Tutorial = () => {
               height: `${viewportRect.bottom - viewportRect.top}px`,
               background: 'rgba(0, 0, 0, 0.75)',
               zIndex: 100000,
-              pointerEvents: 'auto'
+              pointerEvents: backdropPointerEvents
             }}
-            onClick={handleNext}
           />
           {/* Right Panel */}
           <div 
@@ -412,9 +420,8 @@ export const Tutorial = () => {
               height: `${viewportRect.bottom - viewportRect.top}px`,
               background: 'rgba(0, 0, 0, 0.75)',
               zIndex: 100000,
-              pointerEvents: 'auto'
+              pointerEvents: backdropPointerEvents
             }}
-            onClick={handleNext}
           />
         </>
       ) : (
@@ -424,9 +431,8 @@ export const Tutorial = () => {
             inset: 0,
             background: 'rgba(0, 0, 0, 0.75)',
             zIndex: 100000,
-            pointerEvents: 'auto'
+            pointerEvents: backdropPointerEvents
           }}
-          onClick={handleNext}
         />
       )}
 
@@ -455,7 +461,7 @@ export const Tutorial = () => {
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        style={getTooltipStyle()}
+        style={{ ...getTooltipStyle(), pointerEvents: 'auto' }}
       >
         <div 
           className="glass-panel" 
