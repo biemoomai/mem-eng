@@ -113,6 +113,13 @@ const Profile = () => {
   const [activePos, setActivePos] = useState('All POS');
   const [isCatExpanded, setIsCatExpanded] = useState(false);
   const [isPosExpanded, setIsPosExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(50);
+
+  // Reset pagination count when search query or filters change to keep performance high
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [searchQuery, selectedLevel, sortOrder, activeCategory, activePos]);
+
   const [hoveredSrs, setHoveredSrs] = useState(null);
   const [hoveredCefr, setHoveredCefr] = useState(null);
   const [hoveredCategory, setHoveredCategory] = useState(null);
@@ -1830,9 +1837,14 @@ const Profile = () => {
 
               <div 
                 className="scrollable-content"
-                onScroll={() => {
+                onScroll={(e) => {
                   if (Object.keys(revealedThaiIds).length > 0) {
                     setRevealedThaiIds({});
+                  }
+                  
+                  const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                  if (scrollHeight - scrollTop - clientHeight < 100) {
+                    setVisibleCount(prev => Math.min(modalList.length, prev + 50));
                   }
                 }}
                 style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
@@ -1843,7 +1855,7 @@ const Profile = () => {
                       No words match your filters.
                     </motion.div>
                   ) : (
-                    modalList.map((item) => {
+                    modalList.slice(0, visibleCount).map((item) => {
                       if (item.isWaiting) {
                         const isCurrentlyAdding = addingWordId === item.word;
                         return (

@@ -86,13 +86,13 @@ export const Tutorial = () => {
     }
 
     const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone && location.pathname === '/purge' && !hasInitializedRef.current) {
+    if (!isDone && location.pathname === '/purge' && !hasInitializedRef.current && !active) {
       hasInitializedRef.current = true;
       setActive(true);
       setCurrentStep(0);
       navigate('/');
     }
-  }, [user, location.pathname]);
+  }, [user, location.pathname, active]);
 
   // Listen to hamburger trigger
   useEffect(() => {
@@ -113,6 +113,20 @@ export const Tutorial = () => {
       window.dispatchEvent(new CustomEvent('tutorial-step-changed', { detail: { step: currentStep } }));
     }
   }, [currentStep, active]);
+
+  // Sync active status changes with App.jsx
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('tutorial-active-change', { detail: active }));
+  }, [active]);
+
+  // Listen to exit-tutorial event from settings drawer
+  useEffect(() => {
+    const handleExit = () => {
+      handleClose();
+    };
+    window.addEventListener('exit-tutorial', handleExit);
+    return () => window.removeEventListener('exit-tutorial', handleExit);
+  }, []);
 
   // Listen to interactive events to auto-advance steps
   useEffect(() => {
@@ -517,27 +531,7 @@ export const Tutorial = () => {
               Skip
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {currentStep < TUTORIAL_STEPS.length - 1 ? (
-                <button 
-                  onClick={handleNext}
-                  className="glass-button secondary animate-scale"
-                  style={{ 
-                    padding: '0.35rem 0.75rem', 
-                    borderRadius: '8px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '2px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'white'
-                  }}
-                >
-                  <span>ถัดไป</span>
-                  <ChevronRight size={12} />
-                </button>
-              ) : (
+              {currentStep === TUTORIAL_STEPS.length - 1 && (
                 <button 
                   onClick={handleNext}
                   className="glass-button primary animate-scale"

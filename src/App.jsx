@@ -164,12 +164,22 @@ function AppContent() {
     }
   });
 
+  const [isTutorialActive, setIsTutorialActive] = useState(false);
+
   useEffect(() => {
     const handleMuteChange = (e) => {
       setNongMemMuted(e.detail);
     };
     window.addEventListener('nongmem-mute-change', handleMuteChange);
     return () => window.removeEventListener('nongmem-mute-change', handleMuteChange);
+  }, []);
+
+  useEffect(() => {
+    const handleActiveChange = (e) => {
+      setIsTutorialActive(e.detail);
+    };
+    window.addEventListener('tutorial-active-change', handleActiveChange);
+    return () => window.removeEventListener('tutorial-active-change', handleActiveChange);
   }, []);
 
   const [dragStart, setDragStart] = useState(null);
@@ -1343,14 +1353,18 @@ function AppContent() {
                 </div>
               </div>
 
-              {/* Restart Tutorial */}
+              {/* Restart or Exit Tutorial */}
               <motion.div
                 variants={itemVariants}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setMenuOpen(false);
-                  window.dispatchEvent(new Event('trigger-tutorial'));
+                  if (isTutorialActive) {
+                    window.dispatchEvent(new Event('exit-tutorial'));
+                  } else {
+                    window.dispatchEvent(new Event('trigger-tutorial'));
+                  }
                 }}
                 style={{
                   display: 'flex',
@@ -1358,8 +1372,8 @@ function AppContent() {
                   gap: '10px',
                   padding: '10px 14px',
                   borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(251, 191, 36, 0.05)',
-                  border: theme === 'theme-3' ? '1px solid #facc15' : '1px solid rgba(251, 191, 36, 0.2)',
+                  background: theme === 'theme-3' ? '#ffffff' : (isTutorialActive ? 'rgba(239, 68, 68, 0.05)' : 'rgba(251, 191, 36, 0.05)'),
+                  border: theme === 'theme-3' ? (isTutorialActive ? '1px solid #ef4444' : '1px solid #facc15') : (isTutorialActive ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(251, 191, 36, 0.2)'),
                   cursor: 'pointer',
                   marginTop: '12px',
                   marginBottom: '4px'
@@ -1369,20 +1383,24 @@ function AppContent() {
                   width: '30px',
                   height: '30px',
                   borderRadius: '8px',
-                  background: 'rgba(251, 191, 36, 0.1)',
+                  background: isTutorialActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(251, 191, 36, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: '1px solid rgba(251, 191, 36, 0.2)'
+                  border: isTutorialActive ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(251, 191, 36, 0.2)'
                 }}>
-                  <HelpCircle size={14} color="#facc15" />
+                  {isTutorialActive ? (
+                    <XCircle size={14} color="#ef4444" />
+                  ) : (
+                    <HelpCircle size={14} color="#facc15" />
+                  )}
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#facc15' }}>
-                    Guide Tour (สอนใช้งาน)
+                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: isTutorialActive ? '#ef4444' : '#facc15' }}>
+                    {isTutorialActive ? 'Exit Tutorial (ออกโหมดแนะนำ)' : 'Guide Tour (สอนใช้งาน)'}
                   </div>
-                  <div style={{ fontSize: '0.62rem', color: 'rgba(251, 191, 36, 0.6)' }}>
-                    Restart the interactive tutorial
+                  <div style={{ fontSize: '0.62rem', color: isTutorialActive ? 'rgba(239, 68, 68, 0.6)' : 'rgba(251, 191, 36, 0.6)' }}>
+                    {isTutorialActive ? 'Exit the interactive tutorial mode' : 'Restart the interactive tutorial'}
                   </div>
                 </div>
               </motion.div>
