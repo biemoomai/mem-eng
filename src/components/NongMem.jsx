@@ -70,6 +70,7 @@ export default function NongMem() {
   const bubbleTimeoutRef = useRef(null);
   const chatEndRef = useRef(null);
   const isDragging = useRef(false);
+  const constraintsRef = useRef(null);
 
   const [showNongMem, setShowNongMem] = useState(() => {
     try {
@@ -185,6 +186,7 @@ export default function NongMem() {
         window.speechSynthesis.cancel();
       }
     } catch (err) {}
+    window.dispatchEvent(new CustomEvent('nongmem-mute-change', { detail: val }));
   };
 
   // Listen to visibility change event
@@ -194,6 +196,15 @@ export default function NongMem() {
     };
     window.addEventListener('nongmem-visibility-change', handleVisChange);
     return () => window.removeEventListener('nongmem-visibility-change', handleVisChange);
+  }, []);
+
+  // Listen to mute change event from settings drawer
+  useEffect(() => {
+    const handleMuteChange = (e) => {
+      setIsMuted(e.detail);
+    };
+    window.addEventListener('nongmem-mute-change', handleMuteChange);
+    return () => window.removeEventListener('nongmem-mute-change', handleMuteChange);
   }, []);
 
   // Auto-hide on translate page and login page
@@ -503,17 +514,15 @@ ${statsSummary}
         }
       `}</style>
 
+      {/* Screen boundary constraints for mascot drag */}
+      <div ref={constraintsRef} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999 }} />
+
       {/* Floating Mascots Widget */}
       <motion.div
         drag
+        dragConstraints={constraintsRef}
         dragMomentum={false}
         dragTransition={{ bounceStiffness: 600, bounceDamping: 15 }}
-        dragConstraints={{
-          left: 10,
-          right: window.innerWidth - 85,
-          top: 10,
-          bottom: window.innerHeight - 85
-        }}
         onDragStart={() => {
           isDragging.current = true;
         }}
@@ -528,7 +537,8 @@ ${statsSummary}
           bottom: '85px',
           right: '20px',
           zIndex: 9999,
-          cursor: 'grab'
+          cursor: 'grab',
+          pointerEvents: 'auto'
         }}
         whileTap={{ cursor: 'grabbing', scale: 0.95 }}
       >

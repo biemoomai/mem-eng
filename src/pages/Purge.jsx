@@ -2286,15 +2286,16 @@ const Purge = () => {
     const velocityX = info.velocity.x;
     const velocityY = info.velocity.y;
 
-    const swipeThreshold = 60; 
-    const velocityThreshold = 180; 
+    const swipeThreshold = 120; 
+    const velocityThreshold = 750; 
+    const minDistanceForFlick = 40;
 
     const absX = Math.abs(dragX);
     const absY = Math.abs(dragY);
 
     if (absX > absY) {
       // Horizontal swipe
-      if (dragX < -swipeThreshold || velocityX < -velocityThreshold) {
+      if (dragX < -swipeThreshold || (velocityX < -velocityThreshold && absX > minDistanceForFlick)) {
         // Swipe Left -> AGAIN
         setExitDirection('left');
         setFlickSelection({
@@ -2306,7 +2307,7 @@ const Purge = () => {
         rightSwipeTimeoutRef.current = setTimeout(() => {
           handleSrsChoice('again');
         }, 450);
-      } else if (dragX > swipeThreshold || velocityX > velocityThreshold) {
+      } else if (dragX > swipeThreshold || (velocityX > velocityThreshold && absX > minDistanceForFlick)) {
         // Swipe Right -> EASY
         setExitDirection('right');
         setFlickSelection({
@@ -2321,7 +2322,7 @@ const Purge = () => {
       }
     } else {
       // Vertical swipe
-      if (dragY < -swipeThreshold || velocityY < -velocityThreshold) {
+      if (dragY < -swipeThreshold || (velocityY < -velocityThreshold && absY > minDistanceForFlick)) {
         // Swipe Up -> GOOD (Normal)
         setExitDirection('up');
         setFlickSelection({
@@ -2333,7 +2334,7 @@ const Purge = () => {
         rightSwipeTimeoutRef.current = setTimeout(() => {
           handleSrsChoice('normal');
         }, 450);
-      } else if (dragY > swipeThreshold || velocityY > velocityThreshold) {
+      } else if (dragY > swipeThreshold || (velocityY > velocityThreshold && absY > minDistanceForFlick)) {
         // Swipe Down -> HARD
         setExitDirection('down');
         setFlickSelection({

@@ -35,6 +35,9 @@ const sanitizeThaiText = (text) => {
   // Remove orphan combining marks (at start of string or preceded by space)
   cleaned = cleaned.replace(/(^\s*|[\s])([\u0e31\u0e34-\u0e39\u0e47-\u0e4c]+)/g, '$1');
 
+  // Remove CJK (Chinese, Japanese, Korean) characters that might leak from AI translation
+  cleaned = cleaned.replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u309f\u30a0-\u30ff]/g, '');
+
   return cleaned;
 };
 
@@ -614,7 +617,14 @@ export const VocabProvider = ({ children }) => {
       return { success: false, error: 'All words in this curriculum are already in your deck!' };
     }
     
-    const targetWords = unadded.slice(0, count);
+    // Shuffle the unadded words to ensure variety and prevent alphabetic learning fatigue
+    const shuffledUnadded = [...unadded];
+    for (let i = shuffledUnadded.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledUnadded[i], shuffledUnadded[j]] = [shuffledUnadded[j], shuffledUnadded[i]];
+    }
+    
+    const targetWords = shuffledUnadded.slice(0, count);
     const addedCardsList = [];
     
     for (const item of targetWords) {

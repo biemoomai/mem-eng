@@ -200,7 +200,7 @@ body {
 }
 
 /* Mobile responsive full screen override */
-@media (max-width: 768px) or (pointer: coarse) {
+@media (max-width: 540px) {
   #root {
     max-width: 100%;
     height: 100vh;

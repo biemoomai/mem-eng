@@ -156,6 +156,21 @@ function AppContent() {
       return true;
     }
   });
+  const [nongMemMuted, setNongMemMuted] = useState(() => {
+    try {
+      return localStorage.getItem('memeng_nong_mem_muted') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleMuteChange = (e) => {
+      setNongMemMuted(e.detail);
+    };
+    window.addEventListener('nongmem-mute-change', handleMuteChange);
+    return () => window.removeEventListener('nongmem-mute-change', handleMuteChange);
+  }, []);
 
   const [dragStart, setDragStart] = useState(null);
   const [swipeDirection, setSwipeDirection] = useState(null);
@@ -1269,6 +1284,59 @@ function AppContent() {
                     position: 'absolute',
                     top: '2px',
                     left: showNongMem ? '14px' : '2px',
+                    transition: 'left 0.2s',
+                    boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+              </div>
+
+              {/* Compact Setting 4: Nong Mem Mute Toggle */}
+              <div
+                onClick={() => {
+                  const val = !nongMemMuted;
+                  setNongMemMuted(val);
+                  try {
+                    localStorage.setItem('memeng_nong_mem_muted', val.toString());
+                  } catch (err) {}
+                  window.dispatchEvent(new CustomEvent('nongmem-mute-change', { detail: val }));
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
+                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
+                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
+                  cursor: 'pointer',
+                  marginBottom: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Volume2 size={14} color={theme === 'theme-3' ? '#000000' : (nongMemMuted ? '#f87171' : '#4ade80')} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>
+                    {nongMemMuted ? 'Nong Mem Muted' : 'Nong Mem Sound'}
+                  </span>
+                </div>
+                {/* Visual Toggle Switch */}
+                <div style={{
+                  width: '28px',
+                  height: '16px',
+                  borderRadius: theme === 'theme-3' ? '0px' : '8px',
+                  background: !nongMemMuted ? (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.2)') : (theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)'),
+                  position: 'relative',
+                  transition: 'background-color 0.2s',
+                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.08)'
+                }}>
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: theme === 'theme-3' ? '0px' : '50%',
+                    background: !nongMemMuted ? '#ffffff' : (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.3)'),
+                    position: 'absolute',
+                    top: '2px',
+                    left: !nongMemMuted ? '14px' : '2px',
                     transition: 'left 0.2s',
                     boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
                   }} />
