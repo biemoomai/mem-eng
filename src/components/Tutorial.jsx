@@ -116,6 +116,7 @@ export const Tutorial = () => {
     const handleTrigger = () => {
       if (!user) return;
       localStorage.setItem('memeng_tutorial_done', 'false');
+      localStorage.setItem('memeng_tutorial_started', 'true');
       setActive(true);
       setCurrentStep(0);
       navigate('/');
@@ -145,19 +146,70 @@ export const Tutorial = () => {
     return () => window.removeEventListener('exit-tutorial', handleExit);
   }, []);
 
-  // Listen to interactive events to auto-advance steps
+  const [completedSteps, setCompletedSteps] = useState(() => new Array(TUTORIAL_STEPS.length).fill(false));
+
+  // Reset completedSteps when tutorial restarts
+  useEffect(() => {
+    if (active) {
+      setCompletedSteps(new Array(TUTORIAL_STEPS.length).fill(false));
+    }
+  }, [active]);
+
+  // Scroll tracker for Step 2 (Explore AI Card)
+  useEffect(() => {
+    if (!active || currentStep !== 2) return;
+
+    let scrollContainer = document.querySelector('.scrollable-content');
+    
+    const findAndAttach = () => {
+      scrollContainer = document.querySelector('.scrollable-content');
+      if (scrollContainer) {
+        const handleScroll = () => {
+          if (scrollContainer.scrollTop > 150) {
+            setCompletedSteps(prev => {
+              const next = [...prev];
+              next[2] = true;
+              return next;
+            });
+          }
+        };
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+          if (scrollContainer) {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+          }
+        };
+      }
+    };
+
+    const cleanup = findAndAttach();
+    const timer = setTimeout(findAndAttach, 500);
+
+    return () => {
+      if (cleanup) cleanup();
+      clearTimeout(timer);
+    };
+  }, [active, currentStep]);
+
+  // Listen to interactive events to auto-advance steps and mark completed
   useEffect(() => {
     if (!active) return;
 
     const handleTypedHello = () => {
-      if (currentStep === 0) {
-        setTimeout(() => {
-          setCurrentStep(1);
-        }, 100);
-      }
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[0] = true;
+        return next;
+      });
+      // REMOVED auto-advance to let user manually click the gold-bordered Next button
     };
 
     const handleTranslated = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[1] = true;
+        return next;
+      });
       if (currentStep === 1) {
         setTimeout(() => {
           setCurrentStep(2);
@@ -166,6 +218,11 @@ export const Tutorial = () => {
     };
 
     const handleWordSaved = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[3] = true;
+        return next;
+      });
       if (currentStep === 3) {
         setTimeout(() => {
           setCurrentStep(4);
@@ -175,6 +232,11 @@ export const Tutorial = () => {
     };
 
     const handleCardRevealed = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[4] = true;
+        return next;
+      });
       if (currentStep === 4) {
         setTimeout(() => {
           setCurrentStep(5);
@@ -183,6 +245,11 @@ export const Tutorial = () => {
     };
 
     const handleCardFullyRevealed = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[5] = true;
+        return next;
+      });
       if (currentStep === 5) {
         setTimeout(() => {
           setCurrentStep(6);
@@ -191,6 +258,11 @@ export const Tutorial = () => {
     };
 
     const handleSrsClicked = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[6] = true;
+        return next;
+      });
       if (currentStep === 6) {
         setTimeout(() => {
           setCurrentStep(7);
@@ -200,6 +272,11 @@ export const Tutorial = () => {
     };
 
     const handleCurriculumOpened = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[7] = true;
+        return next;
+      });
       if (currentStep === 7) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
@@ -209,6 +286,11 @@ export const Tutorial = () => {
     };
 
     const handleSrsModalOpened = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[8] = true;
+        return next;
+      });
       if (currentStep === 8) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
@@ -573,7 +655,7 @@ export const Tutorial = () => {
     const containerHeight = containerEl ? containerEl.clientHeight : window.innerHeight;
     
     const calculatedTop = isTop 
-      ? Math.max(10, top - 180) 
+      ? Math.max(10, top - (currentStep === 3 ? 220 : 180)) 
       : (top + height + 15);
 
     // If bottom positioning would overflow the visible viewport/container
@@ -864,18 +946,35 @@ export const Tutorial = () => {
                     {currentStep < TUTORIAL_STEPS.length - 1 ? (
                       <button 
                         onClick={handleNext}
-                        className="glass-button primary animate-scale"
-                        style={{ 
+                        className="glass-button animate-scale"
+                        style={completedSteps[currentStep] ? { 
+                          padding: '0.35rem 0.75rem', 
+                          borderRadius: '10px', 
+                          fontSize: '0.72rem', 
+                          fontWeight: 900,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          border: '2.5px solid #facc15',
+                          background: 'rgba(250, 204, 21, 0.18)',
+                          color: '#facc15',
+                          boxShadow: '0 0 15px rgba(250, 204, 21, 0.35)',
+                          cursor: 'pointer'
+                        } : {
                           padding: '0.3rem 0.65rem', 
                           borderRadius: '8px', 
                           fontSize: '0.7rem', 
-                          fontWeight: 800,
+                          fontWeight: 700,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '2px'
+                          gap: '2px',
+                          border: '1.5px solid rgba(255,255,255,0.15)',
+                          background: 'rgba(255,255,255,0.04)',
+                          color: 'rgba(255,255,255,0.7)',
+                          cursor: 'pointer'
                         }}
                       >
-                        <span>ถัดไป</span>
+                        <span>{completedSteps[currentStep] ? 'ถัดไป' : 'ข้าม'}</span>
                         <ChevronRight size={11} />
                       </button>
                     ) : (
@@ -883,13 +982,17 @@ export const Tutorial = () => {
                         onClick={handleNext}
                         className="glass-button primary animate-scale"
                         style={{ 
-                          padding: '0.3rem 0.65rem', 
-                          borderRadius: '8px', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 800,
+                          padding: '0.35rem 0.75rem', 
+                          borderRadius: '10px', 
+                          fontSize: '0.72rem', 
+                          fontWeight: 900,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '2px'
+                          gap: '3px',
+                          border: '2.5px solid #facc15',
+                          background: 'rgba(250, 204, 21, 0.18)',
+                          color: '#facc15',
+                          boxShadow: '0 0 15px rgba(250, 204, 21, 0.35)'
                         }}
                       >
                         <span>Finish</span>
