@@ -634,6 +634,7 @@ const renderInteractiveSentence = (text, targetWord, onWordClick) => {
     return (
       <span
         key={idx}
+        id={part.toLowerCase() === 'greeting' ? 'tutorial-word-greeting' : undefined}
         className="interactive-word"
         role="button"
         style={style}
@@ -1163,6 +1164,8 @@ const Purge = () => {
     const cleaned = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "").trim().toLowerCase();
     if (!cleaned) return;
     
+    window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: cleaned } }));
+    
     // Prevent duplicate push
     if (tooltipStack.length > 0 && tooltipStack[tooltipStack.length - 1].word === cleaned) {
       return;
@@ -1233,6 +1236,7 @@ const Purge = () => {
     try {
       const res = await addWordToDeck(activeTooltipWord, tooltipDetails.rawDetails);
       if (res.success || res.error?.includes('already exists')) {
+        window.dispatchEvent(new Event('tutorial-tooltip-saved'));
         setTooltipStack(prev => prev.map((item, idx) => 
           idx === prev.length - 1 && item.word === activeTooltipWord 
             ? { ...item, details: { ...item.details, alreadyInDeck: true } }
@@ -2373,6 +2377,7 @@ const Purge = () => {
                     </button>
                   ) : (
                     <button 
+                      id="tutorial-tooltip-add-btn"
                       onClick={handleAddWordFromTooltip}
                       disabled={isAddingTooltipWord || !tooltipDetails?.rawDetails}
                       className="glass-button primary animate-scale" 

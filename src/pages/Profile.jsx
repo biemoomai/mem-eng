@@ -614,7 +614,13 @@ const Profile = () => {
                     return (
                       <button
                         key={item.id}
-                        id={item.id === 'TOEIC Essential' ? 'tutorial-curriculum-option-toeic' : undefined}
+                        id={
+                          item.id === 'TOEIC Essential' 
+                            ? 'tutorial-curriculum-option-toeic' 
+                            : item.id === 'Self-Study only'
+                            ? 'tutorial-curriculum-option-self-study'
+                            : undefined
+                        }
                         onClick={() => {
                           setActiveCurriculum(item.id);
                           localStorage.setItem('chatgpt_anki_curriculum', item.id);

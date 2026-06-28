@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { X, ChevronRight, HelpCircle, Minimize2, Maximize2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useVocab } from '../context/VocabContext';
 
 const TUTORIAL_STEPS = [
   {
@@ -50,6 +51,20 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/purge',
+    selector: '#tutorial-word-greeting',
+    title: 'Dictionary Lookup',
+    text: 'ลองแตะที่คำศัพท์สีแดงหรือคำศัพท์ใดก็ได้ในความหมาย เช่น คำว่า greeting เพื่อจำลองการเปิดพจนานุกรมความหมายด่วน',
+    position: 'top'
+  },
+  {
+    path: '/purge',
+    selector: '#tutorial-tooltip-add-btn',
+    title: 'Add Word to Deck',
+    text: 'แตะปุ่ม "Add to Deck" เพื่อเก็บสะสมคำศัพท์นั้นเข้าคลังเรียนรู้ของคุณทันที',
+    position: 'top'
+  },
+  {
+    path: '/purge',
     selector: '#tutorial-srs-buttons',
     title: 'SRS Memory Rating',
     text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น Easy หรือ Normal เพื่อเรียนรู้ต่อ',
@@ -64,9 +79,9 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/profile',
-    selector: '#tutorial-curriculum-option-toeic',
-    title: 'Select Curriculum Focus',
-    text: 'ลองคลิกเลือก TOEIC Essential เพื่อเปิดการใช้งานและดูสถิติในระดับเป้าหมายนั้น (หรือกดเลือกโหมดที่ต้องการ)',
+    selector: '#tutorial-curriculum-option-self-study',
+    title: 'Choose Curriculum Focus',
+    text: 'นี่คือรายการตัวเลือกหลักสูตรที่เลือกเล่นได้ เช่น Oxford หรือ TOEIC แตะเลือกหลักสูตรที่สนใจ หรือแตะเลือก Self-Study เพื่อใช้งานโหมดคำศัพท์ทั่วไปตามเดิม แล้วกดปุ่มถัดไป',
     position: 'top'
   },
   {
@@ -78,9 +93,9 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/profile',
-    selector: '#tutorial-profile-progress',
-    title: 'Curriculum Progress',
-    text: 'แถบแสดงจำนวนคำศัพท์ที่เพิ่มเข้าสู่การเรียนรู้เปรียบเทียบกับคำศัพท์ทั้งหมด ยินดีด้วย! การแนะนำโปรแกรมเสร็จสิ้นแล้ว กดปุ่ม Finish เพื่อเริ่มใช้งานจริงได้เลย',
+    selector: null,
+    title: 'Profile Summary',
+    text: 'หน้านี้เป็นส่วนของโปรไฟล์ผู้ใช้ เพื่อดูสถิติและคำศัพท์ทั้งหมดที่คุณได้เรียนและสะสมมาครับ ยินดีด้วย! การแนะนำโปรแกรมเสร็จสิ้นแล้ว ระบบจะพาคุณกลับไปหน้าค้นหาเพื่อเริ่มต้นใหม่ครับ',
     position: 'top'
   }
 ];
@@ -90,6 +105,7 @@ export const Tutorial = () => {
   const location = useLocation();
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { clearDeckAndResetStats } = useVocab();
   
   const [active, setActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -264,7 +280,7 @@ export const Tutorial = () => {
       }
     };
 
-    const handleSrsClicked = () => {
+    const handleTooltipOpened = (e) => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[6] = true;
@@ -273,12 +289,11 @@ export const Tutorial = () => {
       if (currentStep === 6) {
         setTimeout(() => {
           setCurrentStep(7);
-          navigate('/profile');
-        }, 800);
+        }, 300);
       }
     };
 
-    const handleCurriculumOpened = () => {
+    const handleTooltipSaved = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[7] = true;
@@ -287,11 +302,11 @@ export const Tutorial = () => {
       if (currentStep === 7) {
         setTimeout(() => {
           setCurrentStep(8);
-        }, 300);
+        }, 800);
       }
     };
 
-    const handleCurriculumSelected = () => {
+    const handleSrsClicked = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[8] = true;
@@ -300,11 +315,12 @@ export const Tutorial = () => {
       if (currentStep === 8) {
         setTimeout(() => {
           setCurrentStep(9);
+          navigate('/profile');
         }, 800);
       }
     };
 
-    const handleSrsModalOpened = () => {
+    const handleCurriculumOpened = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[9] = true;
@@ -312,8 +328,34 @@ export const Tutorial = () => {
       });
       if (currentStep === 9) {
         setTimeout(() => {
-          window.dispatchEvent(new Event('tutorial-close-modals'));
           setCurrentStep(10);
+        }, 300);
+      }
+    };
+
+    const handleCurriculumSelected = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[10] = true;
+        return next;
+      });
+      if (currentStep === 10) {
+        setTimeout(() => {
+          setCurrentStep(11);
+        }, 800);
+      }
+    };
+
+    const handleSrsModalOpened = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[11] = true;
+        return next;
+      });
+      if (currentStep === 11) {
+        setTimeout(() => {
+          window.dispatchEvent(new Event('tutorial-close-modals'));
+          setCurrentStep(12);
         }, 2000);
       }
     };
@@ -323,6 +365,8 @@ export const Tutorial = () => {
     window.addEventListener('tutorial-word-saved', handleWordSaved);
     window.addEventListener('tutorial-card-revealed', handleCardRevealed);
     window.addEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
+    window.addEventListener('tutorial-tooltip-opened', handleTooltipOpened);
+    window.addEventListener('tutorial-tooltip-saved', handleTooltipSaved);
     window.addEventListener('tutorial-srs-clicked', handleSrsClicked);
     window.addEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
     window.addEventListener('tutorial-curriculum-selected', handleCurriculumSelected);
@@ -334,6 +378,8 @@ export const Tutorial = () => {
       window.removeEventListener('tutorial-word-saved', handleWordSaved);
       window.removeEventListener('tutorial-card-revealed', handleCardRevealed);
       window.removeEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
+      window.removeEventListener('tutorial-tooltip-opened', handleTooltipOpened);
+      window.removeEventListener('tutorial-tooltip-saved', handleTooltipSaved);
       window.removeEventListener('tutorial-srs-clicked', handleSrsClicked);
       window.removeEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
       window.removeEventListener('tutorial-curriculum-selected', handleCurriculumSelected);
@@ -604,6 +650,28 @@ export const Tutorial = () => {
     }
 
     if (currentStep === 6) {
+      // Simulate clicking the "greeting" word
+      const greetingSpan = document.getElementById('tutorial-word-greeting');
+      if (greetingSpan) {
+        greetingSpan.click();
+      } else {
+        window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: 'greeting' } }));
+      }
+      return;
+    }
+
+    if (currentStep === 7) {
+      // Simulate clicking Add to Deck inside the dictionary modal
+      const addBtn = document.getElementById('tutorial-tooltip-add-btn');
+      if (addBtn) {
+        addBtn.click();
+      } else {
+        window.dispatchEvent(new Event('tutorial-tooltip-saved'));
+      }
+      return;
+    }
+
+    if (currentStep === 8) {
       // Simulate SRS memory button click
       const easyBtn = document.querySelector('#tutorial-srs-buttons button:last-child');
       if (easyBtn) {
@@ -614,7 +682,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 7) {
+    if (currentStep === 9) {
       // Simulate curriculum switcher click
       const switcherBtn = document.getElementById('tutorial-profile-curriculum');
       if (switcherBtn) {
@@ -625,18 +693,18 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 8) {
-      // Simulate curriculum option selection (TOEIC)
-      const toeicBtn = document.getElementById('tutorial-curriculum-option-toeic');
-      if (toeicBtn) {
-        toeicBtn.click();
+    if (currentStep === 10) {
+      // Simulate selecting Self-Study option
+      const selfStudyBtn = document.getElementById('tutorial-curriculum-option-self-study');
+      if (selfStudyBtn) {
+        selfStudyBtn.click();
       } else {
-        window.dispatchEvent(new CustomEvent('tutorial-curriculum-selected', { detail: { id: 'TOEIC Essential' } }));
+        window.dispatchEvent(new CustomEvent('tutorial-curriculum-selected', { detail: { id: 'Self-Study only' } }));
       }
       return;
     }
 
-    if (currentStep === 9) {
+    if (currentStep === 11) {
       // Simulate SRS stage detail open
       window.dispatchEvent(new Event('tutorial-srs-modal-opened'));
       return;
@@ -652,19 +720,24 @@ export const Tutorial = () => {
       handleClose();
     }
   };
-  const handleClose = () => {
+  const handleClose = async () => {
     setActive(false);
     localStorage.setItem('memeng_tutorial_done', 'true');
     localStorage.removeItem('memeng_tutorial_started');
+    try {
+      await clearDeckAndResetStats();
+    } catch (err) {
+      console.error("Failed to clear deck on tutorial complete:", err);
+    }
     // Ensure all modals are closed when exiting tutorial
     window.dispatchEvent(new Event('tutorial-close-modals'));
     window.dispatchEvent(new Event('exit-study-session'));
     window.dispatchEvent(new Event('tutorial-reset'));
+    navigate('/');
   };
 
   const getTooltipStyle = () => {
-    // Force center on Step 11 (index 10) to prevent layout truncation on the wide progress bar at the bottom
-    if (!highlightRect || isWrongPath || currentStep === 10) {
+    if (!highlightRect || isWrongPath) {
       return {
         position: 'fixed',
         top: '50%',
