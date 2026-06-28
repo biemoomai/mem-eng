@@ -1719,7 +1719,7 @@ const Purge = () => {
                 setSelectedStatus(null);
                 setStatusSearchQuery('');
               }}
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 11000, backdropFilter: lowGraphics ? 'none' : 'blur(8px)' }}
+              style={{ position: 'absolute', inset: 0, background: lowGraphics ? '#08090b' : 'rgba(0,0,0,0.85)', zIndex: 11000, backdropFilter: lowGraphics ? 'none' : 'blur(8px)' }}
             />
             {/* Centered Modal Container */}
             <div style={{
@@ -2362,7 +2362,7 @@ const Purge = () => {
           style={{ 
             position: 'absolute', 
             inset: 0, 
-            background: 'rgba(5, 5, 8, 0.9)', 
+            background: lowGraphics ? '#050508' : 'rgba(5, 5, 8, 0.9)', 
             zIndex: 15000, 
             backdropFilter: lowGraphics ? 'none' : 'blur(20px)' 
           }}
@@ -2674,7 +2674,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(20px)' }}
+          style={{ position: 'absolute', inset: 0, background: lowGraphics ? '#050508' : 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(20px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
@@ -2880,7 +2880,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.95)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(25px)' }}
+          style={{ position: 'absolute', inset: 0, background: lowGraphics ? '#050508' : 'rgba(5, 5, 8, 0.95)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(25px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
@@ -3014,7 +3014,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(20px)' }}
+          style={{ position: 'absolute', inset: 0, background: lowGraphics ? '#050508' : 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(20px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
@@ -3214,7 +3214,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.85)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(15px)' }}
+          style={{ position: 'absolute', inset: 0, background: lowGraphics ? '#050508' : 'rgba(5, 5, 8, 0.85)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(15px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div

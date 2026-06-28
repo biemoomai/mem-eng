@@ -700,7 +700,7 @@ function AppContent() {
               top: `${selectionRect ? (selectionRect.top - 145 < 10 ? selectionRect.top + selectionRect.height + 10 : selectionRect.top - 145) : 0}px`,
               left: `${selectionRect ? Math.max(10, Math.min(window.innerWidth - 258, selectionRect.left + (selectionRect.width / 2) - 124)) : 10}px`,
               width: '248px',
-              background: 'rgba(17, 20, 28, 0.85)',
+              background: lowGraphics ? '#11141c' : 'rgba(17, 20, 28, 0.85)',
               backdropFilter: lowGraphics ? 'none' : 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid rgba(255, 255, 255, 0.15)',
@@ -931,9 +931,7 @@ function AppContent() {
               position: 'absolute',
               inset: 0,
               zIndex: 99999,
-              background: theme === 'theme-3'
-                ? '#ffffff'
-                : 'radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.04) 0%, #08090b 100%)',
+              background: theme === 'theme-3' ? '#ffffff' : (lowGraphics ? '#08090b' : 'radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.04) 0%, #08090b 100%)'),
               backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(30px)',
               WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(30px)',
               padding: '45px 20px 20px 20px',
@@ -1623,7 +1621,7 @@ function AppContent() {
               position: 'absolute',
               inset: 0,
               zIndex: 1000000,
-              background: 'rgba(0, 0, 0, 0.75)',
+              background: lowGraphics ? '#08090b' : 'rgba(0, 0, 0, 0.75)',
               backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
               display: 'flex',
