@@ -74,9 +74,9 @@ export default function NongMem() {
 
   const [showNongMem, setShowNongMem] = useState(() => {
     try {
-      return localStorage.getItem('memeng_show_nong_mem') !== 'false';
+      return localStorage.getItem('memeng_show_nong_mem') === 'true';
     } catch (e) {
-      return true;
+      return false;
     }
   });
 

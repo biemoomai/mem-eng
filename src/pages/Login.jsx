@@ -4,14 +4,14 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const { user, signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle, isAnonymous, loginAsGuest } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (user && !isAnonymous) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, isAnonymous, navigate]);
 
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
@@ -53,6 +53,37 @@ const Login = () => {
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.4rem' }}>Spaced Repetition with Rich Contexts</p>
       </div>
+
+      {isAnonymous && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-panel"
+          style={{
+            padding: '1rem',
+            margin: '0 auto 1.5rem auto',
+            maxWidth: '480px',
+            width: '100%',
+            background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%)',
+            border: '1px solid rgba(167, 139, 250, 0.25)',
+            borderRadius: '16px',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(167, 139, 250, 0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.4rem',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a78bfa', fontWeight: 800, fontSize: '0.85rem' }}>
+            <span>✨ คุณกำลังใช้งานแบบ Guest</span>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+            กรอกข้อมูลเพื่อสมัครสมาชิกใหม่ด้านล่าง ระบบจะเชื่อมโยงข้อมูลคำศัพท์และประวัติการเรียนที่คุณเพิ่งเล่นไว้ให้ครบถ้วนทันที!
+          </p>
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -155,6 +186,68 @@ const Login = () => {
           </svg>
           <span>Sign In with Google</span>
         </button>
+
+        {isAnonymous ? (
+          <button
+            onClick={() => navigate('/')}
+            className="glass-button primary animate-scale"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.65rem',
+              background: 'linear-gradient(135deg, #a78bfa 0%, #06b6d4 100%)',
+              border: 'none',
+              color: 'white',
+              fontWeight: 900,
+              fontSize: '0.85rem',
+              padding: '0.75rem 0',
+              borderRadius: '14px',
+              cursor: 'pointer',
+              marginTop: '0.75rem',
+              boxShadow: '0 8px 25px rgba(167, 139, 250, 0.25)'
+            }}
+          >
+            <span>กลับสู่หน้าเรียนรู้ศัพท์ (Back to Translate) ➔</span>
+          </button>
+        ) : (
+          <button
+            onClick={async () => {
+              setLoading(true);
+              setError(null);
+              try {
+                const { error } = await loginAsGuest();
+                if (error) throw error;
+                navigate('/');
+              } catch (err) {
+                setError(err.message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="glass-button animate-scale"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.65rem',
+              background: 'rgba(255,255,255,0.01)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              color: 'var(--text-secondary)',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              padding: '0.7rem 0',
+              borderRadius: '14px',
+              cursor: 'pointer',
+              marginTop: '0.75rem'
+            }}
+            disabled={loading}
+          >
+            <span>Continue as Guest (ทดลองใช้งาน)</span>
+          </button>
+        )}
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
           {isLoginMode ? "Don't have an account? " : "Already have an account? "}

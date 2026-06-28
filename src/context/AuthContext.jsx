@@ -9,19 +9,61 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    let isMounted = true;
+
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          if (isMounted) {
+            setUser(session.user);
+            setLoading(false);
+          }
+        } else {
+          // No active session. Check if they explicitly logged out.
+          const explicitlyLoggedOut = localStorage.getItem('memeng_logged_out') === 'true';
+          if (explicitlyLoggedOut) {
+            if (isMounted) {
+              setUser(null);
+              setLoading(false);
+            }
+          } else {
+            // Automatically sign in anonymously!
+            const { data, error } = await supabase.auth.signInAnonymously();
+            if (isMounted) {
+              if (error) {
+                console.error("Auto anonymous sign in failed:", error);
+                setUser(null);
+              } else {
+                setUser(data?.user ?? null);
+              }
+              setLoading(false);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error in initAuth:", err);
+        if (isMounted) {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    initAuth();
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+      if (isMounted) {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -49,8 +91,8 @@ export const AuthProvider = ({ children }) => {
           .from('users')
           .insert({
             id: authUser.id,
-            email: authUser.email,
-            display_name: authUser.email.split('@')[0],
+            email: authUser.email || null,
+            display_name: authUser.email ? authUser.email.split('@')[0] : 'Guest',
             streak_days: 1,
             last_login_date: new Date().toISOString()
           })
@@ -63,6 +105,23 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (currentProfile) {
+        // If profile exists but email or display name is still null/Guest, and authUser now has an email
+        if (authUser.email && (!currentProfile.email || currentProfile.display_name === 'Guest')) {
+          const { data: updatedProfile, error: emailUpdateErr } = await supabase
+            .from('users')
+            .update({
+              email: authUser.email,
+              display_name: authUser.email.split('@')[0]
+            })
+            .eq('id', authUser.id)
+            .select()
+            .single();
+          
+          if (!emailUpdateErr && updatedProfile) {
+            currentProfile = updatedProfile;
+          }
+        }
+        
         // 2. Calculate Streak
         const lastLogin = currentProfile.last_login_date ? new Date(currentProfile.last_login_date) : null;
         const today = new Date();
@@ -114,16 +173,57 @@ export const AuthProvider = ({ children }) => {
 
 
 
+  const isAnonymous = user ? (user.is_anonymous || !user.email) : false;
+
+  const loginAsGuest = async () => {
+    localStorage.removeItem('memeng_logged_out');
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      setUser(data?.user ?? null);
+      return { data, error: null };
+    } catch (err) {
+      console.error("loginAsGuest error:", err);
+      return { data: null, error: err };
+    }
+  };
+
   // Helpful functions
   const signUp = async (email, password) => {
+    localStorage.removeItem('memeng_logged_out');
+    if (isAnonymous) {
+      const { data, error } = await supabase.auth.updateUser({ email, password });
+      if (error) return { data: null, error };
+      if (data?.user) {
+        setUser(data.user);
+        await supabase
+          .from('users')
+          .update({
+            email: email,
+            display_name: email.split('@')[0]
+          })
+          .eq('id', data.user.id);
+      }
+      return { data, error: null };
+    }
     return supabase.auth.signUp({ email, password });
   };
 
   const signIn = async (email, password) => {
+    localStorage.removeItem('memeng_logged_out');
     return supabase.auth.signInWithPassword({ email, password });
   };
 
   const signInWithGoogle = async () => {
+    localStorage.removeItem('memeng_logged_out');
+    if (isAnonymous) {
+      return supabase.auth.linkIdentity({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+    }
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -133,11 +233,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
+    localStorage.setItem('memeng_logged_out', 'true');
     return supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, profile, signUp, signIn, signInWithGoogle, signOut, isAnonymous, loginAsGuest }}>
       {!loading && children}
     </AuthContext.Provider>
   );

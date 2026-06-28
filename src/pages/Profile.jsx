@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, BookOpen, Trash2, User, Menu, X, Search, Calendar, Filter, Trophy, ChevronDown, TrendingUp, Eye, ArrowUpZA, ArrowDownAZ, Plus, Loader2, MessageSquare } from 'lucide-react';
+import { Volume2, BookOpen, Trash2, User, Menu, X, Search, Calendar, Filter, Trophy, ChevronDown, TrendingUp, Eye, ArrowUpZA, ArrowDownAZ, Plus, Loader2, MessageSquare, Sparkles } from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -51,9 +52,10 @@ const getNextReviewText = (nextReviewDate) => {
 };
 
 const Profile = () => {
-  const { vocab, getSrsCounts, generateMemeAndUpload, approveWordDoodle, deleteWordFromDeck, updateWordProperties, activeCurriculum, setActiveCurriculum, clearDeckAndResetStats, curriculumWords, curriculumList, addWordToDeck, getAiWordRichDetails } = useVocab();
-  const { profile, signOut } = useAuth();
+  const { vocab, getSrsCounts, deleteWordFromDeck, updateWordProperties, activeCurriculum, setActiveCurriculum, clearDeckAndResetStats, curriculumWords, curriculumList, addWordToDeck, getAiWordRichDetails } = useVocab();
+  const { profile, signOut, isAnonymous } = useAuth();
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const activeVocab = vocab.filter(item => {
     if (activeCurriculum === 'Self-Study only') {
       return !item.curriculum || item.curriculum === 'Self-Study only';
@@ -1135,6 +1137,8 @@ const Profile = () => {
             </motion.div>
           </div>
 
+
+
           {!showDetails && (
             <motion.div 
               animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
@@ -2064,7 +2068,7 @@ const Profile = () => {
                                 }}
                               >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                                  <div style={{ flex: 1 }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
                                         {item.word}
@@ -2244,7 +2248,7 @@ const Profile = () => {
                                 }}
                               >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                                  <div style={{ flex: 1 }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
                                         {item.word}
@@ -2403,7 +2407,7 @@ const Profile = () => {
         )}
       </AnimatePresence>
 
-      {/* Preview Doodle Modal */}
+      {/* Preview Word Detail Modal */}
       <AnimatePresence>
         {previewWord && (() => {
           const currentItem = vocab.find(w => w.id === previewWord.id) || previewWord;

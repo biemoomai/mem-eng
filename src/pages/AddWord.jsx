@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Sparkles, Loader2, Volume2, Search, CheckCircle, HelpCircle, ArrowRight, History, Trash2, X, RefreshCw, Activity, CheckSquare, Bookmark, Lightbulb, PlusCircle } from 'lucide-react';
+import { Sparkles, Loader2, Volume2, Search, CheckCircle, HelpCircle, ArrowRight, History, Trash2, X, RefreshCw, Activity, CheckSquare, Bookmark, Lightbulb, PlusCircle, Check } from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { fetchVocabImage, cleanKeyword } from '../utils/imageHelper';
 import { SafeImage } from '../components/SafeImage';
 import { playClickSound } from '../utils/soundHelper';
@@ -201,6 +202,8 @@ const renderInteractiveSentence = (text, targetWord, onWordClick) => {
 const AddWord = () => {
   const { vocab, addWordToDeck, deleteWordFromDeck, getAiWordRichDetails, updateCardImages } = useVocab();
   const { theme } = useTheme();
+  const { isAnonymous } = useAuth();
+  const navigate = useNavigate();
   const firstCardRef = useRef(null);
   const imageHistoryRef = useRef({}); // { [sceneIdx]: [url1, url2, ...] }
   const [wordInput, setWordInput] = useState('');
@@ -219,6 +222,73 @@ const AddWord = () => {
   const [activeSearchOverlays, setActiveSearchOverlays] = useState([false, false]);
   const [selectedPrimaryImageIdx, setSelectedPrimaryImageIdx] = useState(null);
   const [activeImageControlsIdx, setActiveImageControlsIdx] = useState(null);
+  const [tutorialStep, setTutorialStep] = useState(() => {
+    try {
+      const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
+      return isDone ? null : 0;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [guestNudge, setGuestNudge] = useState(null); // null, 'soft', 'firm'
+  const [showShortcutButtons, setShowShortcutButtons] = useState(() => {
+    return localStorage.getItem('memeng_show_shortcut_buttons') !== 'false';
+  });
+
+  useEffect(() => {
+    const handleShortcutChanged = (e) => {
+      setShowShortcutButtons(e.detail?.show !== false);
+    };
+    window.addEventListener('shortcut-buttons-changed', handleShortcutChanged);
+    return () => {
+      window.removeEventListener('shortcut-buttons-changed', handleShortcutChanged);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAnonymous) return;
+    const count = vocab.length;
+    if (count >= 10 && count < 20) {
+      const shown10 = localStorage.getItem('memeng_nudge_10_shown') === 'true';
+      if (!shown10) {
+        setGuestNudge('soft');
+      }
+    } else if (count >= 20) {
+      const shown20 = localStorage.getItem('memeng_nudge_20_shown') === 'true';
+      if (!shown20) {
+        setGuestNudge('firm');
+      }
+    }
+  }, [vocab.length, isAnonymous]);
+
+  const handleCloseNudge = () => {
+    if (guestNudge === 'soft') {
+      localStorage.setItem('memeng_nudge_10_shown', 'true');
+    } else if (guestNudge === 'firm') {
+      localStorage.setItem('memeng_nudge_20_shown', 'true');
+    }
+    setGuestNudge(null);
+  };
+
+  useEffect(() => {
+    const handleStepChanged = (e) => {
+      setTutorialStep(e.detail.step);
+    };
+    const handleActiveChange = (e) => {
+      if (!e.detail) {
+        setTutorialStep(null);
+      } else {
+        setTutorialStep(0);
+      }
+    };
+    window.addEventListener('tutorial-step-changed', handleStepChanged);
+    window.addEventListener('tutorial-active-change', handleActiveChange);
+    return () => {
+      window.removeEventListener('tutorial-step-changed', handleStepChanged);
+      window.removeEventListener('tutorial-active-change', handleActiveChange);
+    };
+  }, []);
 
   const [tooltipStack, setTooltipStack] = useState([]);
   const currentTooltip = tooltipStack[tooltipStack.length - 1];
@@ -489,122 +559,145 @@ const AddWord = () => {
   const overlayTranslateGreen = useTransform(translateX, [50, 150], [0, 0.45]);
   const overlayTranslateRed = useTransform(translateX, [-50, -150], [0, 0.45]);
 
-  const handleTranslateDragEnd = async (event, info) => {
+  const handleSaveWord = async () => {
     if (isSuccess || isExiting) return;
-    const threshold = 80;
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
-    if (info.offset.x > threshold) {
-      if (isTutorialActive) {
-        setIsExiting(true);
-        setTimeout(() => {
-          setIsSuccess(true);
-          window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-          setSourceToast({
-            message: `Saved to deck! (Mock)`,
-            type: 'live'
-          });
-        }, 500);
-        return;
-      }
-      // Swipe Right
-      if (richCardData?.validation?.isInvalid) {
-        const suggestion = richCardData.validation.suggestion;
-        if (suggestion) {
-          setIsExiting(true);
-          setSourceToast({
-            message: `Saving "${suggestion.toLowerCase()}"...`,
-            type: 'live'
-          });
-          
-          // Non-blocking background save
-          (async () => {
-            try {
-              const richDetails = await getAiWordRichDetails(suggestion);
-              const firstImagePrompt = richDetails.imagePrompts && richDetails.imagePrompts[0] 
-                ? richDetails.imagePrompts[0] 
-                : suggestion.trim().toLowerCase();
-              const imageRes = await fetchVocabImage(firstImagePrompt, 'photo');
-              const imgUrl = imageRes.url || `https://image.pollinations.ai/prompt/${encodeURIComponent(firstImagePrompt)}?width=500&height=400&model=flux&nologo=true`;
-              
-              const updatedRichData = {
-                ...richDetails,
-                savedSceneImages: [imgUrl]
-              };
-              
-              await addWordToDeck(suggestion.trim().toLowerCase(), updatedRichData);
-              window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-              setSourceToast({
-                message: `Saved "${suggestion.toLowerCase()}" to deck!`,
-                type: 'live'
-              });
-            } catch (err) {
-              console.error('Failed to auto-save suggestion:', err);
-              setSourceToast({
-                message: `Failed to save "${suggestion.toLowerCase()}"`,
-                type: 'live'
-              });
-            }
-          })();
-        }
-        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-        setTimeout(() => {
-          handleClear();
-        }, 300);
-        return;
-      }
-
-      if (isAlreadyInDeck) {
-        setIsExiting(true);
-        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-        setTimeout(() => {
-          handleClear();
-        }, 300);
-        return;
-      }
-      const targetWord = richCardData?.word ? richCardData.word.trim().toLowerCase() : wordInput.trim().toLowerCase();
-      const selectedUrls = sceneImages.map(img => img?.url || null);
-      const savedSceneImages = [...selectedUrls];
-      
-      const isExplicitlyPinned = selectedPrimaryImageIdx !== null;
-      let primaryIdx = selectedPrimaryImageIdx;
-      if (primaryIdx === null) {
-        // Randomly pick 0 or 1
-        primaryIdx = Math.floor(Math.random() * Math.min(2, savedSceneImages.length));
-      }
-      
-      if (primaryIdx === 1 && savedSceneImages.length > 1) {
-        // Swap index 0 and 1 so that the chosen image becomes the primary image (index 0)
-        const temp = savedSceneImages[0];
-        savedSceneImages[0] = savedSceneImages[1];
-        savedSceneImages[1] = temp;
-      }
-      
-      const updatedRichData = {
-        ...richCardData,
-        savedSceneImages: savedSceneImages,
-        hasPinnedImage: isExplicitlyPinned
-      };
-      const res = await addWordToDeck(targetWord, updatedRichData);
-      if (res.success) {
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
+    if (isTutorialActive) {
+      setIsExiting(true);
+      setTimeout(() => {
         setIsSuccess(true);
         window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
         setSourceToast({
-          message: `Saved to deck!`,
+          message: `Saved to deck! (Mock)`,
           type: 'live'
         });
-        // Auto-clear and return to search input after short transition delay
-        setTimeout(() => {
-          handleClear();
-        }, 300);
-      } else {
-        setErrorMsg(res.error || 'Failed to save card.');
+      }, 500);
+      return;
+    }
+    
+    // Swipe Right / Save
+    if (richCardData?.validation?.isInvalid) {
+      const suggestion = richCardData.validation.suggestion;
+      if (suggestion) {
+        setIsExiting(true);
+        setSourceToast({
+          message: `Saving "${suggestion.toLowerCase()}"...`,
+          type: 'live'
+        });
+        
+        // Non-blocking background save
+        (async () => {
+          try {
+            const richDetails = await getAiWordRichDetails(suggestion);
+            const firstImagePrompt = richDetails.imagePrompts && richDetails.imagePrompts[0] 
+              ? richDetails.imagePrompts[0] 
+              : suggestion.trim().toLowerCase();
+            const imageRes = await fetchVocabImage(firstImagePrompt, 'photo');
+            const imgUrl = imageRes.url || `https://image.pollinations.ai/prompt/${encodeURIComponent(firstImagePrompt)}?width=500&height=400&model=flux&nologo=true`;
+            
+            const updatedRichData = {
+              ...richDetails,
+              savedSceneImages: [imgUrl]
+            };
+            
+            await addWordToDeck(suggestion.trim().toLowerCase(), updatedRichData);
+            window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+            setSourceToast({
+              message: `Saved "${suggestion.toLowerCase()}" to deck!`,
+              type: 'live'
+            });
+          } catch (err) {
+            console.error('Failed to auto-save suggestion:', err);
+            setSourceToast({
+              message: `Failed to save "${suggestion.toLowerCase()}"`,
+              type: 'live'
+            });
+          }
+        })();
       }
-    } else if (info.offset.x < -threshold) {
-      // Swipe Left -> Discard / Exit
-      setIsExiting(true);
+      window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
       setTimeout(() => {
         handleClear();
       }, 300);
+      return;
+    }
+
+    if (isAlreadyInDeck) {
+      setIsExiting(true);
+      window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+      setTimeout(() => {
+        handleClear();
+      }, 300);
+      return;
+    }
+    const targetWord = richCardData?.word ? richCardData.word.trim().toLowerCase() : wordInput.trim().toLowerCase();
+    const selectedUrls = sceneImages.map(img => img?.url || null);
+    const savedSceneImages = [...selectedUrls];
+    
+    const isExplicitlyPinned = selectedPrimaryImageIdx !== null;
+    let primaryIdx = selectedPrimaryImageIdx;
+    if (primaryIdx === null) {
+      // Randomly pick 0 or 1
+      primaryIdx = Math.floor(Math.random() * Math.min(2, savedSceneImages.length));
+    }
+    
+    if (primaryIdx === 1 && savedSceneImages.length > 1) {
+      // Swap index 0 and 1 so that the chosen image becomes the primary image (index 0)
+      const temp = savedSceneImages[0];
+      savedSceneImages[0] = savedSceneImages[1];
+      savedSceneImages[1] = temp;
+    }
+    
+    const updatedRichData = {
+      ...richCardData,
+      savedSceneImages: savedSceneImages,
+      hasPinnedImage: isExplicitlyPinned
+    };
+    const res = await addWordToDeck(targetWord, updatedRichData);
+    if (res.success) {
+      setIsSuccess(true);
+      window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+      setSourceToast({
+        message: `Saved to deck!`,
+        type: 'live'
+      });
+      // Auto-clear and return to search input after short transition delay
+      setTimeout(() => {
+        handleClear();
+      }, 300);
+    } else {
+      setErrorMsg(res.error || 'Failed to save card.');
+    }
+  };
+
+  const handleDiscardWord = () => {
+    if (isSuccess || isExiting) return;
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
+    if (isTutorialActive) {
+      setIsExiting(true);
+      setTimeout(() => {
+        setIsSuccess(true);
+        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
+        setSourceToast({
+          message: `Discarded! (Mock)`,
+          type: 'live'
+        });
+      }, 500);
+      return;
+    }
+    setIsExiting(true);
+    setTimeout(() => {
+      handleClear();
+    }, 300);
+  };
+
+  const handleTranslateDragEnd = async (event, info) => {
+    if (isSuccess || isExiting) return;
+    const threshold = 80;
+    if (info.offset.x > threshold) {
+      await handleSaveWord();
+    } else if (info.offset.x < -threshold) {
+      handleDiscardWord();
     }
   };
 
@@ -826,7 +919,7 @@ const AddWord = () => {
       }, 350);
 
       // Fetch real photos for scenes in background (non-blocking)
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
       if (isTutorialActive) {
         setSceneImages([
           {
@@ -974,7 +1067,7 @@ const AddWord = () => {
     const handleSaveWordEvent = async () => {
       if (isSuccess || isExiting || !richCardData) return;
       
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
       if (isTutorialActive) {
         setIsExiting(true);
         setTimeout(() => {
@@ -1092,7 +1185,7 @@ const AddWord = () => {
     setExistingCard(null);
     setErrorMsg('');
 
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
     if (isTutorialActive) {
       setTimeout(() => {
         const mockDetails = {
@@ -1536,8 +1629,30 @@ const AddWord = () => {
                   value={wordInput}
                   maxLength={50}
                   onChange={(e) => {
+                    const val = e.target.value;
+                    const isTutorial = localStorage.getItem('memeng_tutorial_done') === 'false';
+                    
+                    if (isTutorial && tutorialStep === 0) {
+                      // Lock input to "hello" character-by-character
+                      const target = "hello";
+                      const currentLength = wordInput.length;
+                      if (val.length < currentLength) {
+                        setWordInput(val);
+                      } else {
+                        const nextChar = target[currentLength];
+                        if (nextChar) {
+                          const newVal = wordInput + nextChar;
+                          setWordInput(newVal);
+                          if (newVal === "hello") {
+                            window.dispatchEvent(new CustomEvent('tutorial-typed-hello'));
+                          }
+                        }
+                      }
+                      return;
+                    }
+
                     // Allow English letters, Thai characters (\u0e00-\u0e7f), numbers, spaces, and basic English punctuation
-                    let cleaned = e.target.value.replace(/[^a-zA-Z0-9\s\-\'\?!\.,;:\"()\u0e00-\u0e7f]/g, '');
+                    let cleaned = val.replace(/[^a-zA-Z0-9\s\-\'\?!\.,;:\"()\u0e00-\u0e7f]/g, '');
                     if (cleaned.length > 50) {
                       cleaned = cleaned.slice(0, 50);
                     }
@@ -1602,8 +1717,9 @@ const AddWord = () => {
                   Press Enter to Translate & Save
                 </span>
                 <button
+                  id="tutorial-translate-submit-btn"
                   type="submit"
-                  disabled={isFilling || !wordInput.trim()}
+                  disabled={isFilling || !wordInput.trim() || (localStorage.getItem('memeng_tutorial_done') === 'false' && wordInput !== 'hello')}
                   className="glass-button primary animate-scale"
                   style={{
                     borderRadius: '12px',
@@ -2579,6 +2695,7 @@ const AddWord = () => {
         </AnimatePresence>
 
       </motion.div>
+      </div>
 
       {/* Toast Notification for Data Source */}
       <AnimatePresence>
@@ -2644,7 +2761,219 @@ const AddWord = () => {
         )}
       </AnimatePresence>
       {renderWordTooltip()}
-      </div>
+      
+      <AnimatePresence>
+        {guestNudge && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 16000,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)'
+          }}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+              style={{
+                width: '88%',
+                maxWidth: '360px',
+                background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 12, 17, 0.85) 100%)',
+                borderRadius: '28px',
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                padding: '2rem 1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                position: 'relative'
+              }}
+            >
+              {/* Close button */}
+              <button
+                onClick={handleCloseNudge}
+                style={{
+                  position: 'absolute',
+                  top: '1rem',
+                  right: '1rem',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '50%',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.6)',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <X size={14} />
+              </button>
+
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '16px',
+                background: 'rgba(167, 139, 250, 0.15)',
+                border: '1px solid rgba(167, 139, 250, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#a78bfa',
+                marginBottom: '1.25rem',
+                boxShadow: '0 0 20px rgba(167, 139, 250, 0.2)'
+              }}>
+                <Sparkles size={28} />
+              </div>
+
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.3rem', fontWeight: 950, color: 'white', letterSpacing: '-0.5px' }}>
+                {guestNudge === 'soft' ? 'เก่งมากจ้า! ท่องได้ 10 คำแล้ว 🥳' : 'สุดยอดเลย! สะสมครบ 20 คำแล้ว 🔥'}
+              </h3>
+
+              <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                {guestNudge === 'soft' 
+                  ? 'คุณกำลังเรียนรู้ได้ดีมากในโหมดทดลอง! สมัครสมาชิกง่ายๆ เพื่อเซฟคำศัพท์และประวัติการท่องไม่ให้หายไปไหน'
+                  : 'คลังคำศัพท์ของคุณเริ่มโตแล้วนะ! ป้องกันข้อมูลสูญหายจากการเคลียร์แคช สมัครสมาชิกเพียง 1 คลิกเพื่อสำรองข้อมูลขึ้นระบบคลาวด์ถาวร'}
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                <button
+                  onClick={() => {
+                    handleCloseNudge();
+                    navigate('/login');
+                  }}
+                  className="glass-button primary animate-scale"
+                  style={{
+                    padding: '0.75rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 900,
+                    width: '100%',
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, #a78bfa 0%, #06b6d4 100%)',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 25px rgba(167, 139, 250, 0.3)'
+                  }}
+                >
+                  สมัครสมาชิกเพื่อเซฟข้อมูล 🚀
+                </button>
+
+                <button
+                  onClick={handleCloseNudge}
+                  style={{
+                    padding: '0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    width: '100%',
+                    borderRadius: '12px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  {guestNudge === 'soft' ? 'ไว้ทีหลัง (ท่องคำต่อไป)' : 'ยังก่อน (ฉันยอมรับความเสี่ยง)'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      {richCardData && !isFilling && !isSuccess && !isExiting && showShortcutButtons && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          style={{
+            position: 'absolute',
+            bottom: '88px',
+            left: 0,
+            right: 0,
+            margin: '0 auto',
+            display: 'flex',
+            width: 'calc(100% - 32px)',
+            maxWidth: '380px',
+            alignItems: 'center',
+            gap: '0.85rem',
+            zIndex: 9999,
+            pointerEvents: 'auto'
+          }}
+        >
+          {/* Discard / Back Button (Red, Left) */}
+          <button
+            onClick={() => {
+              playClickSound();
+              handleDiscardWord();
+            }}
+            className="animate-scale"
+            style={{
+              flex: 1,
+              height: '42px',
+              borderRadius: '12px',
+              background: 'rgba(239, 68, 68, 0.05)',
+              border: '1.5px solid rgba(239, 68, 68, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: '#ef4444',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              boxShadow: '0 4px 15px rgba(239, 68, 68, 0.1)',
+              outline: 'none',
+              transition: 'all 0.2s ease'
+            }}
+            id="tutorial-tinder-discard-btn"
+            title="Discard Word (Swipe Left)"
+          >
+            Back
+          </button>
+
+          {/* Save Button (Green, Right) */}
+          <button
+            onClick={() => {
+              playClickSound();
+              handleSaveWord();
+            }}
+            className="animate-scale"
+            style={{
+              flex: 1,
+              height: '42px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'white',
+              fontSize: '0.82rem',
+              fontWeight: 900,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)',
+              outline: 'none',
+              transition: 'all 0.2s ease'
+            }}
+            id="tutorial-tinder-save-btn"
+            title="Save Word (Swipe Right)"
+          >
+            Save
+          </button>
+        </motion.div>
+      )}
+      </AnimatePresence>
     </div>
   );
 };

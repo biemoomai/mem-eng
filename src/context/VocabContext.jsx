@@ -477,6 +477,10 @@ export const VocabProvider = ({ children }) => {
       
       const imageRes = await fetchVocabImage(firstImagePrompt, 'photo');
       imgUrl = imageRes.url || null;
+      if (imgUrl) {
+        if (!richDetails.savedSceneImages) richDetails.savedSceneImages = [];
+        richDetails.savedSceneImages[0] = imgUrl;
+      }
     }
 
     const newCard = {
@@ -507,12 +511,25 @@ export const VocabProvider = ({ children }) => {
         let wordId = null;
         const { data: existingWord } = await supabase
           .from('global_dictionary')
-          .select('id')
+          .select('id, rich_data')
           .eq('word', normalizedWord)
           .maybeSingle();
 
         if (existingWord) {
           wordId = existingWord.id;
+          // If the cached global_dictionary record doesn't have an image, update it
+          const cachedRichData = existingWord.rich_data ? (typeof existingWord.rich_data === 'string' ? JSON.parse(existingWord.rich_data) : existingWord.rich_data) : null;
+          if (cachedRichData && (!cachedRichData.savedSceneImages || !cachedRichData.savedSceneImages[0]) && imgUrl) {
+            if (!cachedRichData.savedSceneImages) cachedRichData.savedSceneImages = [];
+            cachedRichData.savedSceneImages[0] = imgUrl;
+            await supabase
+              .from('global_dictionary')
+              .update({
+                meaning: JSON.stringify(cachedRichData),
+                rich_data: cachedRichData
+              })
+              .eq('id', wordId);
+          }
         } else {
           const { data: newWord, error: wordError } = await supabase
             .from('global_dictionary')
@@ -617,20 +634,70 @@ export const VocabProvider = ({ children }) => {
       return { success: false, error: 'All words in this curriculum are already in your deck!' };
     }
     
-    // Shuffle the unadded words to ensure variety and prevent alphabetic learning fatigue
-    const shuffledUnadded = [...unadded];
-    for (let i = shuffledUnadded.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledUnadded[i], shuffledUnadded[j]] = [shuffledUnadded[j], shuffledUnadded[i]];
+    // Prioritization check: find which unadded words are pre-cached in global_dictionary with images
+    const cachedWithImages = new Set();
+    try {
+      const unaddedWordNames = unadded.map(w => w.word.toLowerCase().trim());
+      const { data: cachedList } = await supabase
+        .from('global_dictionary')
+        .select('word, rich_data')
+        .in('word', unaddedWordNames);
+
+      if (cachedList) {
+        for (const row of cachedList) {
+          const rich = row.rich_data ? (typeof row.rich_data === 'string' ? JSON.parse(row.rich_data) : row.rich_data) : null;
+          if (rich && rich.savedSceneImages && rich.savedSceneImages[0]) {
+            cachedWithImages.add(row.word.toLowerCase().trim());
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not check global_dictionary cache:", e);
     }
-    
-    const targetWords = shuffledUnadded.slice(0, count);
+
+    // Split unadded words into pre-cached (fully loaded) and uncached
+    const cachedGroup = unadded.filter(w => cachedWithImages.has(w.word.toLowerCase().trim()));
+    const uncachedGroup = unadded.filter(w => !cachedWithImages.has(w.word.toLowerCase().trim()));
+
+    // Shuffle both groups independently to prevent fatigue
+    const shuffledCached = [...cachedGroup];
+    for (let i = shuffledCached.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledCached[i], shuffledCached[j]] = [shuffledCached[j], shuffledCached[i]];
+    }
+
+    const shuffledUncached = [...uncachedGroup];
+    for (let i = shuffledUncached.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledUncached[i], shuffledUncached[j]] = [shuffledUncached[j], shuffledUncached[i]];
+    }
+
+    // Prioritize Cached Group first, then Uncached Group
+    const targetWords = [...shuffledCached, ...shuffledUncached].slice(0, count);
     const addedCardsList = [];
     
     for (const item of targetWords) {
       try {
         const details = await getAiWordRichDetails(item.word);
         if (details && !details.error) {
+          // Fetch auto-image if not present
+          let imgUrl = details?.savedSceneImages?.[0] || '';
+          if (!imgUrl) {
+            const firstImagePrompt = details?.imagePrompts && details.imagePrompts[0]
+              ? details.imagePrompts[0]
+              : item.word;
+            try {
+              const imageRes = await fetchVocabImage(firstImagePrompt, 'photo');
+              imgUrl = imageRes.url || '';
+              if (imgUrl) {
+                if (!details.savedSceneImages) details.savedSceneImages = [];
+                details.savedSceneImages[0] = imgUrl;
+              }
+            } catch (err) {
+              console.error("Failed to fetch auto-image for curriculum word:", item.word, err);
+            }
+          }
+
           let category = 'Daily Life';
           if (curriculumName.startsWith('TOEIC')) category = 'Business';
           else if (curriculumName.startsWith('IELTS')) category = 'Academic';
@@ -640,12 +707,25 @@ export const VocabProvider = ({ children }) => {
           if (user) {
             const { data: existingWord } = await supabase
               .from('global_dictionary')
-              .select('id')
+              .select('id, rich_data')
               .eq('word', item.word.toLowerCase().trim())
               .maybeSingle();
               
             if (existingWord) {
               wordId = existingWord.id;
+              // If the cached global_dictionary record doesn't have an image, update it
+              const cachedRichData = existingWord.rich_data ? (typeof existingWord.rich_data === 'string' ? JSON.parse(existingWord.rich_data) : existingWord.rich_data) : null;
+              if (cachedRichData && (!cachedRichData.savedSceneImages || !cachedRichData.savedSceneImages[0]) && imgUrl) {
+                if (!cachedRichData.savedSceneImages) cachedRichData.savedSceneImages = [];
+                cachedRichData.savedSceneImages[0] = imgUrl;
+                await supabase
+                  .from('global_dictionary')
+                  .update({
+                    meaning: JSON.stringify(cachedRichData),
+                    rich_data: cachedRichData
+                  })
+                  .eq('id', wordId);
+              }
             } else {
               const { data: newWord, error: wordErr } = await supabase
                 .from('global_dictionary')
@@ -673,7 +753,7 @@ export const VocabProvider = ({ children }) => {
             cefrLevel: item.cefr_level || 'B2',
             category: category,
             curriculum: curriculumName,
-            videoUrl: details?.savedSceneImages?.[0] || '',
+            videoUrl: imgUrl,
             srsLevel: 'Learning',
             nextReviewDate: new Date(Date.now() - 60000).toISOString(),
             stability: 1.0,
@@ -1091,8 +1171,7 @@ export const VocabProvider = ({ children }) => {
 
   // Stub functions for components needing signature matching
   const pullNewWords = async () => ({ count: 0 });
-  const generateMemeAndUpload = async () => null;
-  const approveWordDoodle = async () => true;
+
 
   const clearDeckAndResetStats = async () => {
     setVocab([]);
@@ -1131,8 +1210,7 @@ export const VocabProvider = ({ children }) => {
       providerStatus,
       resetCooldowns,
       pullNewWords,
-      generateMemeAndUpload,
-      approveWordDoodle,
+
       activeCurriculum,
       setActiveCurriculum,
       curriculumWords,

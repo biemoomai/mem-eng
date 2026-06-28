@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "seed": "node scripts/seed_dictionary.cjs"
+    "seed": "node scripts/seed_dictionary.cjs",
+    "repair-translations": "node scripts/repair_null_translations.cjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

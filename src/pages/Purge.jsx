@@ -14,6 +14,402 @@ const cleanMediaUrl = (url) => {
   return url;
 };
 
+const TODAY_INTERESTING_WORDS = [
+  {
+    word: 'ubiquitous',
+    pos: 'adjective',
+    cefrLevel: 'C2',
+    meaning: JSON.stringify({
+      word: 'ubiquitous',
+      pos: 'adjective',
+      cefrLevel: 'C2',
+      _provider: 'Offline Curated',
+      englishExplanation: {
+        definition: 'Present, appearing, or found everywhere at the same time.',
+        phrase: 'the ubiquitous smartphones',
+        phraseMeaning: 'สมาร์ทโฟนที่มีอยู่ทุกหนทุกแห่ง'
+      },
+      thaiTranslation: {
+        word: 'ที่มีอยู่ทุกหนทุกแห่ง',
+        phrase: 'สมาร์ทโฟนที่มีอยู่ทุกหนทุกแห่ง'
+      },
+      scenes: [
+        {
+          situation: 'People looking at screens on a crowded train',
+          dialogue: 'Smartphones have become ubiquitous in our daily lives.',
+          meaning: 'สมาร์ทโฟนได้กลายเป็นสิ่งที่มีอยู่ทุกหนทุกแห่งในชีวิตประจำวันของเรา',
+          thaiWordUsed: 'มีอยู่ทุกหนทุกแห่ง',
+          imageTag: 'subway'
+        }
+      ],
+      imagePrompts: ['smartphones everywhere', 'screens crowd train'],
+      savedSceneImages: ['https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop']
+    }),
+    videoUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop',
+  },
+  {
+    word: 'pragmatic',
+    pos: 'adjective',
+    cefrLevel: 'C1',
+    meaning: JSON.stringify({
+      word: 'pragmatic',
+      pos: 'adjective',
+      cefrLevel: 'C1',
+      _provider: 'Offline Curated',
+      englishExplanation: {
+        definition: 'Solving problems in a sensible way that suits the conditions, rather than obeying fixed theories.',
+        phrase: 'a pragmatic approach',
+        phraseMeaning: 'แนวทางที่เน้นการปฏิบัติจริง'
+      },
+      thaiTranslation: {
+        word: 'ที่เน้นความเป็นจริง/ในทางปฏิบัติ',
+        phrase: 'แนวทางที่เน้นการปฏิบัติจริง'
+      },
+      scenes: [
+        {
+          situation: 'A business meeting choosing a simple working solution',
+          dialogue: 'We need to take a pragmatic approach to solve this issue.',
+          meaning: 'เราจำเป็นต้องใช้วิธีการที่เป็นไปได้จริงเพื่อแก้ปัญหานี้',
+          thaiWordUsed: 'เป็นไปได้จริง',
+          imageTag: 'office'
+        }
+      ],
+      imagePrompts: ['business strategy team', 'practical work solution'],
+      savedSceneImages: ['https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&auto=format&fit=crop']
+    }),
+    videoUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&auto=format&fit=crop',
+  },
+  {
+    word: 'resilient',
+    pos: 'adjective',
+    cefrLevel: 'B2',
+    meaning: JSON.stringify({
+      word: 'resilient',
+      pos: 'adjective',
+      cefrLevel: 'B2',
+      _provider: 'Offline Curated',
+      englishExplanation: {
+        definition: 'Able to quickly return to a previous good condition after problems or difficulties.',
+        phrase: 'a resilient character',
+        phraseMeaning: 'อุปนิสัยที่ยืดหยุ่นไม่ยอมแพ้'
+      },
+      thaiTranslation: {
+        word: 'ที่ยืดหยุ่น/ฟื้นตัวเร็ว',
+        phrase: 'อุปนิสัยที่ยืดหยุ่นไม่ยอมแพ้'
+      },
+      scenes: [
+        {
+          situation: 'A small plant growing through a crack in concrete',
+          dialogue: 'She is resilient enough to bounce back from failure.',
+          meaning: 'เธอยืดหยุ่นแข็งแกร่งพอที่จะลุกขึ้นใหม่จากความล้มเหลว',
+          thaiWordUsed: 'ยืดหยุ่นแข็งแกร่ง',
+          imageTag: 'plant'
+        }
+      ],
+      imagePrompts: ['plant concrete crack', 'person rising up'],
+      savedSceneImages: ['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop']
+    }),
+    videoUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop',
+  }
+];
+
+const COLLECTIONS_DATA = {
+  'Movie Words': [
+    {
+      word: 'climax',
+      pos: 'noun',
+      cefrLevel: 'B2',
+      meaning: JSON.stringify({
+        word: 'climax',
+        pos: 'noun',
+        cefrLevel: 'B2',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'The most exciting or important part of a story, play, or movie, usually near the end.',
+          phrase: 'reach a dramatic climax',
+          phraseMeaning: 'เข้าสู่จุดไคลแม็กซ์ที่น่าตื่นเต้น'
+        },
+        thaiTranslation: {
+          word: 'จุดสำคัญสุด/จุดไคลแม็กซ์',
+          phrase: 'เข้าสู่จุดไคลแม็กซ์ที่น่าตื่นเต้น'
+        },
+        scenes: [
+          {
+            situation: 'A movie theater screen during an action battle scene',
+            dialogue: 'The film reaches its dramatic climax in the final battle.',
+            meaning: 'ภาพยนตร์เรื่องนี้มาถึงจุดสำคัญที่สุดในฉากต่อสู้สุดท้าย',
+            thaiWordUsed: 'จุดสำคัญที่สุด',
+            imageTag: 'theater'
+          }
+        ],
+        imagePrompts: ['movie climax explosion', 'exciting movie end'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop',
+    },
+    {
+      word: 'protagonist',
+      pos: 'noun',
+      cefrLevel: 'C1',
+      meaning: JSON.stringify({
+        word: 'protagonist',
+        pos: 'noun',
+        cefrLevel: 'C1',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'The main character in a movie, play, story, or book.',
+          phrase: 'the heroic protagonist',
+          phraseMeaning: 'ตัวละครเอกที่เป็นผู้กล้า'
+        },
+        thaiTranslation: {
+          word: 'ตัวเอกของเรื่อง/ตัวละครนำ',
+          phrase: 'ตัวละครเอกที่เป็นผู้กล้า'
+        },
+        scenes: [
+          {
+            situation: 'A spotlight on a lead actor on a theatre stage',
+            dialogue: 'The protagonist of the story struggles to save his city.',
+            meaning: 'ตัวเอกของเรื่องดิ้นรนต่อสู้เพื่อกอบกู้เมืองของเขา',
+            thaiWordUsed: 'ตัวเอกของเรื่อง',
+            imageTag: 'stage'
+          }
+        ],
+        imagePrompts: ['spotlight lead actor', 'hero story book'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500&auto=format&fit=crop',
+    },
+    {
+      word: 'thriller',
+      pos: 'noun',
+      cefrLevel: 'B2',
+      meaning: JSON.stringify({
+        word: 'thriller',
+        pos: 'noun',
+        cefrLevel: 'B2',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'A book, play, or movie with an exciting story, especially about crime, mystery, or danger.',
+          phrase: 'a suspenseful thriller',
+          phraseMeaning: 'ภาพยนตร์ระทึกขวัญที่ตึงเครียด'
+        },
+        thaiTranslation: {
+          word: 'หนังระทึกขวัญ/นิยายระทึกขวัญ',
+          phrase: 'ภาพยนตร์ระทึกขวัญที่ตึงเครียด'
+        },
+        scenes: [
+          {
+            situation: 'A dark detective room with neon shadows',
+            dialogue: 'I love watching mystery thrillers on rainy nights.',
+            meaning: 'ฉันชอบดูภาพยนตร์ระทึกขวัญสืบสวนในคืนที่ฝนตก',
+            thaiWordUsed: 'ภาพยนตร์ระทึกขวัญ',
+            imageTag: 'neon'
+          }
+        ],
+        imagePrompts: ['dark detective mystery', 'suspense movie shadow'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500&auto=format&fit=crop',
+    }
+  ],
+  'Music Words': [
+    {
+      word: 'harmony',
+      pos: 'noun',
+      cefrLevel: 'B2',
+      meaning: JSON.stringify({
+        word: 'harmony',
+        pos: 'noun',
+        cefrLevel: 'B2',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'The combination of different musical notes played or sung at the same time to produce a pleasing sound.',
+          phrase: 'sing in perfect harmony',
+          phraseMeaning: 'ร้องเพลงประสานเสียงอย่างสมบูรณ์แบบ'
+        },
+        thaiTranslation: {
+          word: 'ความประสานเสียง/ความกลมกลืน',
+          phrase: 'ร้องเพลงประสานเสียงอย่างสมบูรณ์แบบ'
+        },
+        scenes: [
+          {
+            situation: 'A choir singing together on stage',
+            dialogue: 'Their voices blended in beautiful harmony during the show.',
+            meaning: 'เสียงของพวกเขาผสานเข้าด้วยกันอย่างสอดประสานสวยงามในระหว่างการแสดง',
+            thaiWordUsed: 'สอดประสาน',
+            imageTag: 'choir'
+          }
+        ],
+        imagePrompts: ['choir stage singing', 'harmony musical notes'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500&auto=format&fit=crop',
+    },
+    {
+      word: 'rhythm',
+      pos: 'noun',
+      cefrLevel: 'B1',
+      meaning: JSON.stringify({
+        word: 'rhythm',
+        pos: 'noun',
+        cefrLevel: 'B1',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'A strong, regular, repeated pattern of movement or sound in music.',
+          phrase: 'a catchy drum rhythm',
+          phraseMeaning: 'จังหวะกลองที่ติดหู'
+        },
+        thaiTranslation: {
+          word: 'จังหวะดนตรี/ท่วงทำนอง',
+          phrase: 'จังหวะกลองที่ติดหู'
+        },
+        scenes: [
+          {
+            situation: 'A drummer playing a snare drum energetically',
+            dialogue: 'Just tap your feet to the rhythm of the drums.',
+            meaning: 'แค่เคาะเท้าตามจังหวะของกลองก็พอ',
+            thaiWordUsed: 'จังหวะ',
+            imageTag: 'drummer'
+          }
+        ],
+        imagePrompts: ['snare drum player', 'foot tapping music'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?w=500&auto=format&fit=crop',
+    },
+    {
+      word: 'crescendo',
+      pos: 'noun',
+      cefrLevel: 'C2',
+      meaning: JSON.stringify({
+        word: 'crescendo',
+        pos: 'noun',
+        cefrLevel: 'C2',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'A gradual increase in loudness in a piece of music, or a peak of excitement.',
+          phrase: 'build to a crescendo',
+          phraseMeaning: 'ค่อยๆ ดังขึ้นเรื่อยๆ จนถึงจุดพีค'
+        },
+        thaiTranslation: {
+          word: 'การเพิ่มความดังของเสียงดนตรี/จุดดนตรีดังสุด',
+          phrase: 'ค่อยๆ ดังขึ้นเรื่อยๆ จนถึงจุดพีค'
+        },
+        scenes: [
+          {
+            situation: 'An orchestra conductor waving baton passionately',
+            dialogue: 'The orchestra built up to a powerful crescendo.',
+            meaning: 'วงออเคสตราค่อยๆ เพิ่มเสียงบรรเลงให้ดังสุดขีดอย่างทรงพลัง',
+            thaiWordUsed: 'เพิ่มเสียงบรรเลงให้ดังสุดขีด',
+            imageTag: 'conductor'
+          }
+        ],
+        imagePrompts: ['orchestra conductor baton', 'crescendo peak music'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=500&auto=format&fit=crop',
+    }
+  ],
+  'Business Words': [
+    {
+      word: 'revenue',
+      pos: 'noun',
+      cefrLevel: 'C1',
+      meaning: JSON.stringify({
+        word: 'revenue',
+        pos: 'noun',
+        cefrLevel: 'C1',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'The total income/money generated by a business from sales of goods or services.',
+          phrase: 'boost annual revenue',
+          phraseMeaning: 'เพิ่มรายได้ประจำปี'
+        },
+        thaiTranslation: {
+          word: 'รายได้/รายรับ',
+          phrase: 'เพิ่มรายได้ประจำปี'
+        },
+        scenes: [
+          {
+            situation: 'A tablet showing rising financial bar charts',
+            dialogue: 'Our company has increased its annual revenue by twenty percent.',
+            meaning: 'บริษัทของเราได้เพิ่มรายได้ประจำปีขึ้นอีกร้อยละยี่สิบ',
+            thaiWordUsed: 'รายได้ประจำปี',
+            imageTag: 'charts'
+          }
+        ],
+        imagePrompts: ['financial bar charts tablet', 'business sales cash'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500&auto=format&fit=crop',
+    },
+    {
+      word: 'equity',
+      pos: 'noun',
+      cefrLevel: 'C1',
+      meaning: JSON.stringify({
+        word: 'equity',
+        pos: 'noun',
+        cefrLevel: 'C1',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'The value of a company shares, or the state of being fair and impartial.',
+          phrase: 'hold company equity',
+          phraseMeaning: 'ถือหุ้นหรือส่วนของเจ้าของในบริษัท'
+        },
+        thaiTranslation: {
+          word: 'หุ้น/ส่วนของผู้ถือหุ้น/ความเท่าเทียม',
+          phrase: 'ถือหุ้นหรือส่วนของเจ้าของในบริษัท'
+        },
+        scenes: [
+          {
+            situation: 'A business owner signing a share contract document',
+            dialogue: 'He was given some equity in the startup as a reward.',
+            meaning: 'เขาได้รับส่วนแบ่งหุ้นในบริษัทสตาร์ทอัพเป็นรางวัลตอบแทน',
+            thaiWordUsed: 'ส่วนแบ่งหุ้น',
+            imageTag: 'contract'
+          }
+        ],
+        imagePrompts: ['owner sign document contract', 'scales of equity fairness'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1450133064473-71024230f91b?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=500&auto=format&fit=crop',
+    },
+    {
+      word: 'synergy',
+      pos: 'noun',
+      cefrLevel: 'C2',
+      meaning: JSON.stringify({
+        word: 'synergy',
+        pos: 'noun',
+        cefrLevel: 'C2',
+        _provider: 'Offline Curated',
+        englishExplanation: {
+          definition: 'The extra energy, power, or effectiveness created when two or more people or organizations work together.',
+          phrase: 'create powerful team synergy',
+          phraseMeaning: 'สร้างพลังการทำงานร่วมกันอย่างแข็งแกร่ง'
+        },
+        thaiTranslation: {
+          word: 'การประสานพลัง/การทำงานร่วมกันแบบเสริมพลัง',
+          phrase: 'สร้างพลังการทำงานร่วมกันอย่างแข็งแกร่ง'
+        },
+        scenes: [
+          {
+            situation: 'Three team members stacking hands together in unity',
+            dialogue: 'The merger will create powerful synergy between the teams.',
+            meaning: 'การควบรวมกิจการจะสร้างการประสานพลังงานที่ยอดเยี่ยมระหว่างสองทีม',
+            thaiWordUsed: 'การประสานพลังงาน',
+            imageTag: 'unity'
+          }
+        ],
+        imagePrompts: ['hands stacked unity team', 'synergy puzzle fit'],
+        savedSceneImages: ['https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500&auto=format&fit=crop']
+      }),
+      videoUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500&auto=format&fit=crop',
+    }
+  ]
+};
+
 const parseMeaningField = (meaning) => {
   if (!meaning) return {};
   if (typeof meaning === 'object') return meaning;
@@ -391,6 +787,7 @@ const Purge = () => {
   }, [rawVocab, activeCurriculum, curriculumWords]);
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { isAnonymous } = useAuth();
 
   const speakText = (text) => {
     if (!text || !window.speechSynthesis) return;
@@ -478,7 +875,11 @@ const Purge = () => {
       setSessionQueue(due);
       if (due.length > 0) {
         playClickSound();
-        setIsStudying(true);
+        if (isAnonymous) {
+          setShowGuestModePopup(true);
+        } else {
+          setIsStudying(true);
+        }
       }
     }
   };
@@ -509,6 +910,17 @@ const Purge = () => {
     );
   };
   const [unlockedWords, setUnlockedWords] = useState([]);
+  const [selectedUnlockIds, setSelectedUnlockIds] = useState({});
+  const [flippedUnlockIds, setFlippedUnlockIds] = useState({});
+  const [showInterestingModal, setShowInterestingModal] = useState(false);
+  const [flippedInterestingWords, setFlippedInterestingWords] = useState({});
+  const [selectedInterestingWords, setSelectedInterestingWords] = useState({});
+  const [showCollectionChoice, setShowCollectionChoice] = useState(false);
+  const [showCollectionImport, setShowCollectionImport] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState(null);
+  const [flippedCollectionWords, setFlippedCollectionWords] = useState({});
+  const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
+  const [showGuestModePopup, setShowGuestModePopup] = useState(false);
   const [addedProgress, setAddedProgress] = useState(null);
   
   const [tooltipStack, setTooltipStack] = useState([]);
@@ -829,13 +1241,84 @@ const Purge = () => {
     }
   };
 
-  const handleCloseUnlockedWords = (shouldStartStudy) => {
+    const handleCloseUnlockedWords = (shouldStartStudy) => {
+    // Delete any words that the user unchecked
+    unlockedWords.forEach(w => {
+      const isSelected = selectedUnlockIds[w.id] !== false;
+      if (!isSelected) {
+        deleteWordFromDeck(w.id);
+      }
+    });
+
+    const selectedWords = unlockedWords.filter(w => selectedUnlockIds[w.id] !== false);
     setUnlockedWords([]);
-    const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
-    setSessionQueue(due);
-    if (shouldStartStudy && due.length > 0) {
+    setSelectedUnlockIds({});
+    setFlippedUnlockIds({});
+
+    if (shouldStartStudy && selectedWords.length > 0) {
+      setSessionQueue(selectedWords);
       setIsStudying(true);
-      setIsCustomSession(false);
+      setIsCustomSession(true);
+      setRevealStep(0);
+    } else {
+      const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
+      setSessionQueue(due);
+    }
+  };
+
+  const handleAddInterestingWords = async () => {
+    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    let count = 0;
+    for (const w of unadded) {
+      if (selectedInterestingWords[w.word] !== false) {
+        const richData = JSON.parse(w.meaning);
+        await addWordToDeck(w.word, richData);
+        count += 1;
+      }
+    }
+    setShowInterestingModal(false);
+    if (count > 0) {
+      showToast(`Added ${count} new words to your deck!`);
+      setIsInitialized(false);
+    }
+  };
+
+  const handleSelectCollection = (colName) => {
+    setSelectedCollection(colName);
+    setShowCollectionChoice(false);
+    
+    const colWords = COLLECTIONS_DATA[colName] || [];
+    const unadded = colWords.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    
+    if (unadded.length > 0) {
+      const defaultSelected = {};
+      unadded.forEach(w => {
+        defaultSelected[w.word] = true;
+      });
+      setSelectedCollectionWords(defaultSelected);
+      setShowCollectionImport(true);
+    } else {
+      showToast(`You have already imported all words from "${colName}"!`);
+    }
+  };
+
+  const handleAddCollectionWords = async () => {
+    if (!selectedCollection) return;
+    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
+    const unadded = colWords.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    let count = 0;
+    for (const w of unadded) {
+      if (selectedCollectionWords[w.word] !== false) {
+        const richData = JSON.parse(w.meaning);
+        await addWordToDeck(w.word, richData);
+        count += 1;
+      }
+    }
+    setShowCollectionImport(false);
+    setSelectedCollection(null);
+    if (count > 0) {
+      showToast(`Added ${count} new words to your deck!`);
+      setIsInitialized(false);
     }
   };
 
@@ -1040,6 +1523,48 @@ const Purge = () => {
       }
     }
   }, [vocab, sessionQueue]);
+  
+  // 1. Today's Interesting Words check on mount
+  useEffect(() => {
+    if (loading) return;
+    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
+    if (!isDone) return; // Skip if tutorial is active
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastSeenDate = localStorage.getItem('memeng_last_interesting_seen_date');
+
+    if (lastSeenDate !== todayStr) {
+      const unadded = TODAY_INTERESTING_WORDS.filter(
+        w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase())
+      );
+      if (unadded.length > 0) {
+        const defaultSelected = {};
+        unadded.forEach(w => {
+          defaultSelected[w.word] = true;
+        });
+        setSelectedInterestingWords(defaultSelected);
+        setShowInterestingModal(true);
+      }
+      localStorage.setItem('memeng_last_interesting_seen_date', todayStr);
+    }
+  }, [vocab, loading]);
+
+  // 2. Trigger Recommended Collections modal when caught up
+  useEffect(() => {
+    if (loading) return;
+    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
+    if (!isDone) return;
+
+    const dueCountLocal = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()).length;
+    if (dueCountLocal === 0 && !isStudying) {
+      const lastRecommendDate = localStorage.getItem('memeng_last_collection_recommend_date');
+      const todayStr = new Date().toDateString();
+      if (lastRecommendDate !== todayStr) {
+        setShowCollectionChoice(true);
+        localStorage.setItem('memeng_last_collection_recommend_date', todayStr);
+      }
+    }
+  }, [vocab, isStudying, loading]);
   
   let richCardData = wordObj ? parseMeaningField(wordObj.meaning) : null;
 
@@ -1888,7 +2413,7 @@ const Purge = () => {
                 {unlockedWords.length} Cards Unlocked!
               </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>
-                Tap cards to play pronunciation
+                Tap cards to translate. Tap speaker for sound.
               </p>
             </div>
 
@@ -1907,8 +2432,11 @@ const Purge = () => {
             >
               {unlockedWords.map((card, index) => {
                 let parsedMeaning = parseMeaningField(card.meaning);
-
-                const definition = parsedMeaning.englishExplanation?.definition || parsedMeaning.definition || 'No definition available.';
+                const isChecked = selectedUnlockIds[card.id] !== false;
+                const showThai = !!flippedUnlockIds[card.id];
+                const definition = showThai
+                  ? (parsedMeaning.thaiTranslation?.word || '')
+                  : (parsedMeaning.englishExplanation?.definition || parsedMeaning.definition || 'No definition available.');
 
                 return (
                   <motion.div
@@ -1918,7 +2446,7 @@ const Purge = () => {
                     transition={{ delay: index * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => handleSpeak(card.word)}
+                    onClick={() => setFlippedUnlockIds(prev => ({ ...prev, [card.id]: !prev[card.id] }))}
                     style={{
                       position: 'relative',
                       height: '140px',
@@ -1964,56 +2492,113 @@ const Purge = () => {
                     }}>
                       {/* Top metadata */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontSize: '0.62rem',
-                          background: 'rgba(212, 175, 55, 0.18)',
-                          color: '#fcd34d',
-                          border: '1px solid rgba(212, 175, 55, 0.28)',
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: '6px',
-                          fontWeight: 800,
-                          textTransform: 'uppercase'
-                        }}>
-                          {card.cefrLevel || 'C1'}
-                        </span>
-                        
-                        <span style={{
-                          fontSize: '0.55rem',
-                          background: 'rgba(255, 255, 255, 0.06)',
-                          color: 'rgba(255, 255, 255, 0.65)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: '6px',
-                          fontWeight: 800,
-                          textTransform: 'uppercase'
-                        }}>
-                          {card.pos || 'n.'}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.62rem',
+                            background: 'rgba(212, 175, 55, 0.18)',
+                            color: '#fcd34d',
+                            border: '1px solid rgba(212, 175, 55, 0.28)',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '6px',
+                            fontWeight: 800,
+                            textTransform: 'uppercase'
+                          }}>
+                            {card.cefrLevel || 'C1'}
+                          </span>
+                          
+                          <span style={{
+                            fontSize: '0.55rem',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            color: 'rgba(255, 255, 255, 0.65)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '6px',
+                            fontWeight: 800,
+                            textTransform: 'uppercase'
+                          }}>
+                            {card.pos || 'n.'}
+                          </span>
+                        </div>
+
+                        {/* Top-Right Checkbox */}
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation(); // prevent card flip
+                            setSelectedUnlockIds(prev => ({ ...prev, [card.id]: !isChecked }));
+                          }}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '6px',
+                            background: isChecked ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'rgba(0, 0, 0, 0.4)',
+                            border: "1.5px solid " + (isChecked ? "#f59e0b" : "rgba(255, 255, 255, 0.3)"),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: isChecked ? '0 0 10px rgba(245, 158, 11, 0.3)' : 'none',
+                            transition: 'all 0.2s ease',
+                            zIndex: 5
+                          }}
+                        >
+                          {isChecked && <CheckCircle size={12} color="#000" strokeWidth={3} />}
+                        </div>
                       </div>
 
                       {/* Bottom title & meaning */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', textAlign: 'left' }}>
-                        <h4 style={{
-                          fontSize: '1.15rem',
-                          fontWeight: 950,
-                          margin: 0,
-                          color: '#ffffff',
-                          textShadow: '0 2px 4px rgba(0,0,0,0.6)',
-                          letterSpacing: '-0.3px'
-                        }}>
-                          {card.word}
-                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                          <h4 style={{
+                            fontSize: '1.15rem',
+                            fontWeight: 950,
+                            margin: 0,
+                            color: '#ffffff',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.6)',
+                            letterSpacing: '-0.3px'
+                          }}>
+                            {card.word}
+                          </h4>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // prevent card flip
+                              handleSpeak(card.word);
+                            }}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              borderRadius: '50%',
+                              width: '22px',
+                              height: '22px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#fcd34d',
+                              padding: 0,
+                              outline: 'none',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                          >
+                            <Volume2 size={12} />
+                          </button>
+                          {showThai && (
+                            <span style={{ fontSize: '0.52rem', background: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '1px 4px', borderRadius: '4px', fontWeight: 900, marginLeft: 'auto' }}>THAI</span>
+                          )}
+                        </div>
                         
                         <p style={{
                           margin: 0,
                           fontSize: '0.68rem',
-                          color: 'rgba(255, 255, 255, 0.72)',
+                          color: showThai ? '#fcd34d' : 'rgba(255, 255, 255, 0.72)',
                           lineHeight: 1.35,
-                          maxWidth: '90%',
+                          maxWidth: '95%',
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
+                          fontWeight: showThai ? 700 : 400
                         }}>
                           {definition}
                         </p>
@@ -2065,6 +2650,663 @@ const Purge = () => {
       </>
     );
   };
+
+  const renderInterestingWordsModal = () => {
+    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    
+    return (
+      <>
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          exit={{ opacity: 0 }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: 'blur(20px)' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
+          <motion.div
+            initial={{ scale: 0.95, y: 30, opacity: 0 }} 
+            animate={{ scale: 1, y: 0, opacity: 1 }} 
+            exit={{ scale: 0.95, y: 30, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            style={{
+              pointerEvents: 'auto',
+              width: '92%', 
+              maxWidth: '400px', 
+              height: '82%', 
+              background: 'radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12) 0%, rgba(8, 9, 11, 0.95) 100%)',
+              backdropFilter: 'blur(30px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+              borderRadius: '28px', 
+              border: '1px solid rgba(59, 130, 246, 0.2)', 
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+              display: 'flex', 
+              flexDirection: 'column', 
+              overflow: 'hidden',
+              padding: '1.5rem 1rem'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: 'rgba(59, 130, 246, 0.12)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                marginBottom: '0.75rem'
+              }}>
+                <Compass size={22} color="#3b82f6" />
+              </div>
+              <h2 style={{
+                fontSize: '1.45rem',
+                fontWeight: 950,
+                margin: 0,
+                background: 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #3b82f6 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.8px'
+              }}>
+                Today's Interesting Words
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                Tap cards to translate. Tap speaker for sound.
+              </p>
+            </div>
+
+            <div className="scrollable-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '4px', marginBottom: '1rem' }}>
+              {unadded.map((card, index) => {
+                let parsedMeaning = JSON.parse(card.meaning);
+                const isChecked = selectedInterestingWords[card.word] !== false;
+                const showThai = !!flippedInterestingWords[card.word];
+                const definition = showThai
+                  ? (parsedMeaning.thaiTranslation?.word || '')
+                  : (parsedMeaning.englishExplanation?.definition || parsedMeaning.definition || 'No definition available.');
+
+                return (
+                  <motion.div
+                    key={card.word}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setFlippedInterestingWords(prev => ({ ...prev, [card.word]: !prev[card.word] }))}
+                    style={{
+                      position: 'relative',
+                      height: '140px',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+                      <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(to top, rgba(8, 9, 11, 0.95) 0%, rgba(8, 9, 11, 0.4) 60%, rgba(8, 9, 11, 0.75) 100%)',
+                      zIndex: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem'
+                    }} />
+                    <div style={{ position: 'absolute', inset: 0, zIndex: 3, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.62rem', background: 'rgba(59, 130, 246, 0.18)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.28)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontWeight: 800 }}>
+                            {card.cefrLevel || 'C1'}
+                          </span>
+                          <span style={{ fontSize: '0.55rem', background: 'rgba(255, 255, 255, 0.06)', color: 'rgba(255, 255, 255, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontWeight: 800 }}>
+                            {card.pos || 'n.'}
+                          </span>
+                        </div>
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedInterestingWords(prev => ({ ...prev, [card.word]: !isChecked }));
+                          }}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '6px',
+                            background: isChecked ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'rgba(0, 0, 0, 0.4)',
+                            border: "1.5px solid " + (isChecked ? "#3b82f6" : "rgba(255, 255, 255, 0.3)"),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            zIndex: 5
+                          }}
+                        >
+                          {isChecked && <CheckCircle size={12} color="#fff" strokeWidth={3} />}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                          <h4 style={{ fontSize: '1.15rem', fontWeight: 950, margin: 0, color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
+                            {card.word}
+                          </h4>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSpeak(card.word);
+                            }}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              borderRadius: '50%',
+                              width: '22px',
+                              height: '22px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#60a5fa',
+                              padding: 0
+                            }}
+                          >
+                            <Volume2 size={12} />
+                          </button>
+                          {showThai && (
+                            <span style={{ fontSize: '0.52rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '1px 4px', borderRadius: '4px', fontWeight: 900, marginLeft: 'auto' }}>THAI</span>
+                          )}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.68rem', color: showThai ? '#60a5fa' : 'rgba(255, 255, 255, 0.72)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {definition}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0, width: '100%' }}>
+              <button
+                onClick={() => setShowInterestingModal(false)}
+                className="glass-button animate-scale"
+                style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem', borderRadius: '18px', fontWeight: 800, background: 'rgba(255, 255, 255, 0.02)', color: 'rgba(255, 255, 255, 0.75)' }}
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleAddInterestingWords}
+                className="glass-button primary animate-scale"
+                style={{ flex: 1.5, padding: '0.65rem', fontSize: '0.85rem', borderRadius: '18px', fontWeight: 900, background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: 'white' }}
+              >
+                Add Selected
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </>
+    );
+  };
+
+  const renderCollectionChoiceModal = () => {
+    const categories = [
+      { name: 'Movie Words', theme: 'from linear-gradient(135deg, #e11d48, #be123c)', accent: '#e11d48' },
+      { name: 'Music Words', theme: 'from linear-gradient(135deg, #8b5cf6, #6d28d9)', accent: '#8b5cf6' },
+      { name: 'Business Words', theme: 'from linear-gradient(135deg, #059669, #047857)', accent: '#059669' }
+    ];
+
+    return (
+      <>
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          exit={{ opacity: 0 }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.95)', zIndex: 15000, backdropFilter: 'blur(25px)' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
+          <motion.div
+            initial={{ scale: 0.95, y: 30, opacity: 0 }} 
+            animate={{ scale: 1, y: 0, opacity: 1 }} 
+            exit={{ scale: 0.95, y: 30, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            style={{
+              pointerEvents: 'auto',
+              width: '92%', 
+              maxWidth: '380px', 
+              background: 'linear-gradient(185deg, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.9) 100%)',
+              backdropFilter: 'blur(30px) saturate(180%)',
+              borderRadius: '28px', 
+              border: '1px solid rgba(255, 255, 255, 0.08)', 
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95)',
+              display: 'flex', 
+              flexDirection: 'column', 
+              padding: '2rem 1.25rem'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                marginBottom: '0.75rem'
+              }}>
+                <BookOpen size={20} color="#a78bfa" />
+              </div>
+              <h2 style={{
+                fontSize: '1.35rem',
+                fontWeight: 950,
+                margin: 0,
+                color: '#ffffff',
+                letterSpacing: '-0.5px'
+              }}>
+                Expand Your Vocabulary
+              </h2>
+              <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', marginTop: '0.3rem' }}>
+                Select a collection to import new words
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {categories.map((cat) => (
+                <motion.button
+                  key={cat.name}
+                  whileHover={{ scale: 1.01, border: '1px solid rgba(255, 255, 255, 0.15)' }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => handleSelectCollection(cat.name)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '1rem 1.25rem',
+                    borderRadius: '18px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{
+                      fontSize: '0.52rem',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      color: cat.accent,
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      padding: '2px 6px',
+                      borderRadius: '6px',
+                      fontWeight: 900,
+                      textTransform: 'uppercase'
+                    }}>
+                      Curated
+                    </span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>{cat.name}</span>
+                  </div>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                  }}>
+                    <ArrowRight size={14} color="rgba(255, 255, 255, 0.7)" />
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowCollectionChoice(false)}
+              className="glass-button animate-scale"
+              style={{
+                width: '100%',
+                padding: '0.7rem',
+                fontSize: '0.85rem',
+                borderRadius: '16px',
+                fontWeight: 800,
+                background: 'rgba(255, 255, 255, 0.02)',
+                color: 'rgba(255, 255, 255, 0.5)'
+              }}
+            >
+              Maybe Later
+            </button>
+          </motion.div>
+        </div>
+      </>
+    );
+  };
+
+  const renderCollectionImportModal = () => {
+    if (!selectedCollection) return null;
+    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
+    const unadded = colWords.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+
+    return (
+      <>
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          exit={{ opacity: 0 }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: 'blur(20px)' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
+          <motion.div
+            initial={{ scale: 0.95, y: 30, opacity: 0 }} 
+            animate={{ scale: 1, y: 0, opacity: 1 }} 
+            exit={{ scale: 0.95, y: 30, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            style={{
+              pointerEvents: 'auto',
+              width: '92%', 
+              maxWidth: '400px', 
+              height: '82%', 
+              background: 'radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.12) 0%, rgba(8, 9, 11, 0.95) 100%)',
+              backdropFilter: 'blur(30px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+              borderRadius: '28px', 
+              border: '1px solid rgba(167, 139, 250, 0.2)', 
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95)',
+              display: 'flex', 
+              flexDirection: 'column', 
+              overflow: 'hidden',
+              padding: '1.5rem 1rem'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: 'rgba(167, 139, 250, 0.12)',
+                border: '1px solid rgba(167, 139, 250, 0.25)',
+                marginBottom: '0.75rem'
+              }}>
+                <Plus size={22} color="#a78bfa" />
+              </div>
+              <h2 style={{
+                fontSize: '1.45rem',
+                fontWeight: 950,
+                margin: 0,
+                background: 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #a78bfa 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.8px'
+              }}>
+                {selectedCollection}
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                Tap cards to translate. Tap speaker for sound.
+              </p>
+            </div>
+
+            <div className="scrollable-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '4px', marginBottom: '1rem' }}>
+              {unadded.map((card, index) => {
+                let parsedMeaning = JSON.parse(card.meaning);
+                const isChecked = selectedCollectionWords[card.word] !== false;
+                const showThai = !!flippedCollectionWords[card.word];
+                const definition = showThai
+                  ? (parsedMeaning.thaiTranslation?.word || '')
+                  : (parsedMeaning.englishExplanation?.definition || parsedMeaning.definition || 'No definition available.');
+
+                return (
+                  <motion.div
+                    key={card.word}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setFlippedCollectionWords(prev => ({ ...prev, [card.word]: !prev[card.word] }))}
+                    style={{
+                      position: 'relative',
+                      height: '140px',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+                      <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(to top, rgba(8, 9, 11, 0.95) 0%, rgba(8, 9, 11, 0.4) 60%, rgba(8, 9, 11, 0.75) 100%)',
+                      zIndex: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem'
+                    }} />
+                    <div style={{ position: 'absolute', inset: 0, zIndex: 3, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.62rem', background: 'rgba(167, 139, 250, 0.18)', color: '#c084fc', border: '1px solid rgba(167, 139, 250, 0.28)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontWeight: 800 }}>
+                            {card.cefrLevel || 'C1'}
+                          </span>
+                          <span style={{ fontSize: '0.55rem', background: 'rgba(255, 255, 255, 0.06)', color: 'rgba(255, 255, 255, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontWeight: 800 }}>
+                            {card.pos || 'n.'}
+                          </span>
+                        </div>
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCollectionWords(prev => ({ ...prev, [card.word]: !isChecked }));
+                          }}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '6px',
+                            background: isChecked ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'rgba(0, 0, 0, 0.4)',
+                            border: "1.5px solid " + (isChecked ? "#8b5cf6" : "rgba(255, 255, 255, 0.3)"),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            zIndex: 5
+                          }}
+                        >
+                          {isChecked && <CheckCircle size={12} color="#fff" strokeWidth={3} />}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                          <h4 style={{ fontSize: '1.15rem', fontWeight: 950, margin: 0, color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
+                            {card.word}
+                          </h4>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSpeak(card.word);
+                            }}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              borderRadius: '50%',
+                              width: '22px',
+                              height: '22px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#c084fc',
+                              padding: 0
+                            }}
+                          >
+                            <Volume2 size={12} />
+                          </button>
+                          {showThai && (
+                            <span style={{ fontSize: '0.52rem', background: 'rgba(167, 139, 250, 0.2)', color: '#c084fc', border: '1px solid rgba(167, 139, 250, 0.3)', padding: '1px 4px', borderRadius: '4px', fontWeight: 900, marginLeft: 'auto' }}>THAI</span>
+                          )}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.68rem', color: showThai ? '#c084fc' : 'rgba(255, 255, 255, 0.72)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {definition}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0, width: '100%' }}>
+              <button
+                onClick={() => { setShowCollectionImport(false); setSelectedCollection(null); }}
+                className="glass-button animate-scale"
+                style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem', borderRadius: '18px', fontWeight: 800, background: 'rgba(255, 255, 255, 0.02)', color: 'rgba(255, 255, 255, 0.75)' }}
+              >
+                Back
+              </button>
+              <button
+                onClick={handleAddCollectionWords}
+                className="glass-button primary animate-scale"
+                style={{ flex: 1.5, padding: '0.65rem', fontSize: '0.85rem', borderRadius: '18px', fontWeight: 900, background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', color: 'white' }}
+              >
+                Import
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </>
+    );
+  };
+
+  const renderGuestModeModal = () => {
+    return (
+      <>
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          exit={{ opacity: 0 }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.85)', zIndex: 15000, backdropFilter: 'blur(15px)' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
+          <motion.div
+            initial={{ scale: 0.95, y: 30, opacity: 0 }} 
+            animate={{ scale: 1, y: 0, opacity: 1 }} 
+            exit={{ scale: 0.95, y: 30, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            style={{
+              pointerEvents: 'auto',
+              width: '90%', 
+              maxWidth: '350px', 
+              background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(8, 9, 11, 0.98) 100%)',
+              backdropFilter: 'blur(30px) saturate(180%)',
+              borderRadius: '24px', 
+              border: '1px solid rgba(245, 158, 11, 0.2)', 
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9)',
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              padding: '2rem 1.5rem',
+              textAlign: 'center'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              background: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.25)',
+              boxShadow: '0 0 20px rgba(245, 158, 11, 0.15)',
+              marginBottom: '1rem'
+            }}>
+              <ShieldAlert size={26} color="#f59e0b" />
+            </div>
+            
+            <h2 style={{
+              fontSize: '1.25rem',
+              fontWeight: 950,
+              margin: 0,
+              color: '#ffffff',
+              letterSpacing: '-0.5px'
+            }}>
+              Guest Mode Active
+            </h2>
+            
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '0.8rem',
+              lineHeight: 1.45,
+              marginTop: '0.5rem',
+              marginBottom: '1.5rem'
+            }}>
+              You are currently studying as a guest. Sign up to save your progress permanently and sync across devices!
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+              <button
+                onClick={() => {
+                  setShowGuestModePopup(false);
+                  navigate('/login');
+                }}
+                className="glass-button primary animate-scale"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  fontSize: '0.85rem',
+                  borderRadius: '16px',
+                  fontWeight: 900,
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  borderColor: 'transparent',
+                  color: 'white',
+                  boxShadow: '0 4px 15px rgba(245, 158, 11, 0.25)'
+                }}
+              >
+                Sign Up Now
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowGuestModePopup(false);
+                  setIsStudying(true);
+                }}
+                className="glass-button animate-scale"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  fontSize: '0.85rem',
+                  borderRadius: '16px',
+                  fontWeight: 800,
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  borderColor: 'rgba(255, 255, 255, 0.05)',
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}
+              >
+                Continue as Guest
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </>
+    );
+  };
+
 
   const renderToast = () => {
     return (
@@ -2609,6 +3851,38 @@ const Purge = () => {
                       <span>LOADING ADDITIONAL WORDS...</span>
                     </div>
                   )}
+
+                  {activeCurriculum !== 'Self-Study only' && (
+                    <motion.button
+                      whileHover={!isLoadingNewWords ? { scale: 1.05 } : {}}
+                      whileTap={!isLoadingNewWords ? { scale: 0.95 } : {}}
+                      disabled={isLoadingNewWords}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartWithNewWords();
+                      }}
+                      style={{
+                        marginTop: '0.75rem',
+                        background: 'transparent',
+                        border: '1px dashed rgba(255, 255, 255, 0.25)',
+                        borderRadius: '16px',
+                        padding: '0.45rem 1rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        cursor: isLoadingNewWords ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        transition: 'all 0.2s',
+                        zIndex: 10,
+                        opacity: isLoadingNewWords ? 0.5 : 1
+                      }}
+                    >
+                      <Plus size={12} />
+                      Get 5 more words
+                    </motion.button>
+                  )}
                 </motion.div>
               ) : (
                 <motion.div
@@ -2998,6 +4272,10 @@ const Purge = () => {
         {renderToast()}
         <AnimatePresence>
           {unlockedWords.length > 0 && renderUnlockedModal()}
+          {showInterestingModal && renderInterestingWordsModal()}
+          {showCollectionChoice && renderCollectionChoiceModal()}
+          {showCollectionImport && renderCollectionImportModal()}
+          {showGuestModePopup && renderGuestModeModal()}
         </AnimatePresence>
       </>
     );

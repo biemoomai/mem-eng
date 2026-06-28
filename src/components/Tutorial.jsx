@@ -10,15 +10,29 @@ const TUTORIAL_STEPS = [
     path: '/',
     selector: '#tutorial-translate-input',
     title: 'Translate Word',
-    text: 'พิมพ์คำศัพท์ที่ต้องการเรียนรู้ลงในช่องค้นหา เช่น hello แล้วกดปุ่มแปลภาษาหรือกด Enter',
+    text: 'พิมพ์คำศัพท์ที่ต้องการเรียนรู้ลงในช่องค้นหา เช่น hello (พิมพ์ตัวอักษรใดก็ได้ ระบบจะป้อนคำว่า hello ให้อัตโนมัติ)',
+    position: 'bottom'
+  },
+  {
+    path: '/',
+    selector: '#tutorial-translate-submit-btn',
+    title: 'Click Translate',
+    text: 'เก่งมาก! ตอนนี้กดปุ่ม Translate เพื่อแปลคำศัพท์ผ่านระบบจำลองออฟไลน์',
     position: 'bottom'
   },
   {
     path: '/',
     selector: '.results-drag-wrapper',
-    title: 'Swipe to Save',
-    text: 'ลองปัดการ์ดผลลัพธ์นี้ไปทางขวา เพื่อบันทึกคำศัพท์เข้าสู่เด็คทบทวนของคุณ',
-    position: 'bottom'
+    title: 'Explore AI Card',
+    text: 'ผลการเรียนรู้ผ่าน AI ได้รับการจัดรูปแบบเป็นการ์ดสวยงาม ลองปัดหน้าจอเลื่อนขึ้น-ลงเพื่อสำรวจเนื้อหา ตัวอย่างประโยค และรูปภาพประกอบให้ครบก่อน เมื่อดูเสร็จแล้ว ให้คลิกปุ่ม "ถัดไป" เพื่อไปขั้นตอนต่อไป',
+    position: 'top'
+  },
+  {
+    path: '/',
+    selector: '#tutorial-tinder-save-btn',
+    title: 'Swipe or Tap to Save',
+    text: 'ลองปัดการ์ดไปทางขวาเพื่อบันทึก หรือจะกดปุ่ม Save สีเขียวเพื่อบันทึกทันทีก็ได้จ้า (ปัดซ้ายหรือกดปุ่ม Back สีแดงเพื่อยกเลิก)',
+    position: 'top'
   },
   {
     path: '/purge',
@@ -132,66 +146,75 @@ export const Tutorial = () => {
   useEffect(() => {
     if (!active) return;
 
-    const handleTranslated = () => {
+    const handleTypedHello = () => {
       if (currentStep === 0) {
         setTimeout(() => {
           setCurrentStep(1);
+        }, 100);
+      }
+    };
+
+    const handleTranslated = () => {
+      if (currentStep === 1) {
+        setTimeout(() => {
+          setCurrentStep(2);
         }, 800);
       }
     };
 
     const handleWordSaved = () => {
-      if (currentStep === 1) {
+      if (currentStep === 3) {
         setTimeout(() => {
-          setCurrentStep(2);
+          setCurrentStep(4);
           navigate('/purge');
         }, 800);
       }
     };
 
     const handleCardRevealed = () => {
-      if (currentStep === 2) {
+      if (currentStep === 4) {
         setTimeout(() => {
-          setCurrentStep(3);
+          setCurrentStep(5);
         }, 800);
       }
     };
 
     const handleCardFullyRevealed = () => {
-      if (currentStep === 3) {
+      if (currentStep === 5) {
         setTimeout(() => {
-          setCurrentStep(4);
+          setCurrentStep(6);
         }, 800);
       }
     };
 
     const handleSrsClicked = () => {
-      if (currentStep === 4) {
+      if (currentStep === 6) {
         setTimeout(() => {
-          setCurrentStep(5);
+          setCurrentStep(7);
           navigate('/profile');
         }, 800);
       }
     };
 
     const handleCurriculumOpened = () => {
-      if (currentStep === 5) {
+      if (currentStep === 7) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
-          setCurrentStep(6);
+          setCurrentStep(8);
         }, 1500);
       }
     };
 
     const handleSrsModalOpened = () => {
-      if (currentStep === 6) {
+      if (currentStep === 8) {
         setTimeout(() => {
           window.dispatchEvent(new Event('tutorial-close-modals'));
-          setCurrentStep(7);
+          setCurrentStep(9);
         }, 2000);
       }
     };
 
+    window.addEventListener('tutorial-typed-hello', handleTypedHello);
     window.addEventListener('tutorial-translated', handleTranslated);
     window.addEventListener('tutorial-word-saved', handleWordSaved);
     window.addEventListener('tutorial-card-revealed', handleCardRevealed);
@@ -201,6 +224,7 @@ export const Tutorial = () => {
     window.addEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
 
     return () => {
+      window.removeEventListener('tutorial-typed-hello', handleTypedHello);
       window.removeEventListener('tutorial-translated', handleTranslated);
       window.removeEventListener('tutorial-word-saved', handleWordSaved);
       window.removeEventListener('tutorial-card-revealed', handleCardRevealed);
@@ -228,40 +252,45 @@ export const Tutorial = () => {
     let frameId;
     let timerId;
 
+    const runUpdate = () => {
+      const el = document.querySelector(stepConf.selector);
+      const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
+      
+      if (el && containerEl) {
+        const rect = el.getBoundingClientRect();
+        const containerRect = containerEl.getBoundingClientRect();
+        
+        if (rect.width > 0 && rect.height > 0) {
+          setHighlightRect({
+            top: rect.top - containerRect.top,
+            left: rect.left - containerRect.left,
+            width: rect.width,
+            height: rect.height
+          });
+          setViewportRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            bottom: rect.bottom,
+            right: rect.right
+          });
+        }
+      } else {
+        setHighlightRect(null);
+        setViewportRect(null);
+      }
+    };
+
+    window.addEventListener('resize', runUpdate);
+
     // Wait for slide transitions to complete before measuring/observing
     timerId = setTimeout(() => {
       const startTime = Date.now();
       const duration = 1200; // Poll for 1.2s to track final position shifts
 
       const updatePosition = () => {
-        const el = document.querySelector(stepConf.selector);
-        const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
-        
-        if (el && containerEl) {
-          const rect = el.getBoundingClientRect();
-          const containerRect = containerEl.getBoundingClientRect();
-          
-          if (rect.width > 0 && rect.height > 0) {
-            setHighlightRect({
-              top: rect.top - containerRect.top,
-              left: rect.left - containerRect.left,
-              width: rect.width,
-              height: rect.height
-            });
-            setViewportRect({
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              bottom: rect.bottom,
-              right: rect.right
-            });
-          }
-        } else {
-          setHighlightRect(null);
-          setViewportRect(null);
-        }
-
+        runUpdate();
         if (Date.now() - startTime < duration) {
           frameId = requestAnimationFrame(updatePosition);
         }
@@ -271,10 +300,10 @@ export const Tutorial = () => {
       updatePosition();
 
       // Smooth scroll showcase behavior
-      if (currentStep === 1) {
+      if (currentStep === 2) {
         const scrollContainer = document.querySelector('.scrollable-content');
         if (scrollContainer) {
-          scrollContainer.scrollTo({ top: 400, behavior: 'smooth' });
+          scrollContainer.scrollTo({ top: 300, behavior: 'smooth' });
           setTimeout(() => {
             scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
           }, 1800);
@@ -288,6 +317,7 @@ export const Tutorial = () => {
     }, 450);
 
     return () => {
+      window.removeEventListener('resize', runUpdate);
       if (timerId) clearTimeout(timerId);
       if (frameId) cancelAnimationFrame(frameId);
     };
@@ -308,7 +338,15 @@ export const Tutorial = () => {
     }
     
     if (currentStep === 1) {
-      window.dispatchEvent(new Event('tutorial-save-word'));
+      // Allow manual or simulated Translate trigger
+      const form = document.querySelector('#tutorial-translate-input form');
+      if (form) form.requestSubmit();
+      return;
+    }
+
+    if (currentStep === 2) {
+      // Move to Step 3: Swipe to Save
+      setCurrentStep(3);
       return;
     }
 
@@ -377,7 +415,7 @@ export const Tutorial = () => {
     };
   };
 
-  const isSwipeStep = currentStep === 1;
+  const isSwipeStep = currentStep === 3;
   const backdropPointerEvents = isSwipeStep ? 'none' : 'auto';
 
   return (
@@ -471,6 +509,25 @@ export const Tutorial = () => {
         />
       )}
 
+      {/* Bouncing emoji finger pointers for Step 0 (input hello) and Step 1 (click translate) */}
+      {highlightRect && !isWrongPath && (currentStep === 0 || currentStep === 1) && (
+        <motion.div
+          animate={{ y: [0, -10, 0] }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+          style={{
+            position: 'absolute',
+            top: highlightRect.top - 45,
+            left: highlightRect.left + (highlightRect.width / 2) - 15,
+            zIndex: 100005,
+            fontSize: '1.8rem',
+            filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.85))',
+            pointerEvents: 'none'
+          }}
+        >
+          👇
+        </motion.div>
+      )}
+
       {/* Tooltip Card */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
@@ -485,9 +542,30 @@ export const Tutorial = () => {
             background: 'rgba(15, 23, 42, 0.95)',
             border: '1px solid rgba(251, 191, 36, 0.3)',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            position: 'relative'
           }}
         >
+          {/* Visual Arrow Indicator pointing to highlight */}
+          {highlightRect && !isWrongPath && (
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              zIndex: 100006,
+              ...(TUTORIAL_STEPS[currentStep]?.position === 'bottom' ? {
+                top: '-8px',
+                borderBottom: '8px solid rgba(15, 23, 42, 0.98)'
+              } : {
+                bottom: '-8px',
+                borderTop: '8px solid rgba(15, 23, 42, 0.98)'
+              })
+            }} />
+          )}
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
             <span style={{ fontSize: '0.65rem', background: '#facc1520', color: '#facc15', padding: '0.15rem 0.5rem', borderRadius: '6px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -531,6 +609,24 @@ export const Tutorial = () => {
               Skip
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {currentStep === 2 && (
+                <button 
+                  onClick={handleNext}
+                  className="glass-button primary animate-scale"
+                  style={{ 
+                    padding: '0.35rem 0.75rem', 
+                    borderRadius: '8px', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px'
+                  }}
+                >
+                  <span>ถัดไป</span>
+                  <ChevronRight size={12} />
+                </button>
+              )}
               {currentStep === TUTORIAL_STEPS.length - 1 && (
                 <button 
                   onClick={handleNext}

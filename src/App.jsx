@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, Plus, XCircle, Palette, Trash2, HelpCircle, Bot } from 'lucide-react';
+import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Palette, Trash2, HelpCircle, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VocabProvider, useVocab } from './context/VocabContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -22,6 +22,10 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showShortcutButtons, setShowShortcutButtons] = useState(() => {
+    return localStorage.getItem('memeng_show_shortcut_buttons') !== 'false';
+  });
 
   // Global Selection Dictionary Lookup
   const { addWordToDeck, getAiWordRichDetails } = useVocab();
@@ -151,9 +155,9 @@ function AppContent() {
   });
   const [showNongMem, setShowNongMem] = useState(() => {
     try {
-      return localStorage.getItem('memeng_show_nong_mem') !== 'false';
+      return localStorage.getItem('memeng_show_nong_mem') === 'true';
     } catch (e) {
-      return true;
+      return false;
     }
   });
   const [nongMemMuted, setNongMemMuted] = useState(() => {
@@ -974,8 +978,9 @@ function AppContent() {
                 flexDirection: 'column',
                 gap: '8px',
                 flex: 1,
-                overflowY: 'hidden',
-                paddingRight: '4px'
+                overflowY: 'auto',
+                paddingRight: '6px',
+                paddingBottom: '20px'
               }}
             >
               {navItems.map((item) => {
@@ -1109,6 +1114,83 @@ function AppContent() {
                         }}
                       >
                         {t.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              {/* Shortcut Buttons Toggle */}
+              <motion.div
+                variants={itemVariants}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  padding: '12px 14px',
+                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
+                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.02)',
+                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.04)',
+                  marginBottom: '4px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: theme === 'theme-3' ? '0px' : '8px',
+                    background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.06)'
+                  }}>
+                    <Sliders size={15} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: theme === 'theme-3' ? '#000000' : 'white' }}>
+                    Quick Buttons
+                  </div>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginTop: '4px' }}>
+                  {[
+                    { id: true, name: 'Show' },
+                    { id: false, name: 'Swipe Only' }
+                  ].map(opt => {
+                    const isActive = showShortcutButtons === opt.id;
+                    return (
+                      <button
+                        key={String(opt.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playClickSound();
+                          localStorage.setItem('memeng_show_shortcut_buttons', String(opt.id));
+                          setShowShortcutButtons(opt.id);
+                          window.dispatchEvent(new CustomEvent('shortcut-buttons-changed', { detail: { show: opt.id } }));
+                        }}
+                        style={{
+                          background: isActive ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                          border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                          borderRadius: '8px',
+                          color: isActive ? 'white' : '#94a3b8',
+                          padding: '6px 4px',
+                          fontSize: '0.7rem',
+                          fontWeight: isActive ? 'bold' : 'normal',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          textAlign: 'center',
+                          outline: 'none'
+                        }}
+                      >
+                        {opt.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <span>Show</span>
+                            <span style={{ fontSize: '0.52rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '1px 3px', borderRadius: '4px', fontWeight: 900 }}>Back</span>
+                            <span style={{ fontSize: '0.52rem', background: 'rgba(16, 185, 129, 0.15)', color: '#4ade80', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '1px 3px', borderRadius: '4px', fontWeight: 900 }}>Save</span>
+                          </div>
+                        ) : (
+                          <span>Swipe Only</span>
+                        )}
                       </button>
                     );
                   })}
@@ -1249,107 +1331,85 @@ function AppContent() {
                 </div>
               </div>
 
-              {/* Compact Setting 3: Nong Mem Mascot Toggle */}
+              {/* Consolidated Mascot Setting: Nong Mem Mascot & Sound */}
               <div
-                onClick={() => {
-                  const val = !showNongMem;
-                  setShowNongMem(val);
-                  try {
-                    localStorage.setItem('memeng_show_nong_mem', val.toString());
-                  } catch (err) {}
-                  window.dispatchEvent(new CustomEvent('nongmem-visibility-change', { detail: val }));
-                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: '8px',
-                  padding: '8px 12px',
+                  padding: '10px 12px',
                   borderRadius: theme === 'theme-3' ? '0px' : '12px',
                   background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
                   border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
-                  cursor: 'pointer',
                   marginBottom: '8px'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Bot size={14} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>Nong Mem Mascot</span>
-                </div>
-                {/* Visual Toggle Switch */}
-                <div style={{
-                  width: '28px',
-                  height: '16px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '8px',
-                  background: showNongMem ? (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.2)') : (theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)'),
-                  position: 'relative',
-                  transition: 'background-color 0.2s',
-                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.08)'
-                }}>
-                  <div style={{
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '50%',
-                    background: showNongMem ? '#ffffff' : (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.3)'),
-                    position: 'absolute',
-                    top: '2px',
-                    left: showNongMem ? '14px' : '2px',
-                    transition: 'left 0.2s',
-                    boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
-                </div>
-              </div>
-
-              {/* Compact Setting 4: Nong Mem Mute Toggle */}
-              <div
-                onClick={() => {
-                  const val = !nongMemMuted;
-                  setNongMemMuted(val);
-                  try {
-                    localStorage.setItem('memeng_nong_mem_muted', val.toString());
-                  } catch (err) {}
-                  window.dispatchEvent(new CustomEvent('nongmem-mute-change', { detail: val }));
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px',
-                  padding: '8px 12px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
-                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
-                  cursor: 'pointer',
-                  marginBottom: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Volume2 size={14} color={theme === 'theme-3' ? '#000000' : (nongMemMuted ? '#f87171' : '#4ade80')} />
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>
-                    {nongMemMuted ? 'Nong Mem Muted' : 'Nong Mem Sound'}
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Nong Mem
+                    <span style={{ fontSize: '0.52rem', background: '#a5b4fc', color: '#08090b', padding: '1px 3px', borderRadius: '4px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Beta</span>
                   </span>
                 </div>
-                {/* Visual Toggle Switch */}
-                <div style={{
-                  width: '28px',
-                  height: '16px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '8px',
-                  background: !nongMemMuted ? (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.2)') : (theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)'),
-                  position: 'relative',
-                  transition: 'background-color 0.2s',
-                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.08)'
-                }}>
-                  <div style={{
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '50%',
-                    background: !nongMemMuted ? '#ffffff' : (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.3)'),
-                    position: 'absolute',
-                    top: '2px',
-                    left: !nongMemMuted ? '14px' : '2px',
-                    transition: 'left 0.2s',
-                    boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {/* Mascot Visibility Switch */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const val = !showNongMem;
+                      setShowNongMem(val);
+                      try {
+                        localStorage.setItem('memeng_show_nong_mem', val.toString());
+                      } catch (err) {}
+                      window.dispatchEvent(new CustomEvent('nongmem-visibility-change', { detail: val }));
+                    }}
+                    style={{
+                      border: 'none',
+                      background: showNongMem ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: showNongMem ? '#3b82f6' : (theme === 'theme-3' ? '#000000' : '#94a3b8'),
+                      fontSize: '0.68rem',
+                      fontWeight: 700
+                    }}
+                  >
+                    {showNongMem ? 'On' : 'Off'}
+                  </motion.button>
+
+                  {/* Audio Mute Switch */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const val = !nongMemMuted;
+                      setNongMemMuted(val);
+                      try {
+                        localStorage.setItem('memeng_nong_mem_muted', val.toString());
+                      } catch (err) {}
+                      window.dispatchEvent(new CustomEvent('nongmem-mute-change', { detail: val }));
+                    }}
+                    style={{
+                      border: 'none',
+                      background: !nongMemMuted ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      color: !nongMemMuted ? '#4ade80' : '#f87171',
+                      fontSize: '0.68rem',
+                      fontWeight: 700
+                    }}
+                  >
+                    {!nongMemMuted ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                    {!nongMemMuted ? 'Sound' : 'Muted'}
+                  </motion.button>
                 </div>
               </div>
 
@@ -1397,7 +1457,7 @@ function AppContent() {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.8rem', fontWeight: 800, color: isTutorialActive ? '#ef4444' : '#facc15' }}>
-                    {isTutorialActive ? 'Exit Tutorial (ออกโหมดแนะนำ)' : 'Guide Tour (สอนใช้งาน)'}
+                    {isTutorialActive ? 'Exit Interactive Guide' : 'Interactive Guide Tour'}
                   </div>
                   <div style={{ fontSize: '0.62rem', color: isTutorialActive ? 'rgba(239, 68, 68, 0.6)' : 'rgba(251, 191, 36, 0.6)' }}>
                     {isTutorialActive ? 'Exit the interactive tutorial mode' : 'Restart the interactive tutorial'}
@@ -1411,10 +1471,7 @@ function AppContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
-                  if (window.confirm('⚠️ This will permanently delete ALL words and review history from local cache AND Supabase cloud database. This cannot be undone. Are you sure?')) {
-                    clearDeckAndResetStats();
-                    setMenuOpen(false);
-                  }
+                  setShowResetConfirm(true);
                 }}
                 style={{
                   display: 'flex',
@@ -1489,6 +1546,126 @@ function AppContent() {
                   </div>
                 </div>
               </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Reset Confirmation Modal */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <motion.div
+            key="reset-confirm-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1000000,
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              style={{
+                width: '100%',
+                maxWidth: '340px',
+                background: theme === 'theme-3' ? '#ffffff' : 'rgba(23, 25, 30, 0.95)',
+                border: theme === 'theme-3' ? '2px solid #000000' : '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: theme === 'theme-3' ? '0px' : '20px',
+                padding: '24px',
+                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+                textAlign: 'center',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px auto',
+                border: '1px solid rgba(239, 68, 68, 0.2)'
+              }}>
+                <Trash2 size={28} color="#ef4444" />
+              </div>
+
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 900,
+                color: theme === 'theme-3' ? '#000000' : '#ffffff',
+                margin: '0 0 8px 0',
+                letterSpacing: '-0.5px'
+              }}>
+                Reset Deck & Stats?
+              </h3>
+
+              <p style={{
+                fontSize: '0.85rem',
+                color: theme === 'theme-3' ? '#444444' : '#94a3b8',
+                lineHeight: '1.5',
+                margin: '0 0 24px 0'
+              }}>
+                This action will permanently delete all vocabulary and learning progress from your deck.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={async () => {
+                    await clearDeckAndResetStats();
+                    setShowResetConfirm(false);
+                    setMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: theme === 'theme-3' ? '0px' : '12px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                  }}
+                >
+                  Reset Everything
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowResetConfirm(false)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: theme === 'theme-3' ? '0px' : '12px',
+                    border: theme === 'theme-3' ? '2px solid #000000' : '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'transparent',
+                    color: theme === 'theme-3' ? '#000000' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </motion.button>
+              </div>
             </motion.div>
           </motion.div>
         )}
