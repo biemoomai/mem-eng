@@ -59,9 +59,10 @@ export default function NongMem() {
   // Web Speech API - Text-to-Speech (Mute state) and Speech-to-Text (Listening state)
   const [isMuted, setIsMuted] = useState(() => {
     try {
-      return localStorage.getItem('memeng_nong_mem_muted') === 'true';
+      const val = localStorage.getItem('memeng_nong_mem_muted');
+      return val !== 'false'; // Default to true (Muted) if null/not set
     } catch (e) {
-      return false;
+      return true;
     }
   });
   const [isListening, setIsListening] = useState(false);

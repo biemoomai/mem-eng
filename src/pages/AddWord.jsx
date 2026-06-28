@@ -2113,7 +2113,7 @@ const AddWord = () => {
                       flexDirection: 'column',
                       gap: '0.75rem',
                       width: '100%',
-                      marginBottom: '10vh'
+                      marginBottom: '18vh'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2156,7 +2156,7 @@ const AddWord = () => {
                                 position: 'relative',
                                 borderRadius: '14px',
                                 overflow: 'hidden',
-                                height: '220px',
+                                height: '160px',
                                 background: 'rgba(255,255,255,0.03)',
                                 border: selectedPrimaryImageIdx === idx ? '2px solid rgba(255, 255, 255, 0.55)' : '1px solid rgba(255,255,255,0.06)',
                                 cursor: (imgData?.url && !isLoading) ? 'pointer' : 'default',
