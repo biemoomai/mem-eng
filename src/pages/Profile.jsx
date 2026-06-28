@@ -614,10 +614,12 @@ const Profile = () => {
                     return (
                       <button
                         key={item.id}
+                        id={item.id === 'TOEIC Essential' ? 'tutorial-curriculum-option-toeic' : undefined}
                         onClick={() => {
                           setActiveCurriculum(item.id);
                           localStorage.setItem('chatgpt_anki_curriculum', item.id);
                           setShowCurriculumModal(false);
+                          window.dispatchEvent(new CustomEvent('tutorial-curriculum-selected', { detail: { id: item.id } }));
                         }}
                         style={{
                           width: '100%',

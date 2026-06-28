@@ -59,21 +59,28 @@ const TUTORIAL_STEPS = [
     path: '/profile',
     selector: '#tutorial-profile-curriculum',
     title: 'Curriculum Switcher',
-    text: 'กดเลือกปุ่มหลักสูตรนี้ เพื่อเปิดตัวเลือกการสลับโหมดคำศัพท์ เช่น Oxford 5000 หรือ TOEIC',
+    text: 'กดเลือกปุ่มหลักสูตรนี้ เพื่อเปิดตัวเลือกการสลับโหมดคำศัพท์',
     position: 'bottom'
+  },
+  {
+    path: '/profile',
+    selector: '#tutorial-curriculum-option-toeic',
+    title: 'Select Curriculum Focus',
+    text: 'ลองคลิกเลือก TOEIC Essential เพื่อเปิดการใช้งานและดูสถิติในระดับเป้าหมายนั้น (หรือกดเลือกโหมดที่ต้องการ)',
+    position: 'top'
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-srs',
     title: 'SRS Memory Stages',
     text: 'ลองกดที่ปุ่มระดับความจำกลุ่มใดก็ได้ เช่น Learning หรือ Mastered เพื่อแสดงรายชื่อคำศัพท์ของกลุ่มนั้น',
-    position: 'bottom'
+    position: 'top'
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-progress',
     title: 'Curriculum Progress',
-    text: 'แถบแสดงจำนวนคำศัพท์ที่เพิ่มเข้าสู่การเรียนรู้จริงเปรียบเทียบกับคำศัพท์ทั้งหมด ยินดีด้วย! การแนะนำโปรแกรมเสร็จสิ้นแล้ว กดปุ่ม Finish เพื่อเริ่มใช้งานจริงได้เลย',
+    text: 'แถบแสดงจำนวนคำศัพท์ที่เพิ่มเข้าสู่การเรียนรู้เปรียบเทียบกับคำศัพท์ทั้งหมด ยินดีด้วย! การแนะนำโปรแกรมเสร็จสิ้นแล้ว กดปุ่ม Finish เพื่อเริ่มใช้งานจริงได้เลย',
     position: 'top'
   }
 ];
@@ -279,13 +286,12 @@ export const Tutorial = () => {
       });
       if (currentStep === 7) {
         setTimeout(() => {
-          window.dispatchEvent(new Event('tutorial-close-modals'));
           setCurrentStep(8);
-        }, 1500);
+        }, 300);
       }
     };
 
-    const handleSrsModalOpened = () => {
+    const handleCurriculumSelected = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[8] = true;
@@ -293,8 +299,21 @@ export const Tutorial = () => {
       });
       if (currentStep === 8) {
         setTimeout(() => {
-          window.dispatchEvent(new Event('tutorial-close-modals'));
           setCurrentStep(9);
+        }, 800);
+      }
+    };
+
+    const handleSrsModalOpened = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[9] = true;
+        return next;
+      });
+      if (currentStep === 9) {
+        setTimeout(() => {
+          window.dispatchEvent(new Event('tutorial-close-modals'));
+          setCurrentStep(10);
         }, 2000);
       }
     };
@@ -306,6 +325,7 @@ export const Tutorial = () => {
     window.addEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
     window.addEventListener('tutorial-srs-clicked', handleSrsClicked);
     window.addEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
+    window.addEventListener('tutorial-curriculum-selected', handleCurriculumSelected);
     window.addEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
 
     return () => {
@@ -316,6 +336,7 @@ export const Tutorial = () => {
       window.removeEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
       window.removeEventListener('tutorial-srs-clicked', handleSrsClicked);
       window.removeEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
+      window.removeEventListener('tutorial-curriculum-selected', handleCurriculumSelected);
       window.removeEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
     };
   }, [active, currentStep]);
@@ -595,11 +616,27 @@ export const Tutorial = () => {
 
     if (currentStep === 7) {
       // Simulate curriculum switcher click
-      window.dispatchEvent(new Event('tutorial-curriculum-opened'));
+      const switcherBtn = document.getElementById('tutorial-profile-curriculum');
+      if (switcherBtn) {
+        switcherBtn.click();
+      } else {
+        window.dispatchEvent(new Event('tutorial-curriculum-opened'));
+      }
       return;
     }
 
     if (currentStep === 8) {
+      // Simulate curriculum option selection (TOEIC)
+      const toeicBtn = document.getElementById('tutorial-curriculum-option-toeic');
+      if (toeicBtn) {
+        toeicBtn.click();
+      } else {
+        window.dispatchEvent(new CustomEvent('tutorial-curriculum-selected', { detail: { id: 'TOEIC Essential' } }));
+      }
+      return;
+    }
+
+    if (currentStep === 9) {
       // Simulate SRS stage detail open
       window.dispatchEvent(new Event('tutorial-srs-modal-opened'));
       return;
@@ -626,7 +663,8 @@ export const Tutorial = () => {
   };
 
   const getTooltipStyle = () => {
-    if (!highlightRect || isWrongPath) {
+    // Force center on Step 11 (index 10) to prevent layout truncation on the wide progress bar at the bottom
+    if (!highlightRect || isWrongPath || currentStep === 10) {
       return {
         position: 'fixed',
         top: '50%',
