@@ -447,26 +447,81 @@ export const Tutorial = () => {
 
   const stepConf = TUTORIAL_STEPS[currentStep];
   const isWrongPath = stepConf && location.pathname !== stepConf.path;
-
   const handleNext = () => {
+    // Robust fallbacks for each step to simulate the target interaction if skipped/clicked manually
     if (currentStep === 0) {
-      const textarea = document.querySelector('#tutorial-translate-input textarea');
-      if (textarea && textarea.value.trim().length === 0) {
-        window.dispatchEvent(new CustomEvent('tutorial-type-word', { detail: { word: 'hello' } }));
-        return;
-      }
+      // Simulate typing "hello"
+      window.dispatchEvent(new CustomEvent('tutorial-type-word', { detail: { word: 'hello' } }));
+      setTimeout(() => {
+        setCurrentStep(1);
+      }, 150);
+      return;
     }
-    
+
     if (currentStep === 1) {
-      // Allow manual or simulated Translate trigger
+      // Trigger translate submit
       const form = document.querySelector('#tutorial-translate-input form');
-      if (form) form.requestSubmit();
+      if (form) {
+        form.requestSubmit();
+      } else {
+        // Fallback: Direct advance if element not found
+        setCurrentStep(2);
+      }
       return;
     }
 
     if (currentStep === 2) {
-      // Move to Step 3: Swipe to Save
+      // Move to Step 3: Swipe/tap to Save
       setCurrentStep(3);
+      return;
+    }
+
+    if (currentStep === 3) {
+      // Simulate Save click or swipe
+      const saveBtn = document.getElementById('tutorial-tinder-save-btn');
+      if (saveBtn) {
+        saveBtn.click();
+      } else {
+        // Direct fallback: trigger the custom save event manually
+        window.dispatchEvent(new Event('tutorial-word-saved'));
+      }
+      return;
+    }
+
+    if (currentStep === 4) {
+      // Simulate reveal front card click
+      window.dispatchEvent(new Event('tutorial-card-revealed'));
+      setCurrentStep(5);
+      return;
+    }
+
+    if (currentStep === 5) {
+      // Simulate reveal back card click
+      window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
+      setCurrentStep(6);
+      return;
+    }
+
+    if (currentStep === 6) {
+      // Simulate SRS memory button click
+      const easyBtn = document.querySelector('#tutorial-srs-buttons button:last-child');
+      if (easyBtn) {
+        easyBtn.click();
+      } else {
+        window.dispatchEvent(new Event('tutorial-srs-clicked'));
+      }
+      return;
+    }
+
+    if (currentStep === 7) {
+      // Simulate curriculum switcher click
+      window.dispatchEvent(new Event('tutorial-curriculum-opened'));
+      return;
+    }
+
+    if (currentStep === 8) {
+      // Simulate SRS stage detail open
+      window.dispatchEvent(new Event('tutorial-srs-modal-opened'));
       return;
     }
 
@@ -480,7 +535,6 @@ export const Tutorial = () => {
       handleClose();
     }
   };
-
   const handleClose = () => {
     setActive(false);
     localStorage.setItem('memeng_tutorial_done', 'true');
@@ -800,7 +854,7 @@ export const Tutorial = () => {
                     Skip
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {currentStep === 2 && (
+                    {currentStep < TUTORIAL_STEPS.length - 1 ? (
                       <button 
                         onClick={handleNext}
                         className="glass-button primary animate-scale"
@@ -817,8 +871,7 @@ export const Tutorial = () => {
                         <span>ถัดไป</span>
                         <ChevronRight size={11} />
                       </button>
-                    )}
-                    {currentStep === TUTORIAL_STEPS.length - 1 && (
+                    ) : (
                       <button 
                         onClick={handleNext}
                         className="glass-button primary animate-scale"
