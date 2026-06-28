@@ -51,9 +51,9 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/purge',
-    selector: '#tutorial-word-greeting',
+    selector: '#tutorial-word-today',
     title: 'Dictionary Lookup',
-    text: 'ลองแตะที่คำศัพท์สีแดงหรือคำศัพท์ใดก็ได้ในความหมาย เช่น คำว่า greeting เพื่อจำลองการเปิดพจนานุกรมความหมายด่วน',
+    text: 'ลองแตะที่คำว่า today หรือคำศัพท์ใดก็ได้ในประโยคตัวอย่างเพื่อจำลองการเปิดพจนานุกรมความหมายด่วน',
     position: 'top'
   },
   {
@@ -79,7 +79,7 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/profile',
-    selector: '#tutorial-curriculum-option-self-study',
+    selector: '#tutorial-profile-curriculum-modal-content',
     title: 'Choose Curriculum Focus',
     text: 'นี่คือรายการตัวเลือกหลักสูตรที่เลือกเล่นได้ เช่น Oxford หรือ TOEIC แตะเลือกหลักสูตรที่สนใจ หรือแตะเลือก Self-Study เพื่อใช้งานโหมดคำศัพท์ทั่วไปตามเดิม แล้วกดปุ่มถัดไป',
     position: 'top'
@@ -724,19 +724,35 @@ export const Tutorial = () => {
     setActive(false);
     localStorage.setItem('memeng_tutorial_done', 'true');
     localStorage.removeItem('memeng_tutorial_started');
+    // Ensure all modals are closed when exiting tutorial
+    window.dispatchEvent(new Event('tutorial-close-modals'));
+    window.dispatchEvent(new Event('exit-study-session'));
+    window.dispatchEvent(new Event('tutorial-reset'));
+    
+    // Navigate home first to unmount /purge page and prevent race-condition empty-vocab render crashes
+    navigate('/');
+
     try {
       await clearDeckAndResetStats();
     } catch (err) {
       console.error("Failed to clear deck on tutorial complete:", err);
     }
-    // Ensure all modals are closed when exiting tutorial
-    window.dispatchEvent(new Event('tutorial-close-modals'));
-    window.dispatchEvent(new Event('exit-study-session'));
-    window.dispatchEvent(new Event('tutorial-reset'));
-    navigate('/');
   };
 
   const getTooltipStyle = () => {
+    // Keep tip at the bottom of the viewport for step 11 (index 10) so it does not overlay/block options
+    if (currentStep === 10) {
+      return {
+        position: 'fixed',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '90%',
+        maxWidth: '320px',
+        zIndex: 100004
+      };
+    }
+
     if (!highlightRect || isWrongPath) {
       return {
         position: 'fixed',

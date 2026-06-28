@@ -634,7 +634,13 @@ const renderInteractiveSentence = (text, targetWord, onWordClick) => {
     return (
       <span
         key={idx}
-        id={part.toLowerCase() === 'greeting' ? 'tutorial-word-greeting' : undefined}
+        id={
+          part.toLowerCase() === 'greeting' 
+            ? 'tutorial-word-greeting' 
+            : part.toLowerCase() === 'today'
+            ? 'tutorial-word-today'
+            : undefined
+        }
         className="interactive-word"
         role="button"
         style={style}
