@@ -16,7 +16,7 @@ import NongMem from './components/NongMem';
 
 
 function AppContent() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const { vocab, streak, clearDeckAndResetStats } = useVocab();
   const { theme, setTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -373,12 +373,13 @@ function AppContent() {
     setMenuOpen(false);
   }, [location.pathname]);
 
-  // Redirect to login if user is not authenticated
+  // Redirect to login if user is not authenticated and auth loading is done
   useEffect(() => {
+    if (loading) return;
     if (!user && location.pathname !== '/login') {
       navigate('/login');
     }
-  }, [user, location.pathname, navigate]);
+  }, [user, loading, location.pathname, navigate]);
 
   const dueToday = vocab.filter(
     w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()
