@@ -61,7 +61,7 @@ const TUTORIAL_STEPS = [
     selector: '#tutorial-tooltip-add-btn',
     title: 'Add Word to Deck',
     text: 'แตะปุ่ม "Add to Deck" เพื่อเก็บสะสมคำศัพท์นั้นเข้าคลังเรียนรู้ของคุณทันที',
-    position: 'top'
+    position: 'bottom'
   },
   {
     path: '/purge',
@@ -105,7 +105,7 @@ export const Tutorial = () => {
   const location = useLocation();
   const { theme } = useTheme();
   const { user } = useAuth();
-  const { clearDeckAndResetStats } = useVocab();
+  const { clearDeckAndResetStats, setActiveCurriculum } = useVocab();
   
   const [active, setActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -289,7 +289,7 @@ export const Tutorial = () => {
       if (currentStep === 6) {
         setTimeout(() => {
           setCurrentStep(7);
-        }, 300);
+        }, 1500);
       }
     };
 
@@ -728,6 +728,14 @@ export const Tutorial = () => {
     window.dispatchEvent(new Event('tutorial-close-modals'));
     window.dispatchEvent(new Event('exit-study-session'));
     window.dispatchEvent(new Event('tutorial-reset'));
+    
+    // Always revert curriculum back to Self-Study default after tutorial finish
+    try {
+      setActiveCurriculum('Self-Study only');
+      localStorage.setItem('chatgpt_anki_curriculum', 'Self-Study only');
+    } catch (err) {
+      console.error("Failed to reset curriculum default on finish:", err);
+    }
     
     // Navigate home first to unmount /purge page and prevent race-condition empty-vocab render crashes
     navigate('/');
