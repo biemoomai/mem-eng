@@ -1417,7 +1417,7 @@ const Purge = () => {
 
   // Initialize queue once when vocab is loaded
   useEffect(() => {
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (isTutorialActive) {
       const mockCard = {
         id: 'tutorial-mock-hello',
@@ -1489,7 +1489,7 @@ const Purge = () => {
 
     const handleStepChanged = (e) => {
       const step = e.detail?.step;
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
 
       if (isTutorialActive) {
         setSessionQueue(prev => {
@@ -3482,7 +3482,7 @@ const Purge = () => {
     }
     
     // Save FSRS backend calculations
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (!isTutorialActive) {
       updateWordSrs(wordObj.id, choice, durationMs);
 

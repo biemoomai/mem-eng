@@ -116,6 +116,7 @@ export const Tutorial = () => {
     const handleTrigger = () => {
       if (!user) return;
       localStorage.setItem('memeng_tutorial_done', 'false');
+      localStorage.setItem('memeng_tutorial_started', 'true');
       setActive(true);
       setCurrentStep(0);
       navigate('/');
@@ -366,6 +367,8 @@ export const Tutorial = () => {
   // Opt-in popup handlers
   const handleOptInAccept = () => {
     localStorage.setItem('memeng_tutorial_offered', 'true');
+    localStorage.setItem('memeng_tutorial_done', 'false');
+    localStorage.setItem('memeng_tutorial_started', 'true');
     setShowOptIn(false);
     setActive(true);
     setCurrentStep(0);
@@ -374,7 +377,11 @@ export const Tutorial = () => {
 
   const handleOptInDismiss = () => {
     localStorage.setItem('memeng_tutorial_offered', 'true');
+    localStorage.setItem('memeng_tutorial_done', 'true');
+    localStorage.removeItem('memeng_tutorial_started');
     setShowOptIn(false);
+    // Notify Purge.jsx to immediately drop the mock card and load the real (empty) queue
+    window.dispatchEvent(new Event('tutorial-reset'));
   };
 
   if (!active && !showOptIn) return null;
@@ -538,6 +545,7 @@ export const Tutorial = () => {
   const handleClose = () => {
     setActive(false);
     localStorage.setItem('memeng_tutorial_done', 'true');
+    localStorage.removeItem('memeng_tutorial_started');
     // Ensure all modals are closed when exiting tutorial
     window.dispatchEvent(new Event('tutorial-close-modals'));
     window.dispatchEvent(new Event('exit-study-session'));
