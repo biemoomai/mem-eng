@@ -170,9 +170,10 @@ function AppContent() {
   });
   const [nongMemMuted, setNongMemMuted] = useState(() => {
     try {
-      return localStorage.getItem('memeng_nong_mem_muted') === 'true';
+      const val = localStorage.getItem('memeng_nong_mem_muted');
+      return val !== 'false'; // Default to true (Muted) if null/not set
     } catch (e) {
-      return false;
+      return true;
     }
   });
 
@@ -934,7 +935,7 @@ function AppContent() {
               background: theme === 'theme-3' ? '#ffffff' : (lowGraphics ? '#08090b' : 'radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.04) 0%, #08090b 100%)'),
               backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(30px)',
               WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(30px)',
-              padding: '45px 20px 20px 20px',
+              padding: '28px 16px 16px 16px',
               display: 'flex',
               flexDirection: 'column',
               boxSizing: 'border-box',
@@ -967,643 +968,492 @@ function AppContent() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              marginBottom: '14px',
+              gap: '5px',
+              marginBottom: '10px',
               color: theme === 'theme-3' ? '#666666' : 'var(--text-secondary)',
-              fontSize: '0.78rem'
+              fontSize: '0.72rem'
             }}>
-              <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: theme === 'theme-3' ? '0px' : '50%', background: theme === 'theme-3' ? '#000000' : '#cbd5e1', boxShadow: theme === 'theme-3' ? 'none' : '0 0 6px #cbd5e1' }} />
+              <span style={{ display: 'inline-block', width: '4px', height: '4px', borderRadius: '50%', background: theme === 'theme-3' ? '#000000' : '#cbd5e1' }} />
               <span>Logged in as <strong style={{ color: theme === 'theme-3' ? '#000000' : 'inherit' }}>{user?.email || 'cz01'}</strong></span>
             </div>
 
-            {/* Navigation Items (The 3 Modes) */}
+            {/* Navigation Items (The 3 Modes - Compact horizontal tabs) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '8px' }}>
+              {navItems.map((item) => {
+                const IconComponent = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleNavigation(item.path);
+                    }}
+                    style={{
+                      background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.04)'}`,
+                      borderRadius: '8px',
+                      color: isActive ? 'white' : '#94a3b8',
+                      padding: '6px 2px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '3px',
+                      fontSize: '0.65rem',
+                      fontWeight: isActive ? 'bold' : 'normal',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ position: 'relative' }}>
+                      <IconComponent size={13} color={isActive ? 'white' : '#94a3b8'} />
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span style={{
+                          position: 'absolute',
+                          top: '-4px',
+                          right: '-6px',
+                          background: '#ef4444',
+                          color: 'white',
+                          fontSize: '0.5rem',
+                          fontWeight: 900,
+                          borderRadius: '50%',
+                          width: '11px',
+                          height: '11px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scrollable settings settings section */}
             <motion.div 
               variants={containerVariants}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '8px',
+                gap: '6px',
                 flex: 1,
                 overflowY: 'auto',
-                paddingRight: '6px',
-                paddingBottom: '20px'
+                paddingRight: '2px',
+                paddingBottom: '10px'
               }}
             >
-              {navItems.map((item) => {
-                const IconComponent = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <motion.div
-                    key={item.path}
-                    variants={itemVariants}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleNavigation(item.path)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '10px 14px',
-                      borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                      background: theme === 'theme-3'
-                        ? (isActive ? '#000000' : '#ffffff')
-                        : (isActive ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)'),
-                      border: theme === 'theme-3'
-                        ? '1px solid #000000'
-                        : (isActive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.04)'),
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{
-                      width: '30px',
-                      height: '30px',
-                      borderRadius: theme === 'theme-3' ? '0px' : '8px',
-                      background: theme === 'theme-3'
-                        ? (isActive ? '#000000' : '#ffffff')
-                        : (isActive ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)'),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: theme === 'theme-3'
-                        ? 'none'
-                        : (isActive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.06)')
-                    }}>
-                      <IconComponent size={15} color={theme === 'theme-3' ? (isActive ? '#ffffff' : '#000000') : (isActive ? '#ffffff' : '#94a3b8')} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: theme === 'theme-3' ? (isActive ? '#ffffff' : '#000000') : 'white', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        {item.label}
-                        {item.badge !== undefined && item.badge > 0 && (
-                          <span style={{
-                            background: '#ef4444',
-                            color: 'white',
-                            fontSize: '0.58rem',
-                            fontWeight: 900,
-                            borderRadius: '50%',
-                            width: '14px',
-                            height: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 0 5px rgba(239, 68, 68, 0.65)'
-                          }}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? (isActive ? '#cccccc' : '#666666') : '#94a3b8', marginTop: '1px' }}>{item.description}</div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-
-              {/* Spacer / Divider */}
-              <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.06)', margin: '4px 0' }} />
-
-              {/* Appearance / Theme Selector */}
-              <motion.div
-                variants={itemVariants}
-                style={{
+              {/* Appearance & Quick Buttons in a side-by-side grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '4px' }}>
+                {/* Appearance */}
+                <div style={{
+                  padding: '8px 10px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.01)',
+                  border: '1px solid rgba(255, 255, 255, 0.03)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '8px',
-                  padding: '12px 14px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.02)',
-                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.04)',
-                  marginBottom: '4px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '8px',
-                    background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.06)'
-                  }}>
-                    <Palette size={15} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
+                  gap: '4px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8' }}>
+                    <Palette size={11} />
+                    <span>Appearance</span>
                   </div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: theme === 'theme-3' ? '#000000' : 'white' }}>
-                    Appearance
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                    {[
+                      { id: 'theme-1', name: 'Glass' },
+                      { id: 'theme-2', name: 'Silver' }
+                    ].map(t => {
+                      const isActive = theme === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={(e) => { e.stopPropagation(); setTheme(t.id); }}
+                          style={{
+                            background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                            border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
+                            borderRadius: '6px',
+                            color: isActive ? 'white' : '#94a3b8',
+                            padding: '4px 2px',
+                            fontSize: '0.62rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginTop: '4px' }}>
-                  {[
-                    { id: 'theme-1', name: 'Glass' },
-                    { id: 'theme-2', name: 'Silver' }
-                  ].map(t => {
-                    const isActive = theme === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTheme(t.id);
-                        }}
-                        style={{
-                          background: isActive ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                          border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
-                          borderRadius: '8px',
-                          color: isActive ? 'white' : '#94a3b8',
-                          padding: '6px 4px',
-                          fontSize: '0.7rem',
-                          fontWeight: isActive ? 'bold' : 'normal',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          textAlign: 'center',
-                          outline: 'none'
-                        }}
-                      >
-                        {t.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
 
-              {/* Shortcut Buttons Toggle */}
-              <motion.div
-                variants={itemVariants}
-                style={{
+                {/* Quick Buttons */}
+                <div style={{
+                  padding: '8px 10px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.01)',
+                  border: '1px solid rgba(255, 255, 255, 0.03)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '8px',
-                  padding: '12px 14px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.02)',
-                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.04)',
-                  marginBottom: '4px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '8px',
-                    background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.06)'
-                  }}>
-                    <Sliders size={15} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
+                  gap: '4px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8' }}>
+                    <Sliders size={11} />
+                    <span>Quick Buttons</span>
                   </div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: theme === 'theme-3' ? '#000000' : 'white' }}>
-                    Quick Buttons
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                    {[
+                      { id: true, name: 'Show' },
+                      { id: false, name: 'Swipe' }
+                    ].map(opt => {
+                      const isActive = showShortcutButtons === opt.id;
+                      return (
+                        <button
+                          key={String(opt.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            localStorage.setItem('memeng_show_shortcut_buttons', String(opt.id));
+                            setShowShortcutButtons(opt.id);
+                            window.dispatchEvent(new CustomEvent('shortcut-buttons-changed', { detail: { show: opt.id } }));
+                          }}
+                          style={{
+                            background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                            border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
+                            borderRadius: '6px',
+                            color: isActive ? 'white' : '#94a3b8',
+                            padding: '4px 2px',
+                            fontSize: '0.62rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {opt.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', marginTop: '4px' }}>
-                  {[
-                    { id: true, name: 'Show' },
-                    { id: false, name: 'Swipe Only' }
-                  ].map(opt => {
-                    const isActive = showShortcutButtons === opt.id;
-                    return (
-                      <button
-                        key={String(opt.id)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playClickSound();
-                          localStorage.setItem('memeng_show_shortcut_buttons', String(opt.id));
-                          setShowShortcutButtons(opt.id);
-                          window.dispatchEvent(new CustomEvent('shortcut-buttons-changed', { detail: { show: opt.id } }));
-                        }}
-                        style={{
-                          background: isActive ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                          border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
-                          borderRadius: '8px',
-                          color: isActive ? 'white' : '#94a3b8',
-                          padding: '6px 4px',
-                          fontSize: '0.7rem',
-                          fontWeight: isActive ? 'bold' : 'normal',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          textAlign: 'center',
-                          outline: 'none'
-                        }}
-                      >
-                        {opt.id ? (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                            <span>Show</span>
-                            <span style={{ fontSize: '0.52rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '1px 3px', borderRadius: '4px', fontWeight: 900 }}>Back</span>
-                            <span style={{ fontSize: '0.52rem', background: 'rgba(16, 185, 129, 0.15)', color: '#4ade80', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '1px 3px', borderRadius: '4px', fontWeight: 900 }}>Save</span>
-                          </div>
-                        ) : (
-                          <span>Swipe Only</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
+              </div>
 
-              {/* Conditional Exit Study Session Option */}
+              {/* Exit Study Session */}
               {localStorage.getItem('memeng_is_studying') === 'true' && (
-                <motion.div
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={() => {
-                    // Dispatch a custom event so Purge.jsx can reset its study session
                     window.dispatchEvent(new Event('exit-study-session'));
                     setMenuOpen(false);
                   }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1px solid rgba(239, 68, 68, 0.25)',
-                    cursor: 'pointer',
-                    marginBottom: '8px'
-                  }}
-                >
-                  <div style={{
-                    width: '30px',
-                    height: '30px',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px',
                     borderRadius: '8px',
                     background: 'rgba(239, 68, 68, 0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid rgba(239, 68, 68, 0.2)'
-                  }}>
-                    <XCircle size={15} color="#ef4444" />
-                  </div>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ef4444' }}>
-                      Exit Study Session
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Settings side-by-side layout */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 0.85fr', gap: '8px', marginBottom: '8px', marginTop: '2px' }}>
-                {/* Compact Setting 1: Daily Reminder */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                    background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
-                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)'
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    color: '#ef4444',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    marginBottom: '4px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Bell size={14} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>Reminder</span>
+                  <XCircle size={13} />
+                  <span>Exit Study Session</span>
+                </button>
+              )}
+
+              {/* Settings grid (Reminder & Nav Dock) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '4px' }}>
+                {/* Reminder */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 10px',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.01)',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Bell size={12} />
+                    <span>Reminder</span>
                   </div>
                   <input 
                     type="time" 
                     value={reminderTime}
                     onChange={(e) => {
                       setReminderTime(e.target.value);
-                      try {
-                        localStorage.setItem('chatgpt_anki_reminder', e.target.value);
-                      } catch (err) {}
+                      try { localStorage.setItem('chatgpt_anki_reminder', e.target.value); } catch (err) {}
                     }}
                     style={{
-                      background: theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)',
-                      border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: theme === 'theme-3' ? '0px' : '6px',
-                      padding: '0.15rem 0.35rem',
-                      color: theme === 'theme-3' ? '#000000' : 'white',
-                      fontSize: '0.72rem',
-                      outline: 'none',
-                      width: '62px'
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '4px',
+                      padding: '1px 2px',
+                      color: 'white',
+                      fontSize: '0.65rem',
+                      width: '50px'
                     }}
                   />
                 </div>
 
-                {/* Compact Setting 2: Bottom Navigation Toggle */}
+                {/* Nav Dock Switch */}
                 <div
                   onClick={() => {
                     const val = !showBottomNav;
                     setShowBottomNav(val);
-                    try {
-                      localStorage.setItem('chatgpt_anki_show_bottom_nav', val.toString());
-                    } catch (err) {}
+                    try { localStorage.setItem('chatgpt_anki_show_bottom_nav', val.toString()); } catch (err) {}
                   }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                    background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
-                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
+                    padding: '6px 10px',
+                    borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.01)',
+                    border: '1px solid rgba(255,255,255,0.03)',
                     cursor: 'pointer'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sliders size={14} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>Nav Dock</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Sliders size={12} />
+                    <span>Nav Dock</span>
                   </div>
-                  {/* Visual Toggle Switch */}
                   <div style={{
-                    width: '28px',
-                    height: '16px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '8px',
-                    background: showBottomNav ? (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.2)') : (theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)'),
+                    width: '24px',
+                    height: '13px',
+                    borderRadius: '6px',
+                    background: showBottomNav ? '#3b82f6' : 'rgba(255,255,255,0.04)',
                     position: 'relative',
-                    transition: 'background-color 0.2s',
-                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.08)'
+                    border: '1px solid rgba(255,255,255,0.08)'
                   }}>
                     <div style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: theme === 'theme-3' ? '0px' : '50%',
-                      background: showBottomNav ? '#ffffff' : (theme === 'theme-3' ? '#000000' : 'rgba(255,255,255,0.3)'),
+                      width: '9px',
+                      height: '9px',
+                      borderRadius: '50%',
+                      background: '#ffffff',
                       position: 'absolute',
-                      top: '2px',
-                      left: showBottomNav ? '14px' : '2px',
-                      transition: 'left 0.2s',
-                      boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
+                      top: '1px',
+                      left: showBottomNav ? '12px' : '1px',
+                      transition: 'left 0.15s'
                     }} />
                   </div>
                 </div>
               </div>
 
-              {/* Low Graphics Mode */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginBottom: '8px' }}>
+              {/* Low Graphics & Mascot Toggles in a grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '4px' }}>
+                {/* Low Graphics Switch */}
                 <div
                   onClick={() => {
                     const val = !lowGraphics;
                     setLowGraphics(val);
-                    try {
-                      localStorage.setItem('memeng_low_graphics', val.toString());
-                    } catch (err) {}
+                    try { localStorage.setItem('memeng_low_graphics', val.toString()); } catch (err) {}
                     window.dispatchEvent(new CustomEvent('low-graphics-change', { detail: val }));
                   }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                    background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
-                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
+                    padding: '6px 10px',
+                    borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.01)',
+                    border: '1px solid rgba(255,255,255,0.03)',
                     cursor: 'pointer'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sliders size={14} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>Low Graphics Mode (ประหยัดพลังงาน)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Sliders size={12} />
+                    <span>Low Graphics</span>
                   </div>
-                  {/* Visual Toggle Switch */}
                   <div style={{
-                    width: '28px',
-                    height: '16px',
-                    borderRadius: theme === 'theme-3' ? '0px' : '8px',
-                    background: lowGraphics ? (theme === 'theme-3' ? '#000000' : '#3b82f6') : (theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)'),
+                    width: '24px',
+                    height: '13px',
+                    borderRadius: '6px',
+                    background: lowGraphics ? '#3b82f6' : 'rgba(255,255,255,0.04)',
                     position: 'relative',
-                    transition: 'background-color 0.2s',
-                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.08)'
+                    border: '1px solid rgba(255,255,255,0.08)'
                   }}>
                     <div style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: theme === 'theme-3' ? '0px' : '50%',
+                      width: '9px',
+                      height: '9px',
+                      borderRadius: '50%',
                       background: '#ffffff',
                       position: 'absolute',
-                      top: '2px',
-                      left: lowGraphics ? '14px' : '2px',
-                      transition: 'left 0.2s',
-                      boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
+                      top: '1px',
+                      left: lowGraphics ? '12px' : '1px',
+                      transition: 'left 0.15s'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Mascot Toggle */}
+                <div
+                  onClick={() => {
+                    const val = !showNongMem;
+                    setShowNongMem(val);
+                    try { localStorage.setItem('memeng_show_nong_mem', val.toString()); } catch (err) {}
+                    window.dispatchEvent(new CustomEvent('nongmem-visibility-change', { detail: val }));
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.01)',
+                    border: '1px solid rgba(255,255,255,0.03)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Bot size={12} />
+                    <span>Nong Mem</span>
+                  </div>
+                  <div style={{
+                    width: '24px',
+                    height: '13px',
+                    borderRadius: '6px',
+                    background: showNongMem ? '#3b82f6' : 'rgba(255,255,255,0.04)',
+                    position: 'relative',
+                    border: '1px solid rgba(255,255,255,0.08)'
+                  }}>
+                    <div style={{
+                      width: '9px',
+                      height: '9px',
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      position: 'absolute',
+                      top: '1px',
+                      left: showNongMem ? '12px' : '1px',
+                      transition: 'left 0.15s'
                     }} />
                   </div>
                 </div>
               </div>
 
-              {/* Consolidated Mascot Setting: Nong Mem Mascot & Sound */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px',
-                  padding: '10px 12px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
-                  border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
-                  marginBottom: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Bot size={14} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    Nong Mem
-                    <span style={{ fontSize: '0.52rem', background: '#a5b4fc', color: '#08090b', padding: '1px 3px', borderRadius: '4px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Beta</span>
-                  </span>
+              {/* Nong Mem Sound Setting (Horizontal full width card, compact) */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '6px 10px',
+                borderRadius: '10px',
+                background: 'rgba(255,255,255,0.01)',
+                border: '1px solid rgba(255,255,255,0.03)',
+                marginBottom: '4px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
+                  <Volume2 size={12} />
+                  <span>Nong Mem Sound</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {/* Mascot Visibility Switch */}
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      const val = !showNongMem;
-                      setShowNongMem(val);
-                      try {
-                        localStorage.setItem('memeng_show_nong_mem', val.toString());
-                      } catch (err) {}
-                      window.dispatchEvent(new CustomEvent('nongmem-visibility-change', { detail: val }));
-                    }}
-                    style={{
-                      border: 'none',
-                      background: showNongMem ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: showNongMem ? '#3b82f6' : (theme === 'theme-3' ? '#000000' : '#94a3b8'),
-                      fontSize: '0.68rem',
-                      fontWeight: 700
-                    }}
-                  >
-                    {showNongMem ? 'On' : 'Off'}
-                  </motion.button>
-
-                  {/* Audio Mute Switch */}
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      const val = !nongMemMuted;
-                      setNongMemMuted(val);
-                      try {
-                        localStorage.setItem('memeng_nong_mem_muted', val.toString());
-                      } catch (err) {}
-                      window.dispatchEvent(new CustomEvent('nongmem-mute-change', { detail: val }));
-                    }}
-                    style={{
-                      border: 'none',
-                      background: !nongMemMuted ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      color: !nongMemMuted ? '#4ade80' : '#f87171',
-                      fontSize: '0.68rem',
-                      fontWeight: 700
-                    }}
-                  >
-                    {!nongMemMuted ? <Volume2 size={12} /> : <VolumeX size={12} />}
-                    {!nongMemMuted ? 'Sound' : 'Muted'}
-                  </motion.button>
-                </div>
+                <button
+                  onClick={() => {
+                    const val = !nongMemMuted;
+                    setNongMemMuted(val);
+                    try { localStorage.setItem('memeng_nong_mem_muted', val.toString()); } catch (err) {}
+                    window.dispatchEvent(new CustomEvent('nongmem-mute-change', { detail: val }));
+                  }}
+                  style={{
+                    border: 'none',
+                    background: !nongMemMuted ? 'rgba(74, 222, 128, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: !nongMemMuted ? '#4ade80' : '#f87171',
+                    fontSize: '0.62rem',
+                    fontWeight: 700
+                  }}
+                >
+                  {!nongMemMuted ? <Volume2 size={10} /> : <VolumeX size={10} />}
+                  {!nongMemMuted ? 'Sound' : 'Muted'}
+                </button>
               </div>
 
-              {/* Restart or Exit Tutorial */}
-              <motion.div
-                variants={itemVariants}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setMenuOpen(false);
-                  if (isTutorialActive) {
-                    window.dispatchEvent(new Event('exit-tutorial'));
-                  } else {
-                    window.dispatchEvent(new Event('trigger-tutorial'));
-                  }
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : (isTutorialActive ? 'rgba(239, 68, 68, 0.05)' : 'rgba(251, 191, 36, 0.05)'),
-                  border: theme === 'theme-3' ? (isTutorialActive ? '1px solid #ef4444' : '1px solid #facc15') : (isTutorialActive ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(251, 191, 36, 0.2)'),
-                  cursor: 'pointer',
-                  marginTop: '12px',
-                  marginBottom: '4px'
-                }}
-              >
-                <div style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '8px',
-                  background: isTutorialActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(251, 191, 36, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: isTutorialActive ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(251, 191, 36, 0.2)'
-                }}>
-                  {isTutorialActive ? (
-                    <XCircle size={14} color="#ef4444" />
-                  ) : (
-                    <HelpCircle size={14} color="#facc15" />
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: isTutorialActive ? '#ef4444' : '#facc15' }}>
-                    {isTutorialActive ? 'Exit Interactive Guide' : 'Interactive Guide Tour'}
-                  </div>
-                  <div style={{ fontSize: '0.62rem', color: isTutorialActive ? 'rgba(239, 68, 68, 0.6)' : 'rgba(251, 191, 36, 0.6)' }}>
-                    {isTutorialActive ? 'Exit the interactive tutorial mode' : 'Restart the interactive tutorial'}
-                  </div>
-                </div>
-              </motion.div>
+              {/* Action Buttons Stack (Without descriptions, compact, full-width) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                {/* Guide Tour */}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (isTutorialActive) {
+                      window.dispatchEvent(new Event('exit-tutorial'));
+                    } else {
+                      window.dispatchEvent(new Event('trigger-tutorial'));
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    background: isTutorialActive ? 'rgba(239, 68, 68, 0.08)' : 'rgba(251, 191, 36, 0.08)',
+                    border: isTutorialActive ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(251, 191, 36, 0.2)',
+                    color: isTutorialActive ? '#ef4444' : '#facc15',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isTutorialActive ? <XCircle size={13} /> : <HelpCircle size={13} />}
+                  <span>{isTutorialActive ? 'Exit Interactive Guide' : 'Interactive Guide Tour'}</span>
+                </button>
 
-              {/* Reset Deck & Stats - Danger Zone */}
-              <motion.div
-                variants={itemVariants}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setShowResetConfirm(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(239, 68, 68, 0.04)',
-                  border: theme === 'theme-3' ? '1px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.15)',
-                  cursor: 'pointer',
-                  marginTop: '20px'
-                }}
-              >
-                <div style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '8px',
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid rgba(239, 68, 68, 0.2)'
-                }}>
-                  <Trash2 size={14} color="#ef4444" />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#fca5a5' }}>
-                    Reset Deck & Stats
-                  </div>
-                  <div style={{ fontSize: '0.62rem', color: 'rgba(252, 165, 165, 0.6)' }}>
-                    Delete all words and review history
-                  </div>
-                </div>
-              </motion.div>
+                {/* Reset Deck */}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowResetConfirm(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    border: '1px solid rgba(239, 68, 68, 0.15)',
+                    color: '#fca5a5',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Trash2 size={13} />
+                  <span>Reset Deck & Stats</span>
+                </button>
 
-              {/* Log out option at bottom */}
-              <motion.div
-                variants={itemVariants}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleLogout}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                  background: theme === 'theme-3' ? '#ffffff' : 'rgba(239, 68, 68, 0.04)',
-                  border: theme === 'theme-3' ? '1px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.15)',
-                  cursor: 'pointer',
-                  marginTop: '20px'
-                }}
-              >
-                <div style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '8px',
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid rgba(239, 68, 68, 0.2)'
-                }}>
-                  <LogOut size={14} color="#ef4444" />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#fca5a5' }}>
-                    Sign Out
-                  </div>
-                  <div style={{ fontSize: '0.62rem', color: 'rgba(252, 165, 165, 0.6)' }}>
-                    Log out of your profile
-                  </div>
-                </div>
-              </motion.div>
+                {/* Sign Out */}
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    color: '#cbd5e1',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <LogOut size={13} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

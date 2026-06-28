@@ -1633,8 +1633,12 @@ const AddWord = () => {
                     const isTutorial = localStorage.getItem('memeng_tutorial_done') === 'false';
                     
                     if (isTutorial && tutorialStep === 0) {
-                      // Lock input to "hello" character-by-character
                       const target = "hello";
+                      if (val.trim().toLowerCase() === 'hello') {
+                        setWordInput('hello');
+                        window.dispatchEvent(new CustomEvent('tutorial-typed-hello'));
+                        return;
+                      }
                       const currentLength = wordInput.length;
                       if (val.length < currentLength) {
                         setWordInput(val);
@@ -1643,7 +1647,7 @@ const AddWord = () => {
                         if (nextChar) {
                           const newVal = wordInput + nextChar;
                           setWordInput(newVal);
-                          if (newVal === "hello") {
+                          if (newVal.toLowerCase() === "hello") {
                             window.dispatchEvent(new CustomEvent('tutorial-typed-hello'));
                           }
                         }
@@ -1719,7 +1723,7 @@ const AddWord = () => {
                 <button
                   id="tutorial-translate-submit-btn"
                   type="submit"
-                  disabled={isFilling || !wordInput.trim() || (localStorage.getItem('memeng_tutorial_done') === 'false' && wordInput !== 'hello')}
+                  disabled={isFilling || !wordInput.trim() || (localStorage.getItem('memeng_tutorial_done') === 'false' && wordInput.toLowerCase().trim() !== 'hello')}
                   className="glass-button primary animate-scale"
                   style={{
                     borderRadius: '12px',
