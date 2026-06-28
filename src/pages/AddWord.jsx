@@ -1921,9 +1921,8 @@ const AddWord = () => {
                 )}
               </motion.div>
             ) : (
-              /* SCROLL REVEAL VIEWPORT SNAP OF RESULTS */
               <motion.div 
-                drag={isSuccess || isExiting ? false : "x"}
+                drag={(isSuccess || isExiting || tutorialStep === 2) ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragSnapToOrigin={true}
                 onDragEnd={handleTranslateDragEnd}
@@ -2892,7 +2891,7 @@ const AddWord = () => {
             </motion.div>
           </div>
         )}
-      {richCardData && !isFilling && !isSuccess && !isExiting && showShortcutButtons && (
+      {richCardData && !isFilling && !isSuccess && !isExiting && showShortcutButtons && tutorialStep !== 2 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

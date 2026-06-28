@@ -1489,12 +1489,69 @@ const Purge = () => {
 
     const handleStepChanged = (e) => {
       const step = e.detail?.step;
-      // Step 3 (index 2): English explanation -> revealStep = 1
-      // Step 4 (index 3): Thai translation -> revealStep = 2
-      // Step 5 (index 4): SRS buttons -> revealStep = 2
-      if (step === 2) {
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true';
+
+      if (isTutorialActive) {
+        setSessionQueue(prev => {
+          if (!prev.some(c => c.id === 'tutorial-mock-hello')) {
+            return [{
+              id: 'tutorial-mock-hello',
+              word: 'hello',
+              pos: 'interjection',
+              cefrLevel: 'A1',
+              meaning: JSON.stringify({
+                word: 'hello',
+                pos: 'interjection',
+                cefrLevel: 'A1',
+                _provider: 'Offline Tutorial Mock',
+                englishExplanation: {
+                  definition: 'Used as a greeting or to begin a telephone conversation.',
+                  phrase: 'Hello! How are you doing today?',
+                  phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
+                },
+                thaiTranslation: {
+                  word: 'สวัสดี',
+                  phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
+                },
+                scenes: [
+                  {
+                    situation: 'A warm greeting between friends meeting at a cafe',
+                    thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ'
+                  },
+                  {
+                    situation: 'Greeting someone on a phone call politely',
+                    thaiDescription: 'การทักทายใครบางคนทางโทรศัพท์อย่างสุภาพ'
+                  }
+                ],
+                imagePrompts: [
+                  'A warm greeting between friends meeting at a cafe',
+                  'Greeting someone on a phone call politely'
+                ],
+                validation: {
+                  isInvalid: false,
+                  suggestion: null
+                }
+              }),
+              videoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
+              isImageSaved: true,
+              srsLevel: 'Learning',
+              nextReviewDate: new Date().toISOString()
+            }];
+          }
+          return prev;
+        });
+        setIsStudying(true);
+      }
+
+      // Sync reveal steps with current step in TUTORIAL_STEPS:
+      // Index 4: Flashcard Deck -> revealStep = 0 (unrevealed)
+      // Index 5: Reveal Thai Translation -> revealStep = 1 (front revealed)
+      // Index 6: SRS Memory Rating -> revealStep = 2 (back revealed)
+      if (step === 4) {
+        setRevealStep(0);
+      } else if (step === 5) {
         setRevealStep(1);
-      } else if (step === 3 || step === 4) {
+      } else if (step === 6) {
         setRevealStep(2);
       }
     };
