@@ -20,25 +20,16 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
           }
         } else {
-          // No active session. Check if they explicitly logged out.
-          const explicitlyLoggedOut = localStorage.getItem('memeng_logged_out') === 'true';
-          if (explicitlyLoggedOut) {
-            if (isMounted) {
+          // Automatically sign in anonymously if no session exists!
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (isMounted) {
+            if (error) {
+              console.error("Auto anonymous sign in failed:", error);
               setUser(null);
-              setLoading(false);
+            } else {
+              setUser(data?.user ?? null);
             }
-          } else {
-            // Automatically sign in anonymously!
-            const { data, error } = await supabase.auth.signInAnonymously();
-            if (isMounted) {
-              if (error) {
-                console.error("Auto anonymous sign in failed:", error);
-                setUser(null);
-              } else {
-                setUser(data?.user ?? null);
-              }
-              setLoading(false);
-            }
+            setLoading(false);
           }
         }
       } catch (err) {
