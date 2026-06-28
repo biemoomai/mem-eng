@@ -408,24 +408,6 @@ export const Tutorial = () => {
     };
   }, [currentStep, location.pathname, active]);
 
-  // Auto-minimize after 5 seconds of being expanded
-  useEffect(() => {
-    if (!active || isMinimized) return;
-    // Clear any existing timer
-    if (autoMinimizeTimerRef.current) {
-      clearTimeout(autoMinimizeTimerRef.current);
-    }
-    // Auto-minimize after 5s for steps that don't require "ถัดไป" button (step 2 needs manual next)
-    autoMinimizeTimerRef.current = setTimeout(() => {
-      setIsMinimized(true);
-    }, 5000);
-    return () => {
-      if (autoMinimizeTimerRef.current) {
-        clearTimeout(autoMinimizeTimerRef.current);
-      }
-    };
-  }, [active, isMinimized, currentStep]);
-
   // Reset minimized state when step changes
   useEffect(() => {
     if (active) {
@@ -439,10 +421,6 @@ export const Tutorial = () => {
 
   const handleExpand = useCallback(() => {
     setIsMinimized(false);
-    // Reset auto-minimize timer
-    if (autoMinimizeTimerRef.current) {
-      clearTimeout(autoMinimizeTimerRef.current);
-    }
   }, []);
 
   // Opt-in popup handlers
@@ -536,6 +514,20 @@ export const Tutorial = () => {
   const stepConf = TUTORIAL_STEPS[currentStep];
   const isWrongPath = stepConf && location.pathname !== stepConf.path;
   const handleNext = () => {
+    // If the step was already completed by the user manually, just advance directly without running fallback simulations
+    if (completedSteps[currentStep]) {
+      if (currentStep < TUTORIAL_STEPS.length - 1) {
+        const nextStep = currentStep + 1;
+        setCurrentStep(nextStep);
+        if (TUTORIAL_STEPS[nextStep].path !== location.pathname) {
+          navigate(TUTORIAL_STEPS[nextStep].path);
+        }
+      } else {
+        handleClose();
+      }
+      return;
+    }
+
     // Robust fallbacks for each step to simulate the target interaction if skipped/clicked manually
     if (currentStep === 0) {
       // Simulate typing "hello"
