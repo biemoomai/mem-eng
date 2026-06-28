@@ -921,6 +921,13 @@ const Purge = () => {
   const [flippedCollectionWords, setFlippedCollectionWords] = useState({});
   const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
+  const [lowGraphics, setLowGraphics] = useState(() => {
+    try {
+      return localStorage.getItem('memeng_low_graphics') !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
   const [addedProgress, setAddedProgress] = useState(null);
   
   const [tooltipStack, setTooltipStack] = useState([]);
@@ -1501,13 +1508,19 @@ const Purge = () => {
       }
     };
 
+    const handleLowGraphicsChange = (e) => {
+      setLowGraphics(!!e.detail);
+    };
+
     window.addEventListener('exit-study-session', handleExitSession);
     window.addEventListener('tutorial-step-changed', handleStepChanged);
     window.addEventListener('tutorial-reset', handleResetEvent);
+    window.addEventListener('low-graphics-change', handleLowGraphicsChange);
     return () => {
       window.removeEventListener('exit-study-session', handleExitSession);
       window.removeEventListener('tutorial-step-changed', handleStepChanged);
       window.removeEventListener('tutorial-reset', handleResetEvent);
+      window.removeEventListener('low-graphics-change', handleLowGraphicsChange);
     };
   }, [vocab]);
 
@@ -1705,7 +1718,7 @@ const Purge = () => {
                 setSelectedStatus(null);
                 setStatusSearchQuery('');
               }}
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 11000, backdropFilter: 'blur(8px)' }}
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 11000, backdropFilter: lowGraphics ? 'none' : 'blur(8px)' }}
             />
             {/* Centered Modal Container */}
             <div style={{
@@ -1726,7 +1739,7 @@ const Purge = () => {
                   pointerEvents: 'auto',
                   width: '90%', maxWidth: '440px', height: '80%', maxHeight: '85%',
                   background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.09) 0%, rgba(10, 12, 17, 0.72) 100%)',
-                  backdropFilter: 'blur(30px) saturate(180%)',
+                  backdropFilter: lowGraphics ? 'none' : 'blur(30px) saturate(180%)',
                   WebkitBackdropFilter: 'blur(30px) saturate(180%)',
                   borderRadius: '24px', 
                   border: `1px solid rgba(255, 255, 255, 0.14)`, 
@@ -1837,7 +1850,7 @@ const Purge = () => {
                                 gap: '0.85rem',
                                 textAlign: 'left',
                                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
-                                backdropFilter: 'blur(10px)',
+                                backdropFilter: lowGraphics ? 'none' : 'blur(10px)',
                                 WebkitBackdropFilter: 'blur(10px)',
                                 cursor: 'pointer',
                                 userSelect: 'none',
@@ -1982,7 +1995,7 @@ const Purge = () => {
                                 gap: '0.85rem',
                                 textAlign: 'left',
                                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
-                                backdropFilter: 'blur(10px)',
+                                backdropFilter: lowGraphics ? 'none' : 'blur(10px)',
                                 WebkitBackdropFilter: 'blur(10px)',
                                 cursor: 'pointer',
                                 userSelect: 'none',
@@ -2172,7 +2185,7 @@ const Purge = () => {
           justifyContent: 'center',
           zIndex: 15000,
           background: 'rgba(0,0,0,0.6)',
-          backdropFilter: 'blur(8px)',
+          backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)'
         }}
         onClick={() => {
@@ -2188,7 +2201,7 @@ const Purge = () => {
               width: '85%',
               maxWidth: '320px',
               background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 12, 17, 0.72) 100%)',
-              backdropFilter: 'blur(20px)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(20px)',
               borderRadius: '24px',
               border: '1px solid rgba(255,255,255,0.12)',
               boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
@@ -2350,7 +2363,7 @@ const Purge = () => {
             inset: 0, 
             background: 'rgba(5, 5, 8, 0.9)', 
             zIndex: 15000, 
-            backdropFilter: 'blur(20px)' 
+            backdropFilter: lowGraphics ? 'none' : 'blur(20px)' 
           }}
         />
         {/* Modal Container */}
@@ -2374,7 +2387,7 @@ const Purge = () => {
               maxWidth: '400px', 
               height: '82%', 
               background: 'radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.12) 0%, rgba(8, 9, 11, 0.95) 100%)',
-              backdropFilter: 'blur(30px) saturate(180%)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(30px) saturate(180%)',
               WebkitBackdropFilter: 'blur(30px) saturate(180%)',
               borderRadius: '28px', 
               border: '1px solid rgba(212, 175, 55, 0.2)', 
@@ -2660,7 +2673,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: 'blur(20px)' }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(20px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
@@ -2674,7 +2687,7 @@ const Purge = () => {
               maxWidth: '400px', 
               height: '82%', 
               background: 'radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12) 0%, rgba(8, 9, 11, 0.95) 100%)',
-              backdropFilter: 'blur(30px) saturate(180%)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(30px) saturate(180%)',
               WebkitBackdropFilter: 'blur(30px) saturate(180%)',
               borderRadius: '28px', 
               border: '1px solid rgba(59, 130, 246, 0.2)', 
@@ -2866,7 +2879,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.95)', zIndex: 15000, backdropFilter: 'blur(25px)' }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.95)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(25px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
@@ -2879,7 +2892,7 @@ const Purge = () => {
               width: '92%', 
               maxWidth: '380px', 
               background: 'linear-gradient(185deg, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.9) 100%)',
-              backdropFilter: 'blur(30px) saturate(180%)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(30px) saturate(180%)',
               borderRadius: '28px', 
               border: '1px solid rgba(255, 255, 255, 0.08)', 
               boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95)',
@@ -3000,7 +3013,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: 'blur(20px)' }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(20px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
@@ -3014,7 +3027,7 @@ const Purge = () => {
               maxWidth: '400px', 
               height: '82%', 
               background: 'radial-gradient(circle at 50% 0%, rgba(167, 139, 250, 0.12) 0%, rgba(8, 9, 11, 0.95) 100%)',
-              backdropFilter: 'blur(30px) saturate(180%)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(30px) saturate(180%)',
               WebkitBackdropFilter: 'blur(30px) saturate(180%)',
               borderRadius: '28px', 
               border: '1px solid rgba(167, 139, 250, 0.2)', 
@@ -3200,7 +3213,7 @@ const Purge = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.85)', zIndex: 15000, backdropFilter: 'blur(15px)' }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(5, 5, 8, 0.85)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(15px)' }}
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
@@ -3213,7 +3226,7 @@ const Purge = () => {
               width: '90%', 
               maxWidth: '350px', 
               background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(8, 9, 11, 0.98) 100%)',
-              backdropFilter: 'blur(30px) saturate(180%)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(30px) saturate(180%)',
               borderRadius: '24px', 
               border: '1px solid rgba(245, 158, 11, 0.2)', 
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9)',
@@ -3324,7 +3337,7 @@ const Purge = () => {
               zIndex: 99999,
               background: 'rgba(255, 255, 255, 0.05)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
-              backdropFilter: 'blur(24px)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
               borderRadius: '16px',
               padding: '0.85rem 1.2rem',
@@ -3779,8 +3792,8 @@ const Purge = () => {
                           : '0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.3)'),
                       borderRadius: theme === 'theme-3' ? '0px' : '24px',
                       padding: '1.5rem 2rem',
-                      backdropFilter: theme === 'theme-3' ? 'none' : 'blur(35px)',
-                      WebkitBackdropFilter: theme === 'theme-3' ? 'none' : 'blur(35px)',
+                      backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(35px)',
+                      WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(35px)',
                       position: 'relative',
                       overflow: 'hidden',
                       width: '240px',
@@ -4503,7 +4516,7 @@ const Purge = () => {
                         borderColor: 'rgba(255, 255, 255, 0.3)',
                         color: 'white',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                        backdropFilter: 'blur(8px)',
+                        backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
                         WebkitBackdropFilter: 'blur(8px)'
                       }}
                       whileTap={{ scale: 0.92 }}
@@ -4536,7 +4549,7 @@ const Purge = () => {
                         borderColor: 'rgba(255, 255, 255, 0.3)',
                         color: 'white',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                        backdropFilter: 'blur(8px)',
+                        backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
                         WebkitBackdropFilter: 'blur(8px)'
                       }}
                       whileTap={{ scale: 0.92 }}
@@ -4567,7 +4580,7 @@ const Purge = () => {
                       position: 'absolute',
                       inset: 0,
                       background: 'rgba(10, 12, 17, 0.75)',
-                      backdropFilter: 'blur(6px)',
+                      backdropFilter: lowGraphics ? 'none' : 'blur(6px)',
                       WebkitBackdropFilter: 'blur(6px)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -4631,7 +4644,7 @@ const Purge = () => {
                       position: 'absolute',
                       inset: 0,
                       background: 'rgba(10, 8, 20, 0.95)',
-                      backdropFilter: 'blur(12px)',
+                      backdropFilter: lowGraphics ? 'none' : 'blur(12px)',
                       WebkitBackdropFilter: 'blur(12px)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -5022,7 +5035,7 @@ const Purge = () => {
                 left: 0,
                 right: 0,
                 background: 'linear-gradient(to top, rgba(10, 12, 17, 0.96) 65%, rgba(10, 12, 17, 0.7) 90%, rgba(10, 12, 17, 0.0) 100%)',
-                backdropFilter: 'blur(24px)',
+                backdropFilter: lowGraphics ? 'none' : 'blur(24px)',
                 WebkitBackdropFilter: 'blur(24px)',
                 borderTop: '1px solid rgba(255, 255, 255, 0.06)',
                 padding: '1.25rem 1rem calc(1.25rem + 65px) 1rem',

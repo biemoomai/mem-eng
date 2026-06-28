@@ -146,6 +146,14 @@ function AppContent() {
       return true;
     }
   });
+  const [lowGraphics, setLowGraphics] = useState(() => {
+    try {
+      const val = localStorage.getItem('memeng_low_graphics');
+      return val !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
   const [reminderTime, setReminderTime] = useState(() => {
     try {
       return localStorage.getItem('chatgpt_anki_reminder') || '20:00';
@@ -466,7 +474,7 @@ function AppContent() {
 
   return (
     <div 
-      className="app-container"
+      className={`app-container ${lowGraphics ? 'low-graphics' : ''}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -604,8 +612,8 @@ function AppContent() {
             maxWidth: '400px',
             height: '56px',
             background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
-            backdropFilter: theme === 'theme-3' ? 'none' : 'blur(20px)',
-            WebkitBackdropFilter: theme === 'theme-3' ? 'none' : 'blur(20px)',
+            backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(20px)',
+            WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(20px)',
             border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.08)',
             borderRadius: theme === 'theme-3' ? '0px' : '20px',
             display: 'flex',
@@ -693,7 +701,7 @@ function AppContent() {
               left: `${selectionRect ? Math.max(10, Math.min(window.innerWidth - 258, selectionRect.left + (selectionRect.width / 2) - 124)) : 10}px`,
               width: '248px',
               background: 'rgba(17, 20, 28, 0.85)',
-              backdropFilter: 'blur(20px)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid rgba(255, 255, 255, 0.15)',
               borderRadius: '16px',
@@ -895,8 +903,8 @@ function AppContent() {
               border: theme === 'theme-3' 
                 ? '1px solid #000000' 
                 : '1px solid rgba(255, 255, 255, 0.08)',
-              backdropFilter: theme === 'theme-3' ? 'none' : 'blur(16px)',
-              WebkitBackdropFilter: theme === 'theme-3' ? 'none' : 'blur(16px)',
+              backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(16px)',
+              WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(16px)',
               color: theme === 'theme-3' ? '#000000' : (menuOpen ? '#ffffff' : '#cbd5e1'),
               cursor: 'pointer',
               zIndex: 100000,
@@ -926,8 +934,8 @@ function AppContent() {
               background: theme === 'theme-3'
                 ? '#ffffff'
                 : 'radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.04) 0%, #08090b 100%)',
-              backdropFilter: theme === 'theme-3' ? 'none' : 'blur(30px)',
-              WebkitBackdropFilter: theme === 'theme-3' ? 'none' : 'blur(30px)',
+              backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(30px)',
+              WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(30px)',
               padding: '45px 20px 20px 20px',
               display: 'flex',
               flexDirection: 'column',
@@ -1331,6 +1339,58 @@ function AppContent() {
                 </div>
               </div>
 
+              {/* Low Graphics Mode */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginBottom: '8px' }}>
+                <div
+                  onClick={() => {
+                    const val = !lowGraphics;
+                    setLowGraphics(val);
+                    try {
+                      localStorage.setItem('memeng_low_graphics', val.toString());
+                    } catch (err) {}
+                    window.dispatchEvent(new CustomEvent('low-graphics-change', { detail: val }));
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    borderRadius: theme === 'theme-3' ? '0px' : '12px',
+                    background: theme === 'theme-3' ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
+                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255, 255, 255, 0.03)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sliders size={14} color={theme === 'theme-3' ? '#000000' : '#94a3b8'} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : 'white' }}>Low Graphics Mode (ประหยัดพลังงาน)</span>
+                  </div>
+                  {/* Visual Toggle Switch */}
+                  <div style={{
+                    width: '28px',
+                    height: '16px',
+                    borderRadius: theme === 'theme-3' ? '0px' : '8px',
+                    background: lowGraphics ? (theme === 'theme-3' ? '#000000' : '#3b82f6') : (theme === 'theme-3' ? '#ffffff' : 'rgba(255,255,255,0.04)'),
+                    position: 'relative',
+                    transition: 'background-color 0.2s',
+                    border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(255,255,255,0.08)'
+                  }}>
+                    <div style={{
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: theme === 'theme-3' ? '0px' : '50%',
+                      background: '#ffffff',
+                      position: 'absolute',
+                      top: '2px',
+                      left: lowGraphics ? '14px' : '2px',
+                      transition: 'left 0.2s',
+                      boxShadow: theme === 'theme-3' ? 'none' : '0 1px 3px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+              </div>
+
               {/* Consolidated Mascot Setting: Nong Mem Mascot & Sound */}
               <div
                 style={{
@@ -1564,7 +1624,7 @@ function AppContent() {
               inset: 0,
               zIndex: 1000000,
               background: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(8px)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
               display: 'flex',
               alignItems: 'center',
