@@ -58,6 +58,13 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/purge',
+    selector: '#tutorial-tooltip-info-container',
+    title: 'Word Details & Sound',
+    text: 'นี่คือความหมายและคำแปลภาษาไทยของคำศัพท์ที่แตะ ลองอ่านทบทวนหรือแตะปุ่มลำโพงเพื่อทดลองฟังเสียงพูดออกเสียงได้จ้า เสร็จแล้วกดปุ่ม "ถัดไป"',
+    position: 'bottom'
+  },
+  {
+    path: '/purge',
     selector: '#tutorial-tooltip-add-btn',
     title: 'Add Word to Deck',
     text: 'แตะปุ่ม "Add to Deck" เพื่อเก็บสะสมคำศัพท์นั้นเข้าคลังเรียนรู้ของคุณทันที',
@@ -296,31 +303,17 @@ export const Tutorial = () => {
     const handleTooltipSaved = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
-        next[7] = true;
-        return next;
-      });
-      if (currentStep === 7) {
-        setTimeout(() => {
-          setCurrentStep(8);
-        }, 800);
-      }
-    };
-
-    const handleSrsClicked = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
         next[8] = true;
         return next;
       });
       if (currentStep === 8) {
         setTimeout(() => {
           setCurrentStep(9);
-          navigate('/profile');
         }, 800);
       }
     };
 
-    const handleCurriculumOpened = () => {
+    const handleSrsClicked = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[9] = true;
@@ -329,11 +322,12 @@ export const Tutorial = () => {
       if (currentStep === 9) {
         setTimeout(() => {
           setCurrentStep(10);
-        }, 300);
+          navigate('/profile');
+        }, 800);
       }
     };
 
-    const handleCurriculumSelected = () => {
+    const handleCurriculumOpened = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[10] = true;
@@ -342,11 +336,11 @@ export const Tutorial = () => {
       if (currentStep === 10) {
         setTimeout(() => {
           setCurrentStep(11);
-        }, 800);
+        }, 300);
       }
     };
 
-    const handleSrsModalOpened = () => {
+    const handleCurriculumSelected = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[11] = true;
@@ -354,8 +348,21 @@ export const Tutorial = () => {
       });
       if (currentStep === 11) {
         setTimeout(() => {
-          window.dispatchEvent(new Event('tutorial-close-modals'));
           setCurrentStep(12);
+        }, 800);
+      }
+    };
+
+    const handleSrsModalOpened = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[12] = true;
+        return next;
+      });
+      if (currentStep === 12) {
+        setTimeout(() => {
+          window.dispatchEvent(new Event('tutorial-close-modals'));
+          setCurrentStep(13);
         }, 2000);
       }
     };
@@ -650,17 +657,25 @@ export const Tutorial = () => {
     }
 
     if (currentStep === 6) {
-      // Simulate clicking the "greeting" word
-      const greetingSpan = document.getElementById('tutorial-word-greeting');
-      if (greetingSpan) {
-        greetingSpan.click();
+      // Simulate clicking the "today" word
+      const todaySpan = document.getElementById('tutorial-word-today') || document.getElementById('tutorial-word-greeting');
+      if (todaySpan) {
+        todaySpan.click();
       } else {
-        window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: 'greeting' } }));
+        window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: 'today' } }));
       }
       return;
     }
 
     if (currentStep === 7) {
+      // Play pronunciation and advance to Add to Deck step
+      const speakBtn = document.getElementById('tutorial-tooltip-speak-btn');
+      if (speakBtn) speakBtn.click();
+      setCurrentStep(8);
+      return;
+    }
+
+    if (currentStep === 8) {
       // Simulate clicking Add to Deck inside the dictionary modal
       const addBtn = document.getElementById('tutorial-tooltip-add-btn');
       if (addBtn) {
@@ -671,7 +686,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 8) {
+    if (currentStep === 9) {
       // Simulate SRS memory button click
       const easyBtn = document.querySelector('#tutorial-srs-buttons button:last-child');
       if (easyBtn) {
@@ -682,7 +697,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 9) {
+    if (currentStep === 10) {
       // Simulate curriculum switcher click
       const switcherBtn = document.getElementById('tutorial-profile-curriculum');
       if (switcherBtn) {
@@ -693,7 +708,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 10) {
+    if (currentStep === 11) {
       // Simulate selecting Self-Study option
       const selfStudyBtn = document.getElementById('tutorial-curriculum-option-self-study');
       if (selfStudyBtn) {
@@ -704,7 +719,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 11) {
+    if (currentStep === 12) {
       // Simulate SRS stage detail open
       window.dispatchEvent(new Event('tutorial-srs-modal-opened'));
       return;
@@ -748,8 +763,8 @@ export const Tutorial = () => {
   };
 
   const getTooltipStyle = () => {
-    // Keep tip at the bottom of the viewport for step 11 (index 10) so it does not overlay/block options
-    if (currentStep === 10) {
+    // Keep tip at the bottom of the viewport for step 12 (index 11) so it does not overlay/block options
+    if (currentStep === 11) {
       return {
         position: 'fixed',
         bottom: '20px',

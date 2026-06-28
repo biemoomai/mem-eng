@@ -616,11 +616,13 @@ export const VocabProvider = ({ children }) => {
   };
 
   // Add new words from selected curriculum to the user's local deck
-  const addNewCurriculumWords = async (curriculumName, count = 10, onWordAdded) => {
+  const addNewCurriculumWords = async (curriculumName, count = 5, onWordAdded) => {
+    // Fallback Self-Study to Oxford 5000 so the checkmark always works in every mode
+    const targetCurriculum = (!curriculumName || curriculumName === 'Self-Study only') ? 'Oxford 5000' : curriculumName;
     const { data: dbWords, error: dbError } = await supabase
       .from('curriculum_words')
       .select('word, pos, cefr_level')
-      .eq('curriculum_name', curriculumName);
+      .eq('curriculum_name', targetCurriculum);
       
     if (dbError || !dbWords) {
       console.error("Failed to fetch curriculum words:", dbError);

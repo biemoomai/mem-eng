@@ -1248,6 +1248,10 @@ const Purge = () => {
             ? { ...item, details: { ...item.details, alreadyInDeck: true } }
             : item
         ));
+        // Auto-close the dictionary modal after brief display so SRS buttons become visible
+        setTimeout(() => {
+          setTooltipStack([]);
+        }, 800);
       } else {
         showToast(res.error || 'Failed to add word to deck');
       }
@@ -2305,7 +2309,8 @@ const Purge = () => {
               <X size={10} color="white" />
             </button>
 
-            {/* Word Row */}
+            {/* Word Row & Info Container (tutorial target) */}
+            <div id="tutorial-tooltip-info-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginRight: '24px' }}>
               <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white', letterSpacing: '-0.01em' }}>
                 {activeTooltipWord}
@@ -2317,6 +2322,7 @@ const Purge = () => {
               )}
               {/* Audio Pronunciation Button */}
               <button 
+                id="tutorial-tooltip-speak-btn"
                 onClick={() => handleSpeak(activeTooltipWord)} 
                 className="glass-button animate-scale" 
                 style={{ 
@@ -2356,6 +2362,9 @@ const Purge = () => {
                     {renderInteractiveSentence(tooltipDetails?.translation, null, handleWordClick)}
                   </div>
                 </div>
+              </>
+            )}
+            </div>{/* close tutorial-tooltip-info-container */}
 
                 {/* Add to Deck Action Button */}
                 <div style={{ marginTop: '0.4rem' }}>
@@ -2411,8 +2420,6 @@ const Purge = () => {
                     </button>
                   )}
                 </div>
-              </>
-            )}
           </motion.div>
         </div>
       </AnimatePresence>
@@ -3934,8 +3941,7 @@ const Purge = () => {
                     </div>
                   )}
 
-                  {activeCurriculum !== 'Self-Study only' && (
-                    <motion.button
+                  <motion.button
                       whileHover={!isLoadingNewWords ? { scale: 1.05 } : {}}
                       whileTap={!isLoadingNewWords ? { scale: 0.95 } : {}}
                       disabled={isLoadingNewWords}
@@ -3964,7 +3970,6 @@ const Purge = () => {
                       <Plus size={12} />
                       Get 5 more words
                     </motion.button>
-                  )}
                 </motion.div>
               ) : (
                 <motion.div
@@ -3977,25 +3982,25 @@ const Purge = () => {
                 >
                   {/* Glowing clickable check mark card */}
                   <motion.div 
-                    whileHover={activeCurriculum !== 'Self-Study only' && !isLoadingNewWords ? { scale: 1.06, borderColor: '#f97316', boxShadow: '0 0 35px rgba(249, 115, 22, 0.25)' } : {}}
-                    whileTap={activeCurriculum !== 'Self-Study only' && !isLoadingNewWords ? { scale: 0.94 } : {}}
+                    whileHover={!isLoadingNewWords ? { scale: 1.06, borderColor: '#f97316', boxShadow: '0 0 35px rgba(249, 115, 22, 0.25)' } : {}}
+                    whileTap={!isLoadingNewWords ? { scale: 0.94 } : {}}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (activeCurriculum !== 'Self-Study only' && !isLoadingNewWords) {
+                      if (!isLoadingNewWords) {
                         handleStartWithNewWords();
                       }
                     }}
                     style={{
                       padding: '1.25rem',
-                      background: theme === 'theme-3' ? '#ffffff' : (activeCurriculum !== 'Self-Study only' ? 'radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.1) 0%, rgba(255, 255, 255, 0.015) 100%)' : 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)'),
+                      background: theme === 'theme-3' ? '#ffffff' : 'radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.1) 0%, rgba(255, 255, 255, 0.015) 100%)',
                       borderRadius: theme === 'theme-3' ? '0px' : '50%',
                       marginBottom: '1rem',
-                      border: theme === 'theme-3' ? '1px solid #000000' : (activeCurriculum !== 'Self-Study only' ? '1px solid rgba(249, 115, 22, 0.2)' : '1px solid rgba(255, 255, 255, 0.12)'),
+                      border: theme === 'theme-3' ? '1px solid #000000' : '1px solid rgba(249, 115, 22, 0.2)',
                       boxShadow: theme === 'theme-3' ? 'none' : '0 0 35px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: activeCurriculum !== 'Self-Study only' && !isLoadingNewWords ? 'pointer' : 'default',
+                      cursor: !isLoadingNewWords ? 'pointer' : 'default',
                       position: 'relative',
                       transition: 'border-color 0.3s, box-shadow 0.3s'
                     }}
@@ -4003,17 +4008,15 @@ const Purge = () => {
                     {isLoadingNewWords && addedProgress === 0 ? (
                       <Loader2 size={36} className="spin" color="#f97316" />
                     ) : (
-                      <CheckCircle size={36} color={theme === 'theme-3' ? '#000000' : (activeCurriculum !== 'Self-Study only' ? '#f97316' : '#ffffff')} style={{ filter: theme === 'theme-3' ? 'none' : 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.35))' }} />
+                      <CheckCircle size={36} color={theme === 'theme-3' ? '#000000' : '#f97316'} style={{ filter: theme === 'theme-3' ? 'none' : 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.35))' }} />
                     )}
                   </motion.div>
 
                   <h2 style={{ color: theme === 'theme-3' ? '#000000' : 'white', marginBottom: '0.2rem', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px' }}>All caught up!</h2>
                   <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontSize: '0.85rem' }}>You've reviewed all cards for today.</p>
-                  {activeCurriculum !== 'Self-Study only' && (
-                    <p style={{ fontSize: '0.68rem', color: '#f97316', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }}>
+                  <p style={{ fontSize: '0.68rem', color: '#f97316', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }}>
                       Tap check mark to load new words
                     </p>
-                  )}
                 </motion.div>
               )}
             </AnimatePresence>
