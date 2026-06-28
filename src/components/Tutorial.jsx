@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, ChevronRight, HelpCircle } from 'lucide-react';
+import { X, ChevronRight, HelpCircle, Minimize2, Maximize2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -88,23 +88,26 @@ export const Tutorial = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightRect, setHighlightRect] = useState(null);
   const [viewportRect, setViewportRect] = useState(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showOptIn, setShowOptIn] = useState(false);
+  const autoMinimizeTimerRef = useRef(null);
 
   const hasInitializedRef = useRef(false);
 
-  // Check if tutorial needs to run on visiting /purge or manually triggered
+  // Show opt-in popup for new users visiting /purge (no auto-start)
   useEffect(() => {
     if (!user) {
       hasInitializedRef.current = false;
       setActive(false);
+      setShowOptIn(false);
       return;
     }
 
     const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone && location.pathname === '/purge' && !hasInitializedRef.current && !active) {
+    const isOffered = localStorage.getItem('memeng_tutorial_offered') === 'true';
+    if (!isDone && !isOffered && location.pathname === '/purge' && !hasInitializedRef.current && !active) {
       hasInitializedRef.current = true;
-      setActive(true);
-      setCurrentStep(0);
-      navigate('/');
+      setShowOptIn(true);
     }
   }, [user, location.pathname, active]);
 
@@ -323,7 +326,124 @@ export const Tutorial = () => {
     };
   }, [currentStep, location.pathname, active]);
 
-  if (!active) return null;
+  // Auto-minimize after 5 seconds of being expanded
+  useEffect(() => {
+    if (!active || isMinimized) return;
+    // Clear any existing timer
+    if (autoMinimizeTimerRef.current) {
+      clearTimeout(autoMinimizeTimerRef.current);
+    }
+    // Auto-minimize after 5s for steps that don't require "ถัดไป" button (step 2 needs manual next)
+    autoMinimizeTimerRef.current = setTimeout(() => {
+      setIsMinimized(true);
+    }, 5000);
+    return () => {
+      if (autoMinimizeTimerRef.current) {
+        clearTimeout(autoMinimizeTimerRef.current);
+      }
+    };
+  }, [active, isMinimized, currentStep]);
+
+  // Reset minimized state when step changes
+  useEffect(() => {
+    if (active) {
+      setIsMinimized(false);
+    }
+  }, [currentStep]);
+
+  const handleMinimize = useCallback(() => {
+    setIsMinimized(true);
+  }, []);
+
+  const handleExpand = useCallback(() => {
+    setIsMinimized(false);
+    // Reset auto-minimize timer
+    if (autoMinimizeTimerRef.current) {
+      clearTimeout(autoMinimizeTimerRef.current);
+    }
+  }, []);
+
+  // Opt-in popup handlers
+  const handleOptInAccept = () => {
+    localStorage.setItem('memeng_tutorial_offered', 'true');
+    setShowOptIn(false);
+    setActive(true);
+    setCurrentStep(0);
+    navigate('/');
+  };
+
+  const handleOptInDismiss = () => {
+    localStorage.setItem('memeng_tutorial_offered', 'true');
+    setShowOptIn(false);
+  };
+
+  if (!active && !showOptIn) return null;
+
+  // Render opt-in popup when not active but showOptIn is true
+  if (!active && showOptIn) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.85, y: 20 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+          className="glass-panel"
+          style={{
+            width: '88%',
+            maxWidth: '320px',
+            padding: '1.5rem 1.3rem',
+            borderRadius: '24px',
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid rgba(251, 191, 36, 0.3)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 20px rgba(251, 191, 36, 0.1)',
+            textAlign: 'center'
+          }}
+        >
+          <div style={{ fontSize: '2.2rem', marginBottom: '0.5rem' }}>👋</div>
+          <h3 style={{ margin: '0 0 0.4rem 0', color: 'white', fontWeight: 800, fontSize: '1.1rem' }}>
+            สวัสดี!
+          </h3>
+          <p style={{ margin: '0 0 1.2rem 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.6' }}>
+            อยากลองทำ Tutorial แนะนำการใช้งานไหม?
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button
+              onClick={handleOptInAccept}
+              className="glass-button primary"
+              style={{
+                width: '100%',
+                padding: '0.6rem 1rem',
+                borderRadius: '14px',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                border: 'none'
+              }}
+            >
+              ลองเลย!
+            </button>
+            <button
+              onClick={handleOptInDismiss}
+              style={{
+                width: '100%',
+                padding: '0.55rem 1rem',
+                borderRadius: '14px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.55)'
+              }}
+            >
+              ไม่ล่ะ ขอเล่นเอง
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   const stepConf = TUTORIAL_STEPS[currentStep];
   const isWrongPath = stepConf && location.pathname !== stepConf.path;
@@ -420,235 +540,301 @@ export const Tutorial = () => {
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 99999, pointerEvents: 'none' }}>
-      {/* Dark Spotlight Backdrop Overlay */}
-      {viewportRect && !isWrongPath ? (
-        <>
-          {/* Top Panel */}
-          <div 
+      <AnimatePresence mode="wait">
+        {isMinimized ? (
+          /* ===== MINIMIZED PILL ===== */
+          <motion.div
+            key="minimized-pill"
+            initial={{ opacity: 0, y: 30, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.8 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            onClick={handleExpand}
             style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: `${viewportRect.top}px`,
-              background: 'rgba(0, 0, 0, 0.75)',
-              zIndex: 100000,
-              pointerEvents: backdropPointerEvents
-            }}
-          />
-          {/* Bottom Panel */}
-          <div 
-            style={{
-              position: 'fixed',
-              top: `${viewportRect.bottom}px`,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.75)',
-              zIndex: 100000,
-              pointerEvents: backdropPointerEvents
-            }}
-          />
-          {/* Left Panel */}
-          <div 
-            style={{
-              position: 'fixed',
-              top: `${viewportRect.top}px`,
-              left: 0,
-              width: `${viewportRect.left}px`,
-              height: `${viewportRect.bottom - viewportRect.top}px`,
-              background: 'rgba(0, 0, 0, 0.75)',
-              zIndex: 100000,
-              pointerEvents: backdropPointerEvents
-            }}
-          />
-          {/* Right Panel */}
-          <div 
-            style={{
-              position: 'fixed',
-              top: `${viewportRect.top}px`,
-              left: `${viewportRect.right}px`,
-              right: 0,
-              height: `${viewportRect.bottom - viewportRect.top}px`,
-              background: 'rgba(0, 0, 0, 0.75)',
-              zIndex: 100000,
-              pointerEvents: backdropPointerEvents
-            }}
-          />
-        </>
-      ) : (
-        <div 
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
-            zIndex: 100000,
-            pointerEvents: backdropPointerEvents
-          }}
-        />
-      )}
-
-      {/* Spotlight highlight border around targeted element */}
-      {highlightRect && !isWrongPath && (
-        <motion.div
-          layout
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          style={{
-            position: 'absolute',
-            top: highlightRect.top - 6,
-            left: highlightRect.left - 6,
-            width: highlightRect.width + 12,
-            height: highlightRect.height + 12,
-            borderRadius: '16px',
-            border: '3px solid #fbbf24',
-            boxShadow: '0 0 20px #fbbf2460, 0 0 0 9999px rgba(0,0,0,0.5)',
-            zIndex: 100003,
-            pointerEvents: 'none'
-          }}
-        />
-      )}
-
-      {/* Bouncing emoji finger pointers for Step 0 (input hello) and Step 1 (click translate) */}
-      {highlightRect && !isWrongPath && (currentStep === 0 || currentStep === 1) && (
-        <motion.div
-          animate={{ y: [0, -10, 0] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
-          style={{
-            position: 'absolute',
-            top: highlightRect.top - 45,
-            left: highlightRect.left + (highlightRect.width / 2) - 15,
-            zIndex: 100005,
-            fontSize: '1.8rem',
-            filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.85))',
-            pointerEvents: 'none'
-          }}
-        >
-          👇
-        </motion.div>
-      )}
-
-      {/* Tooltip Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ ...getTooltipStyle(), pointerEvents: 'auto' }}
-      >
-        <div 
-          className="glass-panel" 
-          style={{ 
-            padding: '1.2rem', 
-            borderRadius: '20px', 
-            background: 'rgba(15, 23, 42, 0.95)',
-            border: '1px solid rgba(251, 191, 36, 0.3)',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            boxSizing: 'border-box',
-            position: 'relative'
-          }}
-        >
-          {/* Visual Arrow Indicator pointing to highlight */}
-          {highlightRect && !isWrongPath && (
-            <div style={{
-              position: 'absolute',
+              bottom: '150px',
               left: '50%',
               transform: 'translateX(-50%)',
-              width: 0,
-              height: 0,
-              borderLeft: '8px solid transparent',
-              borderRight: '8px solid transparent',
-              zIndex: 100006,
-              ...(TUTORIAL_STEPS[currentStep]?.position === 'bottom' ? {
-                top: '-8px',
-                borderBottom: '8px solid rgba(15, 23, 42, 0.98)'
-              } : {
-                bottom: '-8px',
-                borderTop: '8px solid rgba(15, 23, 42, 0.98)'
-              })
-            }} />
-          )}
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
-            <span style={{ fontSize: '0.65rem', background: '#facc1520', color: '#facc15', padding: '0.15rem 0.5rem', borderRadius: '6px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <HelpCircle size={10} /> STEP {currentStep + 1} OF {TUTORIAL_STEPS.length}
+              zIndex: 100010,
+              pointerEvents: 'auto',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: '24px',
+              background: 'rgba(15, 23, 42, 0.92)',
+              border: '1.5px solid rgba(251, 191, 36, 0.4)',
+              backdropFilter: 'blur(15px)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 191, 36, 0.15)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+              style={{ display: 'flex', alignItems: 'center' }}
+            >
+              <HelpCircle size={14} color="#facc15" />
+            </motion.div>
+            <span style={{ fontSize: '0.7rem', color: '#facc15', fontWeight: 800 }}>
+              Step {currentStep + 1}/{TUTORIAL_STEPS.length}
             </span>
-            <button 
-              onClick={handleClose} 
-              style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '2px' }}
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          {/* Guide Text */}
-          {isWrongPath ? (
-            <div>
-              <h4 style={{ margin: '0 0 0.4rem 0', color: 'white', fontWeight: 800, fontSize: '0.95rem' }}>
-                สลับหน้าจอเพื่อเรียนรู้ต่อ
-              </h4>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-                กรุณากดเลือกแถบนำทางที่ {stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'Profile' : 'Translate')} ด้านล่างของจอเพื่อดูขั้นตอนสอนการใช้งานถัดไปครับ!
-              </p>
-            </div>
-          ) : (
-            <div>
-              <h4 style={{ margin: '0 0 0.4rem 0', color: 'white', fontWeight: 800, fontSize: '0.95rem' }}>
-                {stepConf.title}
-              </h4>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-                {stepConf.text}
-              </p>
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.1rem', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <button 
-              onClick={handleClose}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}
-            >
-              Skip
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {currentStep === 2 && (
-                <button 
-                  onClick={handleNext}
-                  className="glass-button primary animate-scale"
-                  style={{ 
-                    padding: '0.35rem 0.75rem', 
-                    borderRadius: '8px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '2px'
+            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {stepConf.title}
+            </span>
+            <Maximize2 size={12} color="rgba(255,255,255,0.4)" />
+          </motion.div>
+        ) : (
+          /* ===== EXPANDED FULL TUTORIAL ===== */
+          <motion.div
+            key="expanded-tutorial"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Dark Spotlight Backdrop Overlay */}
+            {viewportRect && !isWrongPath ? (
+              <>
+                {/* Top Panel */}
+                <div 
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: `${viewportRect.top}px`,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    zIndex: 100000,
+                    pointerEvents: backdropPointerEvents
                   }}
-                >
-                  <span>ถัดไป</span>
-                  <ChevronRight size={12} />
-                </button>
-              )}
-              {currentStep === TUTORIAL_STEPS.length - 1 && (
-                <button 
-                  onClick={handleNext}
-                  className="glass-button primary animate-scale"
-                  style={{ 
-                    padding: '0.35rem 0.75rem', 
-                    borderRadius: '8px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '2px'
+                />
+                {/* Bottom Panel */}
+                <div 
+                  style={{
+                    position: 'fixed',
+                    top: `${viewportRect.bottom}px`,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    zIndex: 100000,
+                    pointerEvents: backdropPointerEvents
                   }}
-                >
-                  <span>Finish</span>
-                  <ChevronRight size={12} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </motion.div>
+                />
+                {/* Left Panel */}
+                <div 
+                  style={{
+                    position: 'fixed',
+                    top: `${viewportRect.top}px`,
+                    left: 0,
+                    width: `${viewportRect.left}px`,
+                    height: `${viewportRect.bottom - viewportRect.top}px`,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    zIndex: 100000,
+                    pointerEvents: backdropPointerEvents
+                  }}
+                />
+                {/* Right Panel */}
+                <div 
+                  style={{
+                    position: 'fixed',
+                    top: `${viewportRect.top}px`,
+                    left: `${viewportRect.right}px`,
+                    right: 0,
+                    height: `${viewportRect.bottom - viewportRect.top}px`,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    zIndex: 100000,
+                    pointerEvents: backdropPointerEvents
+                  }}
+                />
+              </>
+            ) : (
+              <div 
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.75)',
+                  zIndex: 100000,
+                  pointerEvents: backdropPointerEvents
+                }}
+              />
+            )}
+
+            {/* Spotlight highlight border around targeted element */}
+            {highlightRect && !isWrongPath && (
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{
+                  position: 'absolute',
+                  top: highlightRect.top - 6,
+                  left: highlightRect.left - 6,
+                  width: highlightRect.width + 12,
+                  height: highlightRect.height + 12,
+                  borderRadius: '16px',
+                  border: '3px solid #fbbf24',
+                  boxShadow: '0 0 20px #fbbf2460, 0 0 0 9999px rgba(0,0,0,0.5)',
+                  zIndex: 100003,
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
+
+            {/* Bouncing emoji finger pointers for Step 0 (input hello) and Step 1 (click translate) */}
+            {highlightRect && !isWrongPath && (currentStep === 0 || currentStep === 1) && (
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+                style={{
+                  position: 'absolute',
+                  top: highlightRect.top - 45,
+                  left: highlightRect.left + (highlightRect.width / 2) - 15,
+                  zIndex: 100005,
+                  fontSize: '1.8rem',
+                  filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.85))',
+                  pointerEvents: 'none'
+                }}
+              >
+                👇
+              </motion.div>
+            )}
+
+            {/* Tooltip Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ ...getTooltipStyle(), pointerEvents: 'auto' }}
+            >
+              <div 
+                className="glass-panel" 
+                style={{ 
+                  padding: '1rem 1rem 0.8rem', 
+                  borderRadius: '20px', 
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  border: '1px solid rgba(251, 191, 36, 0.3)',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                  boxSizing: 'border-box',
+                  position: 'relative'
+                }}
+              >
+                {/* Visual Arrow Indicator pointing to highlight */}
+                {highlightRect && !isWrongPath && (
+                  <div style={{
+                    position: 'absolute',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    zIndex: 100006,
+                    ...(TUTORIAL_STEPS[currentStep]?.position === 'bottom' ? {
+                      top: '-8px',
+                      borderBottom: '8px solid rgba(15, 23, 42, 0.98)'
+                    } : {
+                      bottom: '-8px',
+                      borderTop: '8px solid rgba(15, 23, 42, 0.98)'
+                    })
+                  }} />
+                )}
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.6rem', background: '#facc1520', color: '#facc15', padding: '0.12rem 0.45rem', borderRadius: '6px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <HelpCircle size={9} /> STEP {currentStep + 1} OF {TUTORIAL_STEPS.length}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button 
+                      onClick={handleMinimize}
+                      style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '2px' }}
+                      title="ย่อ Tutorial"
+                    >
+                      <Minimize2 size={13} />
+                    </button>
+                    <button 
+                      onClick={handleClose} 
+                      style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '2px' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Guide Text */}
+                {isWrongPath ? (
+                  <div>
+                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
+                      สลับหน้าจอเพื่อเรียนรู้ต่อ
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>
+                      กรุณากดเลือกแถบนำทางที่ {stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'Profile' : 'Translate')} ด้านล่างของจอเพื่อดูขั้นตอนสอนการใช้งานถัดไปครับ!
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
+                      {stepConf.title}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>
+                      {stepConf.text}
+                    </p>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.7rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button 
+                    onClick={handleClose}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700 }}
+                  >
+                    Skip
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {currentStep === 2 && (
+                      <button 
+                        onClick={handleNext}
+                        className="glass-button primary animate-scale"
+                        style={{ 
+                          padding: '0.3rem 0.65rem', 
+                          borderRadius: '8px', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 800,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2px'
+                        }}
+                      >
+                        <span>ถัดไป</span>
+                        <ChevronRight size={11} />
+                      </button>
+                    )}
+                    {currentStep === TUTORIAL_STEPS.length - 1 && (
+                      <button 
+                        onClick={handleNext}
+                        className="glass-button primary animate-scale"
+                        style={{ 
+                          padding: '0.3rem 0.65rem', 
+                          borderRadius: '8px', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 800,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2px'
+                        }}
+                      >
+                        <span>Finish</span>
+                        <ChevronRight size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

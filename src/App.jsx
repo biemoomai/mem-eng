@@ -945,7 +945,7 @@ function AppContent() {
             {/* Overlay header / logo */}
             <div style={{ marginBottom: '12px', textAlign: 'center' }}>
               <h2 style={{
-                fontSize: '1.8rem',
+                fontSize: '2.2rem',
                 fontWeight: 950,
                 margin: 0,
                 background: theme === 'theme-3'
@@ -958,7 +958,7 @@ function AppContent() {
               }}>
                 memeng
               </h2>
-              <p style={{ color: theme === 'theme-3' ? '#666666' : 'var(--text-secondary)', fontSize: '0.72rem', marginTop: '2px' }}>
+              <p style={{ color: theme === 'theme-3' ? '#666666' : 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
                 Spaced Repetition Companion
               </p>
             </div>
@@ -971,14 +971,14 @@ function AppContent() {
               gap: '5px',
               marginBottom: '10px',
               color: theme === 'theme-3' ? '#666666' : 'var(--text-secondary)',
-              fontSize: '0.72rem'
+              fontSize: '0.78rem'
             }}>
               <span style={{ display: 'inline-block', width: '4px', height: '4px', borderRadius: '50%', background: theme === 'theme-3' ? '#000000' : '#cbd5e1' }} />
               <span>Logged in as <strong style={{ color: theme === 'theme-3' ? '#000000' : 'inherit' }}>{user?.email || 'cz01'}</strong></span>
             </div>
 
             {/* Navigation Items (The 3 Modes - Compact horizontal tabs) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '8px' }}>
               {navItems.map((item) => {
                 const IconComponent = item.icon;
                 const isActive = location.pathname === item.path;
@@ -994,20 +994,20 @@ function AppContent() {
                       border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.04)'}`,
                       borderRadius: '8px',
                       color: isActive ? 'white' : '#94a3b8',
-                      padding: '6px 2px',
+                      padding: '10px 2px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '3px',
-                      fontSize: '0.65rem',
+                      fontSize: '0.82rem',
                       fontWeight: isActive ? 'bold' : 'normal',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
                   >
                     <div style={{ position: 'relative' }}>
-                      <IconComponent size={13} color={isActive ? 'white' : '#94a3b8'} />
+                      <IconComponent size={18} color={isActive ? 'white' : '#94a3b8'} />
                       {item.badge !== undefined && item.badge > 0 && (
                         <span style={{
                           position: 'absolute',
@@ -1040,15 +1040,14 @@ function AppContent() {
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '6px',
+                gap: '10px',
                 flex: 1,
-                overflowY: 'auto',
                 paddingRight: '2px',
                 paddingBottom: '10px'
               }}
             >
               {/* Appearance & Quick Buttons in a side-by-side grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '4px' }}>
                 {/* Appearance */}
                 <div style={{
                   padding: '8px 10px',
@@ -1059,8 +1058,8 @@ function AppContent() {
                   flexDirection: 'column',
                   gap: '4px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8' }}>
-                    <Palette size={11} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 800, color: '#94a3b8' }}>
+                    <Palette size={15} />
                     <span>Appearance</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
@@ -1079,7 +1078,7 @@ function AppContent() {
                             borderRadius: '6px',
                             color: isActive ? 'white' : '#94a3b8',
                             padding: '4px 2px',
-                            fontSize: '0.62rem',
+                            fontSize: '0.78rem',
                             cursor: 'pointer'
                           }}
                         >
@@ -1100,8 +1099,8 @@ function AppContent() {
                   flexDirection: 'column',
                   gap: '4px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 800, color: '#94a3b8' }}>
-                    <Sliders size={11} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 800, color: '#94a3b8' }}>
+                    <Sliders size={15} />
                     <span>Quick Buttons</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
@@ -1125,7 +1124,7 @@ function AppContent() {
                             borderRadius: '6px',
                             color: isActive ? 'white' : '#94a3b8',
                             padding: '4px 2px',
-                            fontSize: '0.62rem',
+                            fontSize: '0.78rem',
                             cursor: 'pointer'
                           }}
                         >
@@ -1148,37 +1147,37 @@ function AppContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px',
+                    gap: '8px',
+                    padding: '12px',
                     borderRadius: '8px',
                     background: 'rgba(239, 68, 68, 0.12)',
                     border: '1px solid rgba(239, 68, 68, 0.25)',
                     color: '#ef4444',
-                    fontSize: '0.72rem',
+                    fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     marginBottom: '4px'
                   }}
                 >
-                  <XCircle size={13} />
+                  <XCircle size={16} />
                   <span>Exit Study Session</span>
                 </button>
               )}
 
               {/* Settings grid (Reminder & Nav Dock) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '4px' }}>
                 {/* Reminder */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '6px 10px',
+                  padding: '10px 10px',
                   borderRadius: '10px',
                   background: 'rgba(255,255,255,0.01)',
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Bell size={12} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Bell size={15} />
                     <span>Reminder</span>
                   </div>
                   <input 
@@ -1194,7 +1193,7 @@ function AppContent() {
                       borderRadius: '4px',
                       padding: '1px 2px',
                       color: 'white',
-                      fontSize: '0.65rem',
+                      fontSize: '0.78rem',
                       width: '50px'
                     }}
                   />
@@ -1211,33 +1210,33 @@ function AppContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '6px 10px',
+                    padding: '10px 10px',
                     borderRadius: '10px',
                     background: 'rgba(255,255,255,0.01)',
                     border: '1px solid rgba(255,255,255,0.03)',
                     cursor: 'pointer'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Sliders size={12} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Sliders size={15} />
                     <span>Nav Dock</span>
                   </div>
                   <div style={{
-                    width: '24px',
-                    height: '13px',
-                    borderRadius: '6px',
+                    width: '36px',
+                    height: '20px',
+                    borderRadius: '10px',
                     background: showBottomNav ? '#3b82f6' : 'rgba(255,255,255,0.04)',
                     position: 'relative',
                     border: '1px solid rgba(255,255,255,0.08)'
                   }}>
                     <div style={{
-                      width: '9px',
-                      height: '9px',
+                      width: '14px',
+                      height: '14px',
                       borderRadius: '50%',
                       background: '#ffffff',
                       position: 'absolute',
-                      top: '1px',
-                      left: showBottomNav ? '12px' : '1px',
+                      top: '2px',
+                      left: showBottomNav ? '19px' : '2px',
                       transition: 'left 0.15s'
                     }} />
                   </div>
@@ -1245,7 +1244,7 @@ function AppContent() {
               </div>
 
               {/* Low Graphics & Mascot Toggles in a grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '4px' }}>
                 {/* Low Graphics Switch */}
                 <div
                   onClick={() => {
@@ -1258,33 +1257,33 @@ function AppContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '6px 10px',
+                    padding: '10px 10px',
                     borderRadius: '10px',
                     background: 'rgba(255,255,255,0.01)',
                     border: '1px solid rgba(255,255,255,0.03)',
                     cursor: 'pointer'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Sliders size={12} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Sliders size={15} />
                     <span>Low Graphics</span>
                   </div>
                   <div style={{
-                    width: '24px',
-                    height: '13px',
-                    borderRadius: '6px',
+                    width: '36px',
+                    height: '20px',
+                    borderRadius: '10px',
                     background: lowGraphics ? '#3b82f6' : 'rgba(255,255,255,0.04)',
                     position: 'relative',
                     border: '1px solid rgba(255,255,255,0.08)'
                   }}>
                     <div style={{
-                      width: '9px',
-                      height: '9px',
+                      width: '14px',
+                      height: '14px',
                       borderRadius: '50%',
                       background: '#ffffff',
                       position: 'absolute',
-                      top: '1px',
-                      left: lowGraphics ? '12px' : '1px',
+                      top: '2px',
+                      left: lowGraphics ? '19px' : '2px',
                       transition: 'left 0.15s'
                     }} />
                   </div>
@@ -1302,33 +1301,33 @@ function AppContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '6px 10px',
+                    padding: '10px 10px',
                     borderRadius: '10px',
                     background: 'rgba(255,255,255,0.01)',
                     border: '1px solid rgba(255,255,255,0.03)',
                     cursor: 'pointer'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Bot size={12} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
+                    <Bot size={15} />
                     <span>Nong Mem</span>
                   </div>
                   <div style={{
-                    width: '24px',
-                    height: '13px',
-                    borderRadius: '6px',
+                    width: '36px',
+                    height: '20px',
+                    borderRadius: '10px',
                     background: showNongMem ? '#3b82f6' : 'rgba(255,255,255,0.04)',
                     position: 'relative',
                     border: '1px solid rgba(255,255,255,0.08)'
                   }}>
                     <div style={{
-                      width: '9px',
-                      height: '9px',
+                      width: '14px',
+                      height: '14px',
                       borderRadius: '50%',
                       background: '#ffffff',
                       position: 'absolute',
-                      top: '1px',
-                      left: showNongMem ? '12px' : '1px',
+                      top: '2px',
+                      left: showNongMem ? '19px' : '2px',
                       transition: 'left 0.15s'
                     }} />
                   </div>
@@ -1340,14 +1339,14 @@ function AppContent() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '6px 10px',
+                padding: '10px 10px',
                 borderRadius: '10px',
                 background: 'rgba(255,255,255,0.01)',
                 border: '1px solid rgba(255,255,255,0.03)',
                 marginBottom: '4px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8' }}>
-                  <Volume2 size={12} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
+                  <Volume2 size={15} />
                   <span>Nong Mem Sound</span>
                 </div>
                 <button
@@ -1367,17 +1366,17 @@ function AppContent() {
                     alignItems: 'center',
                     gap: '4px',
                     color: !nongMemMuted ? '#4ade80' : '#f87171',
-                    fontSize: '0.62rem',
+                    fontSize: '0.78rem',
                     fontWeight: 700
                   }}
                 >
-                  {!nongMemMuted ? <Volume2 size={10} /> : <VolumeX size={10} />}
+                  {!nongMemMuted ? <Volume2 size={14} /> : <VolumeX size={14} />}
                   {!nongMemMuted ? 'Sound' : 'Muted'}
                 </button>
               </div>
 
               {/* Action Buttons Stack (Without descriptions, compact, full-width) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
                 {/* Guide Tour */}
                 <button
                   onClick={() => {
@@ -1392,18 +1391,18 @@ function AppContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px',
+                    gap: '8px',
+                    padding: '12px',
                     borderRadius: '8px',
                     background: isTutorialActive ? 'rgba(239, 68, 68, 0.08)' : 'rgba(251, 191, 36, 0.08)',
                     border: isTutorialActive ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(251, 191, 36, 0.2)',
                     color: isTutorialActive ? '#ef4444' : '#facc15',
-                    fontSize: '0.72rem',
+                    fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
-                  {isTutorialActive ? <XCircle size={13} /> : <HelpCircle size={13} />}
+                  {isTutorialActive ? <XCircle size={16} /> : <HelpCircle size={16} />}
                   <span>{isTutorialActive ? 'Exit Interactive Guide' : 'Interactive Guide Tour'}</span>
                 </button>
 
@@ -1417,18 +1416,18 @@ function AppContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px',
+                    gap: '8px',
+                    padding: '12px',
                     borderRadius: '8px',
                     background: 'rgba(239, 68, 68, 0.06)',
                     border: '1px solid rgba(239, 68, 68, 0.15)',
                     color: '#fca5a5',
-                    fontSize: '0.72rem',
+                    fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={16} />
                   <span>Reset Deck & Stats</span>
                 </button>
 
@@ -1439,18 +1438,18 @@ function AppContent() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px',
+                    gap: '8px',
+                    padding: '12px',
                     borderRadius: '8px',
                     background: 'rgba(255, 255, 255, 0.03)',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                     color: '#cbd5e1',
-                    fontSize: '0.72rem',
+                    fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
-                  <LogOut size={13} />
+                  <LogOut size={16} />
                   <span>Sign Out</span>
                 </button>
               </div>
