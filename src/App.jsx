@@ -416,7 +416,7 @@ function AppContent() {
   const handleLogout = async () => {
     setMenuOpen(false);
     await signOut();
-    navigate('/login');
+    navigate('/');
   };
 
   // Menu Animation Variants

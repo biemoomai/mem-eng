@@ -233,8 +233,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
-    localStorage.setItem('memeng_logged_out', 'true');
-    return supabase.auth.signOut();
+    localStorage.removeItem('memeng_logged_out');
+    const res = await supabase.auth.signOut();
+    try {
+      await supabase.auth.signInAnonymously();
+    } catch (err) {
+      console.error("Auto guest sign in on logout failed:", err);
+    }
+    return res;
   };
 
   return (

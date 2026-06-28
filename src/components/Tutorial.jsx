@@ -116,7 +116,6 @@ export const Tutorial = () => {
     const handleTrigger = () => {
       if (!user) return;
       localStorage.setItem('memeng_tutorial_done', 'false');
-      localStorage.setItem('memeng_tutorial_started', 'true');
       setActive(true);
       setCurrentStep(0);
       navigate('/');
@@ -574,7 +573,7 @@ export const Tutorial = () => {
     const containerHeight = containerEl ? containerEl.clientHeight : window.innerHeight;
     
     const calculatedTop = isTop 
-      ? Math.max(10, top - (currentStep === 3 ? 220 : 180)) 
+      ? Math.max(10, top - 180) 
       : (top + height + 15);
 
     // If bottom positioning would overflow the visible viewport/container
@@ -865,35 +864,18 @@ export const Tutorial = () => {
                     {currentStep < TUTORIAL_STEPS.length - 1 ? (
                       <button 
                         onClick={handleNext}
-                        className="glass-button animate-scale"
-                        style={completedSteps[currentStep] ? { 
-                          padding: '0.35rem 0.75rem', 
-                          borderRadius: '10px', 
-                          fontSize: '0.72rem', 
-                          fontWeight: 900,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          border: '2.5px solid #facc15',
-                          background: 'rgba(250, 204, 21, 0.18)',
-                          color: '#facc15',
-                          boxShadow: '0 0 15px rgba(250, 204, 21, 0.35)',
-                          cursor: 'pointer'
-                        } : {
+                        className="glass-button primary animate-scale"
+                        style={{ 
                           padding: '0.3rem 0.65rem', 
                           borderRadius: '8px', 
                           fontSize: '0.7rem', 
-                          fontWeight: 700,
+                          fontWeight: 800,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '2px',
-                          border: '1.5px solid rgba(255,255,255,0.15)',
-                          background: 'rgba(255,255,255,0.04)',
-                          color: 'rgba(255,255,255,0.7)',
-                          cursor: 'pointer'
+                          gap: '2px'
                         }}
                       >
-                        <span>{completedSteps[currentStep] ? 'ถัดไป' : 'ข้าม'}</span>
+                        <span>ถัดไป</span>
                         <ChevronRight size={11} />
                       </button>
                     ) : (
@@ -901,17 +883,13 @@ export const Tutorial = () => {
                         onClick={handleNext}
                         className="glass-button primary animate-scale"
                         style={{ 
-                          padding: '0.35rem 0.75rem', 
-                          borderRadius: '10px', 
-                          fontSize: '0.72rem', 
-                          fontWeight: 900,
+                          padding: '0.3rem 0.65rem', 
+                          borderRadius: '8px', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 800,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '3px',
-                          border: '2.5px solid #facc15',
-                          background: 'rgba(250, 204, 21, 0.18)',
-                          color: '#facc15',
-                          boxShadow: '0 0 15px rgba(250, 204, 21, 0.35)'
+                          gap: '2px'
                         }}
                       >
                         <span>Finish</span>

@@ -561,7 +561,7 @@ const AddWord = () => {
 
   const handleSaveWord = async () => {
     if (isSuccess || isExiting) return;
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (isTutorialActive) {
       setIsExiting(true);
       setTimeout(() => {
@@ -672,7 +672,7 @@ const AddWord = () => {
 
   const handleDiscardWord = () => {
     if (isSuccess || isExiting) return;
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (isTutorialActive) {
       setIsExiting(true);
       setTimeout(() => {
@@ -919,7 +919,7 @@ const AddWord = () => {
       }, 350);
 
       // Fetch real photos for scenes in background (non-blocking)
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
       if (isTutorialActive) {
         setSceneImages([
           {
@@ -1067,7 +1067,7 @@ const AddWord = () => {
     const handleSaveWordEvent = async () => {
       if (isSuccess || isExiting || !richCardData) return;
       
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
+      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
       if (isTutorialActive) {
         setIsExiting(true);
         setTimeout(() => {
@@ -1185,7 +1185,7 @@ const AddWord = () => {
     setExistingCard(null);
     setErrorMsg('');
 
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false';
+    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (isTutorialActive) {
       setTimeout(() => {
         const mockDetails = {
@@ -1630,7 +1630,7 @@ const AddWord = () => {
                   maxLength={50}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const isTutorial = localStorage.getItem('memeng_tutorial_done') === 'false';
+                    const isTutorial = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
                     
                     if (isTutorial && tutorialStep === 0) {
                       const target = "hello";
@@ -1723,7 +1723,7 @@ const AddWord = () => {
                 <button
                   id="tutorial-translate-submit-btn"
                   type="submit"
-                  disabled={isFilling || !wordInput.trim() || (localStorage.getItem('memeng_tutorial_done') === 'false' && wordInput.toLowerCase().trim() !== 'hello')}
+                  disabled={isFilling || !wordInput.trim() || (localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true' && wordInput.toLowerCase().trim() !== 'hello')}
                   className="glass-button primary animate-scale"
                   style={{
                     borderRadius: '12px',
