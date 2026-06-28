@@ -545,19 +545,25 @@ export const Tutorial = () => {
           /* ===== MINIMIZED PILL ===== */
           <motion.div
             key="minimized-pill"
-            initial={{ opacity: 0, y: 30, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.8 }}
+            drag
+            dragConstraints={{ left: 0, right: window.innerWidth - 200, top: 0, bottom: window.innerHeight - 100 }}
+            dragElastic={0.1}
+            dragMomentum={false}
+            initial={{ opacity: 0, x: -50, y: 0, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -50, scale: 0.8 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            onClick={handleExpand}
+            onClick={(e) => {
+              // Only expand if the user tapped, not dragged
+              handleExpand();
+            }}
             style={{
               position: 'fixed',
-              bottom: '150px',
-              left: '50%',
-              transform: 'translateX(-50%)',
+              top: '45%',
+              left: '16px',
               zIndex: 100010,
               pointerEvents: 'auto',
-              cursor: 'pointer',
+              cursor: 'grab',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
@@ -567,8 +573,10 @@ export const Tutorial = () => {
               border: '1.5px solid rgba(251, 191, 36, 0.4)',
               backdropFilter: 'blur(15px)',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 191, 36, 0.15)',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              touchAction: 'none' // Essential for mobile drag support
             }}
+            whileTap={{ cursor: 'grabbing' }}
           >
             <motion.div
               animate={{ scale: [1, 1.2, 1] }}
