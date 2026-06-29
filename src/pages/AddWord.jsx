@@ -233,7 +233,11 @@ const AddWord = () => {
 
   const [guestNudge, setGuestNudge] = useState(null); // null, 'soft', 'firm'
   const [showShortcutButtons, setShowShortcutButtons] = useState(() => {
-    return localStorage.getItem('memeng_show_shortcut_buttons') !== 'false';
+    try {
+      return localStorage.getItem('memeng_show_shortcut_buttons') !== 'false';
+    } catch (e) {
+      return true;
+    }
   });
 
   useEffect(() => {

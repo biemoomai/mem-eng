@@ -24,7 +24,11 @@ function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showShortcutButtons, setShowShortcutButtons] = useState(() => {
-    return localStorage.getItem('memeng_show_shortcut_buttons') !== 'false';
+    try {
+      return localStorage.getItem('memeng_show_shortcut_buttons') !== 'false';
+    } catch (e) {
+      return true;
+    }
   });
 
   // Global Selection Dictionary Lookup

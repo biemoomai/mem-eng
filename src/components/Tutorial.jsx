@@ -850,15 +850,15 @@ export const Tutorial = () => {
     } catch (err) {
       console.error("Failed to reset curriculum default on finish:", err);
     }
-    
-    // Navigate home first to unmount /purge page and prevent race-condition empty-vocab render crashes
-    navigate('/');
 
     try {
       await clearDeckAndResetStats();
     } catch (err) {
       console.error("Failed to clear deck on tutorial complete:", err);
     }
+    
+    // Clean hard redirect to home screen to unmount all pages and boot cleanly
+    window.location.href = '/';
   };
 
   const getTooltipStyle = () => {
