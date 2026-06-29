@@ -490,6 +490,21 @@ export const Tutorial = () => {
     };
   }, [active, currentStep]);
 
+  // Auto-complete Swipe Gestures Demo steps after 5 seconds to change 'Skip' to 'Next'
+  useEffect(() => {
+    if (!active) return;
+    if (currentStep === 3 || currentStep === 10) {
+      const timer = setTimeout(() => {
+        setCompletedSteps(prev => {
+          const next = [...prev];
+          next[currentStep] = true;
+          return next;
+        });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, active]);
+
   // Recalculate target position on step or location change
   useEffect(() => {
     if (!active) return;
@@ -538,7 +553,7 @@ export const Tutorial = () => {
       }
 
       // Track speaker button separately for finger indicator pointer during Step 8 (Sound)
-      if (currentStep === 7 && containerEl) {
+      if (currentStep === 8 && containerEl) {
         const speakEl = document.getElementById('tutorial-tooltip-speak-btn');
         if (speakEl) {
           const sRect = speakEl.getBoundingClientRect();
@@ -891,18 +906,6 @@ export const Tutorial = () => {
   };
 
   const getTooltipStyle = () => {
-    // For Swipe Gestures (step 10) in Purge: place at bottom center to avoid covering card image/words
-    if (currentStep === 10) {
-      return {
-        position: 'fixed',
-        bottom: '120px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '92%',
-        maxWidth: '340px',
-        zIndex: 100004
-      };
-    }
 
     // For SRS Rating Buttons (step 11) in Purge: place above the buttons to avoid covering them
     if (currentStep === 11) {
@@ -1042,26 +1045,25 @@ export const Tutorial = () => {
             transition={{ duration: 0.2 }}
           >
             {/* Dark Spotlight Backdrop Overlay */}
-            {viewportRect && !isWrongPath ? (
+            {highlightRect && !isWrongPath ? (
               <>
-                {/* Top Panel */}
+                {/* Spotlight Backdrop Panels relative to app-container */}
                 <div 
                   style={{
-                    position: 'fixed',
+                    position: 'absolute',
                     top: 0,
                     left: 0,
                     right: 0,
-                    height: `${viewportRect.top}px`,
+                    height: `${Math.max(0, highlightRect.top)}px`,
                     background: 'rgba(0, 0, 0, 0.75)',
                     zIndex: 100000,
                     pointerEvents: backdropPointerEvents
                   }}
                 />
-                {/* Bottom Panel */}
                 <div 
                   style={{
-                    position: 'fixed',
-                    top: `${viewportRect.bottom}px`,
+                    position: 'absolute',
+                    top: `${highlightRect.top + highlightRect.height}px`,
                     left: 0,
                     right: 0,
                     bottom: 0,
@@ -1070,27 +1072,25 @@ export const Tutorial = () => {
                     pointerEvents: backdropPointerEvents
                   }}
                 />
-                {/* Left Panel */}
                 <div 
                   style={{
-                    position: 'fixed',
-                    top: `${viewportRect.top}px`,
+                    position: 'absolute',
+                    top: `${highlightRect.top}px`,
                     left: 0,
-                    width: `${viewportRect.left}px`,
-                    height: `${viewportRect.bottom - viewportRect.top}px`,
+                    width: `${Math.max(0, highlightRect.left)}px`,
+                    height: `${highlightRect.height}px`,
                     background: 'rgba(0, 0, 0, 0.75)',
                     zIndex: 100000,
                     pointerEvents: backdropPointerEvents
                   }}
                 />
-                {/* Right Panel */}
                 <div 
                   style={{
-                    position: 'fixed',
-                    top: `${viewportRect.top}px`,
-                    left: `${viewportRect.right}px`,
+                    position: 'absolute',
+                    top: `${highlightRect.top}px`,
+                    left: `${highlightRect.left + highlightRect.width}px`,
                     right: 0,
-                    height: `${viewportRect.bottom - viewportRect.top}px`,
+                    height: `${highlightRect.height}px`,
                     background: 'rgba(0, 0, 0, 0.75)',
                     zIndex: 100000,
                     pointerEvents: backdropPointerEvents
@@ -1100,7 +1100,7 @@ export const Tutorial = () => {
             ) : (
               <div 
                 style={{
-                  position: 'fixed',
+                  position: 'absolute',
                   inset: 0,
                   background: 'rgba(0, 0, 0, 0.75)',
                   zIndex: 100000,
@@ -1122,8 +1122,18 @@ export const Tutorial = () => {
                   width: highlightRect.width + 12,
                   height: highlightRect.height + 12,
                   borderRadius: '16px',
-                  border: '3px solid #fbbf24',
-                  boxShadow: '0 0 20px #fbbf2460, 0 0 0 9999px rgba(0,0,0,0.5)',
+                  border: (() => {
+                    const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
+                    const containerWidth = containerEl ? containerEl.clientWidth : window.innerWidth;
+                    const isFullWidth = highlightRect.width >= (containerWidth - 24);
+                    return isFullWidth ? 'none' : '3px solid #fbbf24';
+                  })(),
+                  boxShadow: (() => {
+                    const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
+                    const containerWidth = containerEl ? containerEl.clientWidth : window.innerWidth;
+                    const isFullWidth = highlightRect.width >= (containerWidth - 24);
+                    return isFullWidth ? 'none' : '0 0 20px #fbbf2460';
+                  })(),
                   zIndex: 100003,
                   pointerEvents: 'none'
                 }}

@@ -187,10 +187,14 @@ const Profile = () => {
 
   const stats = {
     totalKnown: counts.total,
-    streak: profile?.streak_days ?? 3,
+    streak: profile?.streak_days ?? 0,
   };
 
   useEffect(() => {
+    if (isTutorial) {
+      setShowStreakSplash(false);
+      return;
+    }
     if (stats.streak > 0) {
       setShowStreakSplash(true);
       setDisplayedStreak(1);
@@ -224,7 +228,7 @@ const Profile = () => {
         clearTimeout(closeTimer);
       };
     }
-  }, [stats.streak]);
+  }, [stats.streak, isTutorial]);
 
   // Nong Mem comment trigger on mount/stats load
   useEffect(() => {
