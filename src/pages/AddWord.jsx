@@ -1931,9 +1931,14 @@ const AddWord = () => {
                 dragSnapToOrigin={true}
                 onDragEnd={handleTranslateDragEnd}
                 className="results-drag-wrapper"
+                animate={(!isSuccess && !isExiting && tutorialStep === 3) ? {
+                  x: [0, 65, 0, -65, 0],
+                  rotate: [0, 4, 0, -4, 0],
+                  transition: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', repeatDelay: 1.0 }
+                } : undefined}
                 style={{ 
-                  x: translateX, 
-                  rotate: rotateTranslate,
+                  x: (!isSuccess && !isExiting && tutorialStep === 3) ? undefined : translateX, 
+                  rotate: (!isSuccess && !isExiting && tutorialStep === 3) ? undefined : rotateTranslate,
                   display: 'flex', 
                   flexDirection: 'column', 
                   width: '100%',

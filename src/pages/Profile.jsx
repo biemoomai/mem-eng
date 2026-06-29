@@ -1658,16 +1658,16 @@ const Profile = () => {
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setSelectedLevel(null)}
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, backdropFilter: 'blur(5px)' }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, backdropFilter: 'blur(8px)' }}
             />
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0, height: '90%',
-                background: `radial-gradient(circle at 50% 0%, ${getModalColor()}0f 0%, #08090b 100%)`,
-                borderTop: `2px solid ${getModalColor()}`, 
-                boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.5), 0 0 30px ${getModalColor()}15`,
+                position: 'fixed', bottom: 0, left: 0, right: 0, height: '90%',
+                background: `radial-gradient(circle at 50% 0%, ${getModalColor()}12 0%, #08090b 100%)`,
+                borderTop: `2px solid ${getModalColor()}`,
+                boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.6), 0 0 40px ${getModalColor()}20, inset 0 0 0 1px ${getModalColor()}30`,
                 zIndex: 10000, borderTopLeftRadius: '32px', borderTopRightRadius: '32px',
                 display: 'flex', flexDirection: 'column'
               }}

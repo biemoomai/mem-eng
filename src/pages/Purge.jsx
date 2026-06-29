@@ -836,6 +836,7 @@ const Purge = () => {
   const [activeReviewImageUrl, setActiveReviewImageUrl] = useState('');
   const [showStats, setShowStats] = useState(false);
   const [hoveredSrs, setHoveredSrs] = useState(null);
+  const [tutorialStep, setTutorialStep] = useState(null);
 
   const pressTimerRef = useRef(null);
   const isLongPressRef = useRef(false);
@@ -1560,12 +1561,13 @@ const Purge = () => {
       // Sync reveal steps with current step in TUTORIAL_STEPS:
       // Index 4: Flashcard Deck -> revealStep = 0 (unrevealed)
       // Index 5: Reveal Thai Translation -> revealStep = 1 (front revealed)
-      // Index 6-9: Dictionary, Speaker, Add, SRS Buttons -> revealStep = 2 (back revealed)
+      // Index 6-10: Dictionary, Speaker, Add, SRS Buttons, Swipe Demo -> revealStep = 2 (back revealed)
+      setTutorialStep(step);
       if (step === 4) {
         setRevealStep(0);
       } else if (step === 5) {
         setRevealStep(1);
-      } else if (step >= 6 && step <= 9) {
+      } else if (step >= 6 && step <= 10) {
         setRevealStep(2);
       }
     };
@@ -4469,7 +4471,13 @@ const Purge = () => {
           id="tutorial-flashcard-card"
           className="snap-card"
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={tutorialStep === 10 ? {
+            x: [0, 70, 0, -70, 0, 0, 70, 0],
+            y: [0, 0, 0, 0, 0, -70, 0, 0],
+            rotate: [0, 5, 0, -5, 0, 0, 5, 0],
+            opacity: 1,
+            transition: { repeat: Infinity, duration: 3.2, ease: 'easeInOut', repeatDelay: 0.5 }
+          } : { opacity: 1, y: 0 }}
           exit={{ 
             x: exitDirection === 'left' ? -1000 : (exitDirection === 'right' ? 1000 : 0), 
             y: exitDirection === 'up' ? -1000 : (exitDirection === 'down' ? 1000 : 0), 

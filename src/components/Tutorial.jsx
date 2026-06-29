@@ -11,56 +11,57 @@ const TUTORIAL_STEPS = [
     path: '/',
     selector: '#tutorial-translate-input',
     title: 'Translate Word',
-    text: 'พิมพ์คำศัพท์ที่ต้องการเรียนรู้ลงในช่องค้นหา เช่น hello (พิมพ์ตัวอักษรใดก็ได้ ระบบจะป้อนคำว่า hello ให้อัตโนมัติ)',
+    text: 'พิมพ์คำศัพท์ที่ต้องการเรียนรู้ลงในช่องค้นหา เช่น <span style="color:#facc15;font-weight:900">hello</span> (พิมพ์ตัวอักษรใดก็ได้ ระบบจะป้อนคำว่า hello ให้อัตโนมัติ)',
     position: 'bottom'
   },
   {
     path: '/',
     selector: '#tutorial-translate-submit-btn',
     title: 'Click Translate',
-    text: 'เก่งมาก! ตอนนี้กดปุ่ม Translate เพื่อแปลคำศัพท์ผ่านระบบจำลองออฟไลน์',
+    text: 'เก่งมาก! ตอนนี้กดปุ่ม <span style="color:#facc15;font-weight:900">Translate</span> เพื่อแปลคำศัพท์ผ่านระบบจำลองออฟไลน์',
     position: 'bottom'
   },
   {
     path: '/',
     selector: '.results-drag-wrapper',
     title: 'Explore AI Card',
-    text: 'ผลการเรียนรู้ผ่าน AI ได้รับการจัดรูปแบบเป็นการ์ดสวยงาม ลองปัดหน้าจอเลื่อนขึ้น-ลงเพื่อสำรวจเนื้อหา ตัวอย่างประโยค และรูปภาพประกอบให้ครบก่อน เมื่อดูเสร็จแล้ว ให้คลิกปุ่ม "ถัดไป" เพื่อไปขั้นตอนต่อไป',
+    text: 'ผลการเรียนรู้ผ่าน AI ได้รับการจัดรูปแบบเป็นการ์ดสวยงาม ลอง<span style="color:#facc15;font-weight:900">ปัดหน้าจอเลื่อนขึ้น-ลง</span>เพื่อสำรวจเนื้อหา ตัวอย่างประโยค และรูปภาพประกอบให้ครบก่อน เมื่อดูเสร็จแล้ว ให้คลิกปุ่ม "ถัดไป"',
     position: 'top'
   },
   {
     path: '/',
     selector: '#tutorial-tinder-save-btn',
     title: 'Swipe or Tap to Save',
-    text: 'ลองปัดการ์ดไปทางขวาเพื่อบันทึก หรือจะกดปุ่ม Save สีเขียวเพื่อบันทึกทันทีก็ได้จ้า (ปัดซ้ายหรือกดปุ่ม Back สีแดงเพื่อยกเลิก)',
-    position: 'top'
+    text: 'ลองปัดการ์ดไปทางขวาหรือกดปุ่ม <span style="color:#4ade80;font-weight:900">Save</span> สีเขียวเพื่อบันทึกคำศัพท์ไว้ทบทวน (หรือปัดซ้าย / กดปุ่ม <span style="color:#f87171;font-weight:900">Back</span> สีแดงเพื่อยกเลิก)',
+    position: 'top',
+    showSwipeDemo: true
   },
   {
     path: '/purge',
     selector: '#tutorial-flashcard-card',
     title: 'Flashcard Deck',
-    text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลองแตะที่การ์ดเบาๆ เพื่อเปิดเผยคำอธิบายภาษาอังกฤษและตัวอย่างประโยค',
+    text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลอง<span style="color:#facc15;font-weight:900">แตะที่การ์ด</span>เบาๆ เพื่อเปิดเผยคำอธิบายภาษาอังกฤษและตัวอย่างประโยค',
     position: 'top'
   },
   {
     path: '/purge',
     selector: '#tutorial-flashcard-card',
     title: 'Reveal Thai Translation',
-    text: 'ลองแตะที่การ์ดอีกครั้ง เพื่อเปิดเผยคำแปลภาษาไทยและแถบปุ่มระบบช่วยจำ',
+    text: 'ลอง<span style="color:#facc15;font-weight:900">แตะที่การ์ดอีกครั้ง</span> เพื่อเปิดเผยคำแปลภาษาไทยและแถบปุ่มระบบช่วยจำ',
     position: 'top'
   },
   {
     path: '/purge',
     selector: '#tutorial-word-today',
     title: 'Dictionary Lookup',
-    text: 'ลองแตะที่คำว่า today หรือคำศัพท์ใดก็ได้ในประโยคตัวอย่างเพื่อจำลองการเปิดพจนานุกรมความหมายด่วน',
+    text: 'ลองแตะที่คำว่า <span style="color:#facc15;font-weight:900">today</span> หรือคำศัพท์ใดก็ได้ในประโยคตัวอย่าง เพื่อจำลองการเปิดพจนานุกรมความหมายด่วน',
     position: 'top'
   },
   {
     path: '/purge',
     selector: '#tutorial-tooltip-info-container',
     title: 'Word Details & Sound',
-    text: 'นี่คือความหมายและคำแปลภาษาไทยของคำศัพท์ที่แตะ ลองอ่านทบทวนหรือแตะปุ่มลำโพงเพื่อทดลองฟังเสียงพูดออกเสียงได้จ้า เสร็จแล้วกดปุ่ม "ถัดไป"',
+    text: 'นี่คือความหมายและคำแปลภาษาไทยของคำศัพท์ที่แตะ ลองอ่านทบทวนหรือ<span style="color:#facc15;font-weight:900">แตะปุ่มลำโพง🔊</span>เพื่อทดลองฟังเสียงพูดออกเสียงได้จ้า เสร็จแล้วกดปุ่ม "ถัดไป"',
     position: 'bottom',
     padding: 12
   },
@@ -68,22 +69,31 @@ const TUTORIAL_STEPS = [
     path: '/purge',
     selector: '#tutorial-tooltip-add-btn',
     title: 'Add Word to Deck',
-    text: 'แตะปุ่ม "Add to Deck" เพื่อเก็บสะสมคำศัพท์นั้นเข้าคลังเรียนรู้ของคุณทันที',
+    text: 'แตะปุ่ม <span style="color:#facc15;font-weight:900">"Add to Deck"</span> เพื่อเก็บสะสมคำศัพท์นั้นเข้าคลังเรียนรู้ของคุณทันที',
     position: 'bottom'
   },
   {
     path: '/purge',
     selector: '#tutorial-srs-buttons',
     title: 'SRS Memory Rating',
-    text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น Easy หรือ Normal เพื่อเรียนรู้ต่อ',
+    text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น <span style="color:#facc15;font-weight:900">Easy</span> หรือ <span style="color:#facc15;font-weight:900">Normal</span> เพื่อเรียนรู้ต่อ',
     position: 'top',
     padding: 6
+  },
+  {
+    path: '/purge',
+    selector: '#tutorial-flashcard-card',
+    title: 'Swipe Gestures',
+    text: 'หรือจะ<span style="color:#facc15;font-weight:900">ปัดการ์ด 4 ทิศทาง</span>เพื่อตอบก็ได้เช่นกัน! <span style="color:#4ade80;font-weight:800">ปัดขวา = Easy</span> · <span style="color:#60a5fa;font-weight:800">ปัดขึ้น = Normal</span> · <span style="color:#f87171;font-weight:800">ปัดลง = Hard</span> · <span style="color:#a78bfa;font-weight:800">ปัดซ้าย = Again</span>',
+    position: 'top',
+    padding: 6,
+    showSwipeDemo: true
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-curriculum',
     title: 'Curriculum Switcher',
-    text: 'กดเลือกปุ่มหลักสูตรนี้ เพื่อเปิดตัวเลือกการสลับโหมดคำศัพท์',
+    text: 'กดเลือก<span style="color:#facc15;font-weight:900">ปุ่มหลักสูตร</span>นี้ เพื่อเปิดตัวเลือกการสลับโหมดคำศัพท์',
     position: 'bottom',
     padding: 4
   },
@@ -91,7 +101,7 @@ const TUTORIAL_STEPS = [
     path: '/profile',
     selector: '#tutorial-profile-curriculum-modal-content',
     title: 'Choose Curriculum Focus',
-    text: 'นี่คือรายการตัวเลือกหลักสูตรที่เลือกเล่นได้ เช่น Oxford หรือ TOEIC แตะเลือกหลักสูตรที่สนใจ หรือแตะเลือก Self-Study เพื่อใช้งานโหมดคำศัพท์ทั่วไปตามเดิม แล้วกดปุ่มถัดไป',
+    text: 'นี่คือรายการตัวเลือกหลักสูตรที่เลือกเล่นได้ เช่น <span style="color:#facc15;font-weight:900">Oxford</span> หรือ <span style="color:#facc15;font-weight:900">TOEIC</span> แตะเลือกหลักสูตรที่สนใจ หรือแตะเลือก <span style="color:#facc15;font-weight:900">Self-Study</span> เพื่อใช้งานโหมดทั่วไป แล้วกดปุ่มถัดไป',
     position: 'top',
     padding: 10
   },
@@ -99,7 +109,7 @@ const TUTORIAL_STEPS = [
     path: '/profile',
     selector: '#tutorial-profile-srs',
     title: 'SRS Memory Stages',
-    text: 'ลองกดที่ปุ่มระดับความจำกลุ่มใดก็ได้ เช่น Learning หรือ Mastered เพื่อแสดงรายชื่อคำศัพท์ของกลุ่มนั้น',
+    text: 'ลองกดที่ปุ่มระดับความจำกลุ่มใดก็ได้ เช่น <span style="color:#facc15;font-weight:900">Learning</span> หรือ <span style="color:#facc15;font-weight:900">Mastered</span> เพื่อแสดงรายชื่อคำศัพท์ของกลุ่มนั้น',
     position: 'top',
     padding: 6
   },
@@ -1211,9 +1221,7 @@ export const Tutorial = () => {
                     <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
                       {stepConf.title}
                     </h4>
-                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>
-                      {stepConf.text}
-                    </p>
+                     <p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }} dangerouslySetInnerHTML={{ __html: stepConf.text }} />
                   </div>
                 )}
 
