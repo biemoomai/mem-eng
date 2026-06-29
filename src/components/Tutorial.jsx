@@ -123,6 +123,7 @@ export const Tutorial = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightRect, setHighlightRect] = useState(null);
   const [viewportRect, setViewportRect] = useState(null);
+  const [speakBtnRect, setSpeakBtnRect] = useState(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [showOptIn, setShowOptIn] = useState(false);
   const autoMinimizeTimerRef = useRef(null);
@@ -459,6 +460,25 @@ export const Tutorial = () => {
       } else {
         setHighlightRect(null);
         setViewportRect(null);
+      }
+
+      // Track speaker button separately for finger indicator pointer during Step 8 (Sound)
+      if (currentStep === 7 && containerEl) {
+        const speakEl = document.getElementById('tutorial-tooltip-speak-btn');
+        if (speakEl) {
+          const sRect = speakEl.getBoundingClientRect();
+          const containerRect = containerEl.getBoundingClientRect();
+          setSpeakBtnRect({
+            top: sRect.top - containerRect.top,
+            left: sRect.left - containerRect.left,
+            width: sRect.width,
+            height: sRect.height
+          });
+        } else {
+          setSpeakBtnRect(null);
+        }
+      } else {
+        setSpeakBtnRect(null);
       }
     };
 
@@ -997,8 +1017,18 @@ export const Tutorial = () => {
               />
             )}
 
-            {/* Bouncing emoji finger pointers for Step 0 (input hello) and Step 1 (click translate) */}
-            {highlightRect && !isWrongPath && (currentStep === 0 || currentStep === 1) && (
+            {/* Finger pointers for other steps to click/tap targets */}
+            {highlightRect && !isWrongPath && (
+              currentStep === 0 || 
+              currentStep === 1 || 
+              currentStep === 3 || 
+              currentStep === 6 || 
+              currentStep === 8 || 
+              currentStep === 9 || 
+              currentStep === 10 || 
+              currentStep === 11 || 
+              currentStep === 12
+            ) && (
               <motion.div
                 animate={{ y: [0, -10, 0] }}
                 transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
@@ -1013,6 +1043,44 @@ export const Tutorial = () => {
                 }}
               >
                 👇
+              </motion.div>
+            )}
+
+            {/* Finger tap animation inside the middle of target for card reveal steps */}
+            {highlightRect && !isWrongPath && (currentStep === 4 || currentStep === 5) && (
+              <motion.div
+                animate={{ scale: [1, 1.25, 1], opacity: [0.9, 1, 0.9] }}
+                transition={{ repeat: Infinity, duration: 1.0, ease: "easeInOut" }}
+                style={{
+                  position: 'absolute',
+                  top: highlightRect.top + (highlightRect.height / 2) - 25,
+                  left: highlightRect.left + (highlightRect.width / 2) - 20,
+                  zIndex: 100005,
+                  fontSize: '2.5rem',
+                  filter: 'drop-shadow(0 0 12px rgba(251, 191, 36, 0.95))',
+                  pointerEvents: 'none'
+                }}
+              >
+                👆
+              </motion.div>
+            )}
+
+            {/* Finger pointer for Step 8 (Sound) pointing at the speaker icon */}
+            {speakBtnRect && currentStep === 7 && (
+              <motion.div
+                animate={{ x: [0, -8, 0] }}
+                transition={{ repeat: Infinity, duration: 0.8, ease: "easeInOut" }}
+                style={{
+                  position: 'absolute',
+                  top: speakBtnRect.top + (speakBtnRect.height / 2) - 16,
+                  left: speakBtnRect.left + speakBtnRect.width + 8,
+                  zIndex: 100008,
+                  fontSize: '1.6rem',
+                  filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.95))',
+                  pointerEvents: 'none'
+                }}
+              >
+                👈
               </motion.div>
             )}
 

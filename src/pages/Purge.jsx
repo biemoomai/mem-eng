@@ -2272,8 +2272,12 @@ const Purge = () => {
             style={{
               width: '85%',
               maxWidth: '320px',
-              background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 12, 17, 0.72) 100%)',
-              backdropFilter: lowGraphics ? 'none' : 'blur(20px)',
+              background: (localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true')
+                ? 'rgba(15, 23, 42, 0.99)'
+                : 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 12, 17, 0.72) 100%)',
+              backdropFilter: (localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true')
+                ? 'none'
+                : (lowGraphics ? 'none' : 'blur(20px)'),
               borderRadius: '24px',
               border: '1px solid rgba(255,255,255,0.12)',
               boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
@@ -3602,8 +3606,14 @@ const Purge = () => {
           return [...rest, current];
         });
       } else {
-        // Remove correctly answered card from session queue
+        // Prevent splicing the queue or exiting study mode if tutorial is currently active
+        // This ensures the tutorial components can transition to the profile page without unmounting mid-animation.
+        const isTutorial = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
         setSessionQueue(prev => {
+          if (isTutorial) {
+            return prev;
+          }
+          if (prev.length === 0) return prev;
           const [current, ...rest] = prev;
           if (rest.length === 0) {
             setIsStudying(false);
