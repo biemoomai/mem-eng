@@ -505,6 +505,14 @@ export const Tutorial = () => {
     }
   }, [currentStep, active]);
 
+  // Close modals on step 16 (Profile Summary) to show the main profile stats
+  useEffect(() => {
+    if (!active) return;
+    if (currentStep === 15) {
+      window.dispatchEvent(new Event('tutorial-close-modals'));
+    }
+  }, [currentStep, active]);
+
   // Recalculate target position on step or location change
   useEffect(() => {
     if (!active) return;
@@ -911,7 +919,7 @@ export const Tutorial = () => {
     if (currentStep === 11) {
       return {
         position: 'fixed',
-        bottom: '140px',
+        bottom: '195px',
         left: '50%',
         transform: 'translateX(-50%)',
         width: '92%',
@@ -954,7 +962,7 @@ export const Tutorial = () => {
     const containerHeight = containerEl ? containerEl.clientHeight : window.innerHeight;
     
     const calculatedTop = isTop 
-      ? Math.max(10, top - (currentStep === 3 ? 220 : 180)) 
+      ? Math.max(10, top - (currentStep === 3 ? 220 : currentStep === 4 ? 245 : 180)) 
       : (top + height + 15);
 
     // If bottom positioning would overflow the visible viewport/container

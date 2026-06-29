@@ -52,7 +52,7 @@ const getNextReviewText = (nextReviewDate) => {
 };
 
 const Profile = () => {
-  const { vocab, getSrsCounts, deleteWordFromDeck, updateWordProperties, activeCurriculum, setActiveCurriculum, clearDeckAndResetStats, curriculumWords, curriculumList, addWordToDeck, getAiWordRichDetails } = useVocab();
+  const { vocab, getSrsCounts, deleteWordFromDeck, updateWordProperties, activeCurriculum, setActiveCurriculum, clearDeckAndResetStats, curriculumWords, curriculumList, loadingCurriculumWords, addWordToDeck, getAiWordRichDetails } = useVocab();
   const { profile, signOut, isAnonymous } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -1883,8 +1883,36 @@ const Profile = () => {
                 style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
               >
                 <AnimatePresence>
-                  {modalList.length === 0 ? (
+                  {loadingCurriculumWords ? (
+                    <motion.div
+                      key="loading-curriculum"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        padding: '4rem 1.5rem', 
+                        gap: '1rem' 
+                      }}
+                    >
+                      <div style={{ 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '50%', 
+                        border: '3px solid rgba(255,255,255,0.08)', 
+                        borderTopColor: getModalColor(), 
+                        animation: 'spin 0.8s linear infinite' 
+                      }} />
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        Loading vocabulary library...
+                      </div>
+                    </motion.div>
+                  ) : modalList.length === 0 ? (
                     <motion.div 
+                      key="no-words-found"
                       initial={{ opacity: 0, scale: 0.96 }} 
                       animate={{ opacity: 1, scale: 1 }} 
                       style={{ 
