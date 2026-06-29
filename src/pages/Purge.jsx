@@ -4579,7 +4579,7 @@ const Purge = () => {
             padding: '24px 20px',
           }}>
             {/* UP: Good/Normal */}
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '125px' }}>
               <motion.div
                 animate={{ y: [-4, 2, -4] }}
                 transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
@@ -4613,7 +4613,7 @@ const Purge = () => {
             </div>
             
             {/* DOWN: Hard */}
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '120px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '175px' }}>
               <motion.div
                 animate={{ y: [4, -2, 4] }}
                 transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}

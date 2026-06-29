@@ -1892,13 +1892,8 @@ const Profile = () => {
                 }}
                 style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
               >
-                <AnimatePresence>
                   {loadingCurriculumWords ? (
-                    <motion.div
-                      key="loading-curriculum"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
+                    <div
                       style={{ 
                         display: 'flex', 
                         flexDirection: 'column', 
@@ -1919,12 +1914,9 @@ const Profile = () => {
                       <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                         Loading vocabulary library...
                       </div>
-                    </motion.div>
+                    </div>
                   ) : modalList.length === 0 ? (
-                    <motion.div 
-                      key="no-words-found"
-                      initial={{ opacity: 0, scale: 0.96 }} 
-                      animate={{ opacity: 1, scale: 1 }} 
+                    <div 
                       style={{ 
                         display: 'flex',
                         flexDirection: 'column',
@@ -1960,7 +1952,7 @@ const Profile = () => {
                       <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-secondary)', maxWidth: '240px', lineHeight: 1.5 }}>
                         There are no words matching your filters in this stage. Try changing POS or adding some new words to deck!
                       </p>
-                    </motion.div>
+                    </div>
                   ) : (
                     modalList.slice(0, visibleCount).map((item) => {
                       if (item.isWaiting) {
@@ -2502,7 +2494,6 @@ const Profile = () => {
                       );
                     })
                   )}
-                </AnimatePresence>
               </div>
 
             </motion.div>
