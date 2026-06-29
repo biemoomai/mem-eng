@@ -77,15 +77,6 @@ const Profile = () => {
   const [previewShowThai, setPreviewShowThai] = useState(false);
   const [addingWordId, setAddingWordId] = useState(null);
 
-  // Auto-close any open modals when navigating away from the profile tab
-  useEffect(() => {
-    if (location.pathname !== '/profile') {
-      setSelectedLevel(null);
-      setPreviewWord(null);
-      setShowCurriculumModal(false);
-    }
-  }, [location.pathname]);
-
   const handleAddWaitingWord = async (word) => {
     if (!word) return;
     setAddingWordId(word);
@@ -146,6 +137,15 @@ const Profile = () => {
   const [showDetails, setShowDetails] = useState(false);
   const isTutorial = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
   const activeShowDetails = isTutorial ? true : showDetails;
+
+  // Auto-close any open modals when navigating away from the profile tab
+  useEffect(() => {
+    if (location.pathname !== '/profile') {
+      setSelectedLevel(null);
+      setPreviewWord(null);
+      setShowCurriculumModal(false);
+    }
+  }, [location.pathname]);
 
   const highlightThaiTranslation = (sentence, translation) => {
     if (!sentence) return '';
