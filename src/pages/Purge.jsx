@@ -1565,10 +1565,49 @@ const Purge = () => {
       setTutorialStep(step);
       if (step === 4) {
         setRevealStep(0);
+        setExitDirection(null);
       } else if (step === 5) {
         setRevealStep(1);
+        setExitDirection(null);
       } else if (step >= 6 && step <= 10) {
         setRevealStep(2);
+        // For step 10 (Swipe Demo): force reset the card so it's visible for the wobble animation
+        if (step === 10) {
+          setExitDirection(null);
+          x.set(0);
+          y.set(0);
+          // Ensure mock card is in queue and visible
+          setSessionQueue(prev => {
+            const mockCard = {
+              id: 'tutorial-mock-hello',
+              word: 'hello',
+              pos: 'interjection',
+              cefrLevel: 'A1',
+              meaning: JSON.stringify({
+                word: 'hello',
+                pos: 'interjection',
+                cefrLevel: 'A1',
+                _provider: 'Offline Tutorial Mock',
+                englishExplanation: {
+                  definition: 'Used as a greeting or to begin a telephone conversation.',
+                  phrase: 'Hello! How are you doing today?',
+                  phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
+                },
+                thaiTranslation: { word: 'สวัสดี', phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?' },
+                scenes: [{ situation: 'A warm greeting between friends meeting at a cafe', thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ' }],
+                imagePrompts: ['A warm greeting between friends meeting at a cafe'],
+                validation: { isInvalid: false, suggestion: null }
+              }),
+              videoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
+              isImageSaved: true,
+              srsLevel: 'Learning',
+              nextReviewDate: new Date().toISOString()
+            };
+            if (prev.some(c => c.id === 'tutorial-mock-hello')) return prev;
+            return [mockCard];
+          });
+          setIsStudying(true);
+        }
       }
     };
 

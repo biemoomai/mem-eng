@@ -230,6 +230,7 @@ const AddWord = () => {
       return null;
     }
   });
+  const [tutorialSwipeDemoReady, setTutorialSwipeDemoReady] = useState(false);
 
   const [guestNudge, setGuestNudge] = useState(null); // null, 'soft', 'firm'
   const [showShortcutButtons, setShowShortcutButtons] = useState(() => {
@@ -276,12 +277,24 @@ const AddWord = () => {
   };
 
   useEffect(() => {
+    let swipeDemoTimer = null;
     const handleStepChanged = (e) => {
-      setTutorialStep(e.detail.step);
+      const step = e.detail.step;
+      setTutorialStep(step);
+      // Step 3 = Swipe or Tap to Save: show wobble demo first, then unlock Save
+      if (step === 3) {
+        setTutorialSwipeDemoReady(false);
+        swipeDemoTimer = setTimeout(() => {
+          setTutorialSwipeDemoReady(true);
+        }, 2600); // 2.6s = ~1 full wobble cycle before Save appears
+      } else {
+        setTutorialSwipeDemoReady(false);
+      }
     };
     const handleActiveChange = (e) => {
       if (!e.detail) {
         setTutorialStep(null);
+        setTutorialSwipeDemoReady(false);
       } else {
         setTutorialStep(0);
       }
@@ -291,6 +304,7 @@ const AddWord = () => {
     return () => {
       window.removeEventListener('tutorial-step-changed', handleStepChanged);
       window.removeEventListener('tutorial-active-change', handleActiveChange);
+      if (swipeDemoTimer) clearTimeout(swipeDemoTimer);
     };
   }, []);
 
@@ -2900,10 +2914,61 @@ const AddWord = () => {
             </motion.div>
           </div>
         )}
+      {/* Tutorial Step 3: Swipe Demo Overlay — shows BACK/SAVE direction hints while card wobbles */}
+      {tutorialStep === 3 && !isSuccess && !isExiting && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: tutorialSwipeDemoReady ? 0 : 1 }}
+          transition={{ duration: 0.4 }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 9990,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 28px',
+            bottom: '140px',
+            top: 'auto',
+            height: '80px'
+          }}
+        >
+          {/* ← BACK */}
+          <motion.div
+            animate={{ x: [-8, 0, -8] }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+          >
+            <div style={{ fontSize: '1.6rem' }}>👈</div>
+            <span style={{
+              fontSize: '0.7rem', fontWeight: 900, color: '#ef4444',
+              letterSpacing: '1.5px', textTransform: 'uppercase',
+              textShadow: '0 0 12px rgba(239,68,68,0.7)'
+            }}>Back</span>
+          </motion.div>
+          {/* SAVE → */}
+          <motion.div
+            animate={{ x: [8, 0, 8] }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+          >
+            <div style={{ fontSize: '1.6rem' }}>👉</div>
+            <span style={{
+              fontSize: '0.7rem', fontWeight: 900, color: '#10b981',
+              letterSpacing: '1.5px', textTransform: 'uppercase',
+              textShadow: '0 0 12px rgba(16,185,129,0.7)'
+            }}>Save</span>
+          </motion.div>
+        </motion.div>
+      )}
       {richCardData && !isFilling && !isSuccess && !isExiting && showShortcutButtons && tutorialStep !== 2 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ 
+            opacity: (tutorialStep === 3 && !tutorialSwipeDemoReady) ? 0 : 1, 
+            y: 0 
+          }}
           exit={{ opacity: 0, y: 20 }}
           style={{
             position: 'absolute',
@@ -2981,7 +3046,12 @@ const AddWord = () => {
             id="tutorial-tinder-save-btn"
             title="Save Word (Swipe Right)"
           >
-            Save
+            {tutorialStep === 3 && tutorialSwipeDemoReady ? (
+              <motion.span
+                animate={{ textShadow: ['0 0 0px #fff', '0 0 12px #4ade80', '0 0 0px #fff'] }}
+                transition={{ repeat: Infinity, duration: 1.0 }}
+              >👉 Save</motion.span>
+            ) : 'Save'}
           </button>
         </motion.div>
       )}
