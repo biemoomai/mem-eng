@@ -1678,7 +1678,8 @@ const Profile = () => {
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0, height: '90%',
+                position: 'fixed', bottom: 0, left: 0, right: 0,
+                height: 'auto', maxHeight: '90%',
                 background: `radial-gradient(circle at 50% 0%, ${getModalColor()}12 0%, #08090b 100%)`,
                 borderTop: `2px solid ${getModalColor()}`,
                 boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.6), 0 0 40px ${getModalColor()}20, inset 0 0 0 1px ${getModalColor()}30`,
