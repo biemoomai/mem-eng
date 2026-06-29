@@ -57,10 +57,11 @@ const Profile = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const activeVocab = vocab.filter(item => {
+    if (!item || !item.word) return false;
     if (activeCurriculum === 'Self-Study only') {
       return !item.curriculum || item.curriculum === 'Self-Study only';
     }
-    return item.curriculum === activeCurriculum || (item.word && curriculumWords.has(item.word.toLowerCase().trim()));
+    return item.curriculum === activeCurriculum || (curriculumWords && curriculumWords.has(item.word.toLowerCase().trim()));
   });
 
   const counts = getSrsCounts(activeVocab);
@@ -306,11 +307,11 @@ const Profile = () => {
     return () => window.removeEventListener('tutorial-close-modals', handleCloseModals);
   }, []);
 
-  const getCefr = (wordObj) => (wordObj.cefrLevel || 'A1');
+  const getCefr = (wordObj) => (wordObj?.cefrLevel || 'A1');
 
   const getCefrTarget = (cefrId) => {
     if (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0) {
-      const totalInCurriculum = curriculumList.filter(item => (item.cefr_level || '').toUpperCase() === cefrId.toUpperCase()).length;
+      const totalInCurriculum = curriculumList.filter(item => item && item.cefr_level && (item.cefr_level || '').toUpperCase() === cefrId.toUpperCase()).length;
       return totalInCurriculum || 1;
     }
     return cefrId === 'C2' ? 500 : 1000;
@@ -337,15 +338,19 @@ const Profile = () => {
 
   const getWaitingCount = () => {
     if (activeCurriculum === 'Self-Study only' || !curriculumList || curriculumList.length === 0) return 0;
-    const activeVocabWords = new Set(activeVocab.map(w => w.word.toLowerCase().trim()));
-    return curriculumList.filter(item => !activeVocabWords.has(item.word.toLowerCase().trim())).length;
+    const activeVocabWords = new Set(
+      activeVocab
+        .filter(w => w && w.word)
+        .map(w => w.word.toLowerCase().trim())
+    );
+    return curriculumList.filter(item => item && item.word && !activeVocabWords.has(item.word.toLowerCase().trim())).length;
   };
   const waitingCount = getWaitingCount();
 
   const cefrLevels = cefrTiers.map(tier => {
-    const count = activeVocab.filter(w => getCefr(w) === tier.id).length;
+    const count = activeVocab.filter(w => w && getCefr(w) === tier.id).length;
     const totalInCurriculum = (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0)
-      ? curriculumList.filter(w => (w.cefr_level || '').toUpperCase() === tier.id.toUpperCase()).length
+      ? curriculumList.filter(w => w && w.cefr_level && (w.cefr_level || '').toUpperCase() === tier.id.toUpperCase()).length
       : 0;
     return { ...tier, count, totalInCurriculum };
   });
@@ -384,9 +389,13 @@ const Profile = () => {
       } else if (selectedLevel === 'Learning') {
         const studyingList = activeVocab.filter(w => w.srsLevel === 'Learning');
         if (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0) {
-          const activeVocabWords = new Set(activeVocab.map(w => w.word.toLowerCase().trim()));
+          const activeVocabWords = new Set(
+            activeVocab
+              .filter(w => w && w.word)
+              .map(w => w.word.toLowerCase().trim())
+          );
           const waitingWords = curriculumList
-            .filter(item => !activeVocabWords.has(item.word.toLowerCase().trim()))
+            .filter(item => item && item.word && !activeVocabWords.has(item.word.toLowerCase().trim()))
             .map(currItem => ({
               id: `waiting-${currItem.word.toLowerCase().trim()}`,
               word: currItem.word.toLowerCase().trim(),
@@ -403,6 +412,7 @@ const Profile = () => {
         }
       } else {
         list = activeVocab.filter(w => {
+          if (!w) return false;
           if (selectedLevel === 'Easy') {
             return w.srsLevel === 'Easy' || w.srsLevel === 'Super Easy';
           }
@@ -413,9 +423,9 @@ const Profile = () => {
       list = activeVocab.filter(w => getCategory(w) === selectedLevel);
     } else {
       if (activeCurriculum !== 'Self-Study only' && curriculumList && curriculumList.length > 0) {
-        const currWords = curriculumList.filter(item => (item.cefr_level || '').toUpperCase() === selectedLevel.toUpperCase());
+        const currWords = curriculumList.filter(item => item && item.word && (item.cefr_level || '').toUpperCase() === selectedLevel.toUpperCase());
         list = currWords.map(currItem => {
-          const existing = activeVocab.find(v => v.word.toLowerCase().trim() === currItem.word.toLowerCase().trim());
+          const existing = activeVocab.find(v => v && v.word && v.word.toLowerCase().trim() === currItem.word.toLowerCase().trim());
           if (existing) {
             return existing;
           } else {
@@ -432,13 +442,13 @@ const Profile = () => {
           }
         });
       } else {
-        list = activeVocab.filter(w => getCefr(w) === selectedLevel);
+        list = activeVocab.filter(w => w && getCefr(w) === selectedLevel);
       }
     }
     
     if (searchQuery.trim().length > 0) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(w => (w.word && w.word.toLowerCase().includes(q)) || (w.meaning && w.meaning.toLowerCase().includes(q)));
+      list = list.filter(w => w && ((w.word && w.word.toLowerCase().includes(q)) || (w.meaning && w.meaning.toLowerCase().includes(q))));
     }
     
     if (activeCategory !== 'All Categories') {
@@ -447,14 +457,17 @@ const Profile = () => {
     
     if (activePos !== 'All POS') {
       list = list.filter(w => {
+         if (!w) return false;
          const p = (w.pos || '').toLowerCase();
          return p.includes(activePos.toLowerCase());
       });
     }
 
     list.sort((a, b) => {
-      if (sortOrder === 'asc') return a.word.localeCompare(b.word);
-      return b.word.localeCompare(a.word);
+      const aWord = a?.word || '';
+      const bWord = b?.word || '';
+      if (sortOrder === 'asc') return aWord.localeCompare(bWord);
+      return bWord.localeCompare(aWord);
     });
     
     return list;

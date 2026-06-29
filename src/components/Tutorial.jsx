@@ -61,7 +61,8 @@ const TUTORIAL_STEPS = [
     selector: '#tutorial-tooltip-info-container',
     title: 'Word Details & Sound',
     text: 'นี่คือความหมายและคำแปลภาษาไทยของคำศัพท์ที่แตะ ลองอ่านทบทวนหรือแตะปุ่มลำโพงเพื่อทดลองฟังเสียงพูดออกเสียงได้จ้า เสร็จแล้วกดปุ่ม "ถัดไป"',
-    position: 'bottom'
+    position: 'bottom',
+    padding: 12
   },
   {
     path: '/purge',
@@ -75,28 +76,32 @@ const TUTORIAL_STEPS = [
     selector: '#tutorial-srs-buttons',
     title: 'SRS Memory Rating',
     text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น Easy หรือ Normal เพื่อเรียนรู้ต่อ',
-    position: 'top'
+    position: 'top',
+    padding: 6
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-curriculum',
     title: 'Curriculum Switcher',
     text: 'กดเลือกปุ่มหลักสูตรนี้ เพื่อเปิดตัวเลือกการสลับโหมดคำศัพท์',
-    position: 'bottom'
+    position: 'bottom',
+    padding: 4
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-curriculum-modal-content',
     title: 'Choose Curriculum Focus',
     text: 'นี่คือรายการตัวเลือกหลักสูตรที่เลือกเล่นได้ เช่น Oxford หรือ TOEIC แตะเลือกหลักสูตรที่สนใจ หรือแตะเลือก Self-Study เพื่อใช้งานโหมดคำศัพท์ทั่วไปตามเดิม แล้วกดปุ่มถัดไป',
-    position: 'top'
+    position: 'top',
+    padding: 10
   },
   {
     path: '/profile',
     selector: '#tutorial-profile-srs',
     title: 'SRS Memory Stages',
     text: 'ลองกดที่ปุ่มระดับความจำกลุ่มใดก็ได้ เช่น Learning หรือ Mastered เพื่อแสดงรายชื่อคำศัพท์ของกลุ่มนั้น',
-    position: 'top'
+    position: 'top',
+    padding: 6
   },
   {
     path: '/profile',
@@ -300,6 +305,19 @@ export const Tutorial = () => {
       }
     };
 
+    const handleTooltipSpoken = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[7] = true;
+        return next;
+      });
+      if (currentStep === 7) {
+        setTimeout(() => {
+          setCurrentStep(8);
+        }, 1000);
+      }
+    };
+
     const handleTooltipSaved = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
@@ -373,6 +391,7 @@ export const Tutorial = () => {
     window.addEventListener('tutorial-card-revealed', handleCardRevealed);
     window.addEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
     window.addEventListener('tutorial-tooltip-opened', handleTooltipOpened);
+    window.addEventListener('tutorial-tooltip-spoken', handleTooltipSpoken);
     window.addEventListener('tutorial-tooltip-saved', handleTooltipSaved);
     window.addEventListener('tutorial-srs-clicked', handleSrsClicked);
     window.addEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
@@ -386,6 +405,7 @@ export const Tutorial = () => {
       window.removeEventListener('tutorial-card-revealed', handleCardRevealed);
       window.removeEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
       window.removeEventListener('tutorial-tooltip-opened', handleTooltipOpened);
+      window.removeEventListener('tutorial-tooltip-spoken', handleTooltipSpoken);
       window.removeEventListener('tutorial-tooltip-saved', handleTooltipSaved);
       window.removeEventListener('tutorial-srs-clicked', handleSrsClicked);
       window.removeEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
@@ -420,19 +440,20 @@ export const Tutorial = () => {
         const containerRect = containerEl.getBoundingClientRect();
         
         if (rect.width > 0 && rect.height > 0) {
+          const pad = stepConf.padding || 0;
           setHighlightRect({
-            top: rect.top - containerRect.top,
-            left: rect.left - containerRect.left,
-            width: rect.width,
-            height: rect.height
+            top: rect.top - containerRect.top - pad,
+            left: rect.left - containerRect.left - pad,
+            width: rect.width + (pad * 2),
+            height: rect.height + (pad * 2)
           });
           setViewportRect({
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            bottom: rect.bottom,
-            right: rect.right
+            top: rect.top - pad,
+            left: rect.left - pad,
+            width: rect.width + (pad * 2),
+            height: rect.height + (pad * 2),
+            bottom: rect.bottom + pad,
+            right: rect.right + pad
           });
         }
       } else {

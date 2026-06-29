@@ -1560,12 +1560,12 @@ const Purge = () => {
       // Sync reveal steps with current step in TUTORIAL_STEPS:
       // Index 4: Flashcard Deck -> revealStep = 0 (unrevealed)
       // Index 5: Reveal Thai Translation -> revealStep = 1 (front revealed)
-      // Index 6: SRS Memory Rating -> revealStep = 2 (back revealed)
+      // Index 6-9: Dictionary, Speaker, Add, SRS Buttons -> revealStep = 2 (back revealed)
       if (step === 4) {
         setRevealStep(0);
       } else if (step === 5) {
         setRevealStep(1);
-      } else if (step === 6) {
+      } else if (step >= 6 && step <= 9) {
         setRevealStep(2);
       }
     };
@@ -2323,7 +2323,10 @@ const Purge = () => {
               {/* Audio Pronunciation Button */}
               <button 
                 id="tutorial-tooltip-speak-btn"
-                onClick={() => handleSpeak(activeTooltipWord)} 
+                onClick={() => {
+                  handleSpeak(activeTooltipWord);
+                  window.dispatchEvent(new Event('tutorial-tooltip-spoken'));
+                }} 
                 className="glass-button animate-scale" 
                 style={{ 
                   width: '24px', 
