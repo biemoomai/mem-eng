@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, BookOpen, Trash2, User, Menu, X, Search, Calendar, Filter, Trophy, ChevronDown, TrendingUp, Eye, ArrowUpZA, ArrowDownAZ, Plus, Loader2, MessageSquare, Sparkles } from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
@@ -56,6 +56,7 @@ const Profile = () => {
   const { profile, signOut, isAnonymous } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const activeVocab = vocab.filter(item => {
     if (!item || !item.word) return false;
     if (activeCurriculum === 'Self-Study only') {
@@ -75,6 +76,15 @@ const Profile = () => {
   const [revealedThaiIds, setRevealedThaiIds] = useState({});
   const [previewShowThai, setPreviewShowThai] = useState(false);
   const [addingWordId, setAddingWordId] = useState(null);
+
+  // Auto-close any open modals when navigating away from the profile tab
+  useEffect(() => {
+    if (location.pathname !== '/profile') {
+      setSelectedLevel(null);
+      setPreviewWord(null);
+      setShowCurriculumModal(false);
+    }
+  }, [location.pathname]);
 
   const handleAddWaitingWord = async (word) => {
     if (!word) return;
