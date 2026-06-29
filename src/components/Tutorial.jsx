@@ -112,6 +112,65 @@ const TUTORIAL_STEPS = [
   }
 ];
 
+const PremiumFingerPointer = ({ direction = 'down' }) => {
+  let rotateDeg = 0;
+  if (direction === 'up') rotateDeg = 0; // 👆
+  if (direction === 'down') rotateDeg = 180; // 👇
+  if (direction === 'left') rotateDeg = -90; // 👈
+  if (direction === 'right') rotateDeg = 90; // 👉
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* Radar pulse ripple effect */}
+      <div 
+        style={{
+          position: 'absolute',
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          border: '2px solid rgba(255, 255, 255, 0.75)',
+          boxShadow: '0 0 10px rgba(255,255,255,0.3)',
+          animation: 'radarPulse 1.4s infinite ease-out',
+          top: '-4px',
+          left: '-2px',
+          pointerEvents: 'none'
+        }}
+      />
+      <svg
+        width="34"
+        height="34"
+        viewBox="0 0 24 24"
+        fill="rgba(255, 255, 255, 0.18)"
+        stroke="white"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          transform: `rotate(${rotateDeg}deg)`,
+          filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.65))',
+          pointerEvents: 'none'
+        }}
+      >
+        <path d="M10 14V6.5C10 5.67 10.67 5 11.5 5C12.33 5 13 5.67 13 6.5V12M13 12V8.5C13 7.67 13.67 7 14.5 7C15.33 7 16 7.67 16 8.5V12M16 12V9.5C16 8.67 16.67 8 17.5 8C18.33 8 19 8.67 19 9.5V15C19 18.31 16.31 21 13 21H11.5C9.01 21 7 18.99 7 16.5V13.62C7 13.06 7.45 12.6 8.01 12.62C8.52 12.64 8.93 13.06 8.95 13.57L9 14" />
+      </svg>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes radarPulse {
+          0% {
+            transform: scale(0.5);
+            opacity: 1;
+            border-width: 3px;
+          }
+          100% {
+            transform: scale(1.7);
+            opacity: 0;
+            border-width: 1px;
+          }
+        }
+      `}} />
+    </div>
+  );
+};
+
 export const Tutorial = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -380,9 +439,8 @@ export const Tutorial = () => {
       });
       if (currentStep === 12) {
         setTimeout(() => {
-          window.dispatchEvent(new Event('tutorial-close-modals'));
           setCurrentStep(13);
-        }, 2000);
+        }, 400);
       }
     };
 
@@ -1030,57 +1088,51 @@ export const Tutorial = () => {
               currentStep === 12
             ) && (
               <motion.div
-                animate={{ y: [0, -10, 0] }}
+                animate={{ y: [0, -8, 0] }}
                 transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
                 style={{
                   position: 'absolute',
-                  top: highlightRect.top - 45,
-                  left: highlightRect.left + (highlightRect.width / 2) - 15,
+                  top: highlightRect.top - 48,
+                  left: highlightRect.left + (highlightRect.width / 2) - 17,
                   zIndex: 100005,
-                  fontSize: '1.8rem',
-                  filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.85))',
                   pointerEvents: 'none'
                 }}
               >
-                👇
+                <PremiumFingerPointer direction="down" />
               </motion.div>
             )}
 
             {/* Finger tap animation inside the middle of target for card reveal steps */}
             {highlightRect && !isWrongPath && (currentStep === 4 || currentStep === 5) && (
               <motion.div
-                animate={{ scale: [1, 1.25, 1], opacity: [0.9, 1, 0.9] }}
+                animate={{ scale: [1, 1.12, 1], opacity: [0.95, 1, 0.95] }}
                 transition={{ repeat: Infinity, duration: 1.0, ease: "easeInOut" }}
                 style={{
                   position: 'absolute',
-                  top: highlightRect.top + (highlightRect.height / 2) - 25,
-                  left: highlightRect.left + (highlightRect.width / 2) - 20,
+                  top: highlightRect.top + (highlightRect.height / 2) - 20,
+                  left: highlightRect.left + (highlightRect.width / 2) - 17,
                   zIndex: 100005,
-                  fontSize: '2.5rem',
-                  filter: 'drop-shadow(0 0 12px rgba(251, 191, 36, 0.95))',
                   pointerEvents: 'none'
                 }}
               >
-                👆
+                <PremiumFingerPointer direction="up" />
               </motion.div>
             )}
 
             {/* Finger pointer for Step 8 (Sound) pointing at the speaker icon */}
             {speakBtnRect && currentStep === 7 && (
               <motion.div
-                animate={{ x: [0, -8, 0] }}
+                animate={{ x: [0, -6, 0] }}
                 transition={{ repeat: Infinity, duration: 0.8, ease: "easeInOut" }}
                 style={{
                   position: 'absolute',
-                  top: speakBtnRect.top + (speakBtnRect.height / 2) - 16,
-                  left: speakBtnRect.left + speakBtnRect.width + 8,
+                  top: speakBtnRect.top + (speakBtnRect.height / 2) - 18,
+                  left: speakBtnRect.left + speakBtnRect.width + 6,
                   zIndex: 100008,
-                  fontSize: '1.6rem',
-                  filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.95))',
                   pointerEvents: 'none'
                 }}
               >
-                👈
+                <PremiumFingerPointer direction="left" />
               </motion.div>
             )}
 

@@ -1877,8 +1877,44 @@ const Profile = () => {
               >
                 <AnimatePresence>
                   {modalList.length === 0 ? (
-                    <motion.div initial={{opacity: 0}} animate={{opacity: 1}} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                      No words match your filters.
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.96 }} 
+                      animate={{ opacity: 1, scale: 1 }} 
+                      style={{ 
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '3.5rem 1.5rem',
+                        color: 'var(--text-secondary)',
+                        textAlign: 'center',
+                        background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.0) 100%)',
+                        border: '1.5px dashed rgba(255, 255, 255, 0.07)',
+                        borderRadius: '24px',
+                        marginTop: '1rem',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)'
+                      }}
+                    >
+                      <div style={{
+                        width: '50px',
+                        height: '50px',
+                        borderRadius: '50%',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '1rem',
+                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)'
+                      }}>
+                        <Search size={18} color="rgba(255, 255, 255, 0.4)" />
+                      </div>
+                      <h4 style={{ margin: '0 0 0.25rem 0', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, fontSize: '0.9rem', letterSpacing: '-0.3px' }}>
+                        No Words Found
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-secondary)', maxWidth: '240px', lineHeight: 1.5 }}>
+                        There are no words matching your filters in this stage. Try changing POS or adding some new words to deck!
+                      </p>
                     </motion.div>
                   ) : (
                     modalList.slice(0, visibleCount).map((item) => {
