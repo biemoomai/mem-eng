@@ -134,6 +134,8 @@ const Profile = () => {
   const [headerHovered, setHeaderHovered] = useState(false);
   const [progressHovered, setProgressHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const isTutorial = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
+  const activeShowDetails = isTutorial ? true : showDetails;
 
   const highlightThaiTranslation = (sentence, translation) => {
     if (!sentence) return '';
@@ -978,17 +980,18 @@ const Profile = () => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: showDetails ? 'flex-start' : 'center',
+          justifyContent: activeShowDetails ? 'flex-start' : 'center',
           cursor: 'pointer',
           position: 'relative'
         }}
         onClick={() => {
+          if (isTutorial) return;
           setShowDetails(prev => !prev);
         }}
       >
 
         {/* Premium Artsy Morphing Ambient Glow in Minimal Mode */}
-        {theme === 'theme-1' && !showDetails && (
+        {theme === 'theme-1' && !activeShowDetails && (
           <motion.div 
             animate={{ 
               borderRadius: ['42% 58% 70% 30%', '70% 30% 52% 48%', '42% 58% 70% 30%'],
@@ -1028,9 +1031,9 @@ const Profile = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          flex: showDetails ? '0 0 auto' : '1',
+          flex: activeShowDetails ? '0 0 auto' : '1',
           width: '100%',
-          margin: showDetails ? '0.5rem 0 1.25rem 0' : 'auto 0'
+          margin: activeShowDetails ? '0.5rem 0 1.25rem 0' : 'auto 0'
         }}>
           {/* Compact Curriculum Trigger */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.6rem', marginTop: '0px' }}>
@@ -1161,7 +1164,7 @@ const Profile = () => {
 
 
 
-          {!showDetails && (
+          {!activeShowDetails && (
             <motion.div 
               animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
               transition={{ repeat: Infinity, duration: 3.5, ease: 'linear' }}
@@ -1189,7 +1192,7 @@ const Profile = () => {
         </div>
 
         <AnimatePresence>
-          {showDetails && (
+          {activeShowDetails && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
