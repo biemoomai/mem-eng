@@ -338,24 +338,12 @@ const AddWord = () => {
   };
 
   useEffect(() => {
-    let swipeDemoTimer = null;
     const handleStepChanged = (e) => {
-      const step = e.detail.step;
-      setTutorialStep(step);
-      // Step 3 = Swipe or Tap to Save: show wobble demo first, then unlock Save
-      if (step === 3) {
-        setTutorialSwipeDemoReady(false);
-        swipeDemoTimer = setTimeout(() => {
-          setTutorialSwipeDemoReady(true);
-        }, 2600); // 2.6s = ~1 full wobble cycle before Save appears
-      } else {
-        setTutorialSwipeDemoReady(false);
-      }
+      setTutorialStep(e.detail.step);
     };
     const handleActiveChange = (e) => {
       if (!e.detail) {
         setTutorialStep(null);
-        setTutorialSwipeDemoReady(false);
       } else {
         setTutorialStep(0);
       }
@@ -365,7 +353,6 @@ const AddWord = () => {
     return () => {
       window.removeEventListener('tutorial-step-changed', handleStepChanged);
       window.removeEventListener('tutorial-active-change', handleActiveChange);
-      if (swipeDemoTimer) clearTimeout(swipeDemoTimer);
     };
   }, []);
 
@@ -2001,7 +1988,7 @@ const AddWord = () => {
               </motion.div>
             ) : (
               <motion.div 
-                drag={(isSuccess || isExiting || tutorialStep === 2) ? false : "x"}
+                drag={(isSuccess || isExiting || tutorialStep === 2 || tutorialStep === 3) ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragSnapToOrigin={true}
                 onDragEnd={handleTranslateDragEnd}
@@ -2979,7 +2966,7 @@ const AddWord = () => {
       {tutorialStep === 3 && !isSuccess && !isExiting && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: tutorialSwipeDemoReady ? 0 : 1 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
           style={{
             position: 'absolute',
@@ -3029,7 +3016,7 @@ const AddWord = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ 
-            opacity: (tutorialStep === 3 && !tutorialSwipeDemoReady) ? 0 : 1, 
+            opacity: (tutorialStep === 3) ? 0 : 1, 
             y: 0 
           }}
           exit={{ opacity: 0, y: 20 }}
@@ -3045,7 +3032,7 @@ const AddWord = () => {
             alignItems: 'center',
             gap: '0.85rem',
             zIndex: 9999,
-            pointerEvents: 'auto'
+            pointerEvents: (tutorialStep === 3) ? 'none' : 'auto'
           }}
         >
           {/* Discard / Back Button (Red, Left) */}
@@ -3092,7 +3079,7 @@ const AddWord = () => {
               height: '42px',
               borderRadius: '12px',
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              border: 'none',
+              border: tutorialStep === 4 ? '2.5px solid #fff' : 'none',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -3102,14 +3089,16 @@ const AddWord = () => {
               fontWeight: 900,
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
-              boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)',
+              boxShadow: tutorialStep === 4 
+                ? '0 0 25px rgba(74, 222, 128, 0.8), 0 6px 20px rgba(16, 185, 129, 0.3)' 
+                : '0 6px 20px rgba(16, 185, 129, 0.3)',
               outline: 'none',
               transition: 'all 0.2s ease'
             }}
             id="tutorial-tinder-save-btn"
             title="Save Word (Swipe Right)"
           >
-            {tutorialStep === 3 && tutorialSwipeDemoReady ? (
+            {tutorialStep === 4 ? (
               <motion.span
                 animate={{ textShadow: ['0 0 0px #fff', '0 0 12px #4ade80', '0 0 0px #fff'] }}
                 transition={{ repeat: Infinity, duration: 1.0 }}

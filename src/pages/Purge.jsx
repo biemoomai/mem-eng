@@ -1620,20 +1620,20 @@ const Purge = () => {
       }
 
       // Sync reveal steps with current step in TUTORIAL_STEPS:
-      // Index 4: Flashcard Deck -> revealStep = 0 (unrevealed)
-      // Index 5: Reveal Thai Translation -> revealStep = 1 (front revealed)
-      // Index 6-10: Dictionary, Speaker, Add, SRS Buttons, Swipe Demo -> revealStep = 2 (back revealed)
+      // Index 5: Flashcard Deck -> revealStep = 0 (unrevealed)
+      // Index 6: Reveal Thai Translation -> revealStep = 1 (front revealed)
+      // Index 7-11: Dictionary, Speaker, Add, Swipe Demo, SRS Buttons -> revealStep = 2 (back revealed)
       setTutorialStep(step);
-      if (step === 4) {
+      if (step === 5) {
         setRevealStep(0);
         setExitDirection(null);
-      } else if (step === 5) {
+      } else if (step === 6) {
         setRevealStep(1);
         setExitDirection(null);
-      } else if (step >= 6 && step <= 10) {
+      } else if (step >= 7 && step <= 11) {
         setRevealStep(2);
-        // For step 9 (Swipe Demo): force reset the card so it's visible for the wobble animation
-        if (step === 9) {
+        // For step 10 (Swipe Demo): force reset the card so it's visible for the wobble animation
+        if (step === 10) {
           setExitDirection(null);
           x.set(0);
           y.set(0);
@@ -4567,7 +4567,7 @@ const Purge = () => {
         </AnimatePresence>
 
         {/* Swipe Gestures HUD Overlay */}
-        {tutorialStep === 9 && (
+        {tutorialStep === 10 && (
           <div style={{
             position: 'absolute',
             inset: 0,
@@ -4631,7 +4631,7 @@ const Purge = () => {
           id="tutorial-flashcard-card"
           className="snap-card"
           initial={{ opacity: 0, y: 20 }}
-          animate={tutorialStep === 9 ? {
+          animate={tutorialStep === 10 ? {
             x: [0, 135, 0, -135, 0, 0, 0, 0, 0],
             y: [0, 0, 0, 0, 0, -135, 0, 135, 0],
             rotate: [0, 9, 0, -9, 0, 0, 0, 0, 0],
@@ -4644,7 +4644,7 @@ const Purge = () => {
             opacity: 0, 
             transition: { duration: 0.25 } 
           }}
-          drag={tutorialStep === 9 ? false : true}
+          drag={tutorialStep === 10 ? false : true}
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           dragSnapToOrigin={true}
           dragElastic={0.7}
@@ -4738,7 +4738,7 @@ const Purge = () => {
           </motion.div>
 
           {/* Swipe finger pointer demo inside snap-card */}
-          {tutorialStep === 9 && (
+          {tutorialStep === 10 && (
             <div style={{
               position: 'absolute',
               left: '50%',

@@ -30,11 +30,18 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/',
-    selector: '#tutorial-tinder-save-btn',
-    title: 'Swipe or Tap to Save',
-    text: 'ลองปัดการ์ดไปทางขวาหรือกดปุ่ม <span style="color:#4ade80;font-weight:900">Save</span> สีเขียวเพื่อบันทึกคำศัพท์ไว้ทบทวน (หรือปัดซ้าย / กดปุ่ม <span style="color:#f87171;font-weight:900">Back</span> สีแดงเพื่อยกเลิก)',
+    selector: '.results-drag-wrapper',
+    title: 'Swipe Gestures Demo',
+    text: 'คุณสามารถปัดการ์ดไปทางซ้ายหรือขวาเพื่อจัดการคำศัพท์ได้ ลองดูแอนิเมชันจำลองการปัดนี้:<br/>• <span style="color:#ef4444;font-weight:900">ปัดซ้าย (Back)</span> = ยกเลิก/ข้าม<br/>• <span style="color:#10b981;font-weight:900">ปัดขวา (Save)</span> = บันทึกคำศัพท์เข้าระบบช่วยจำ',
     position: 'top',
     showSwipeDemo: true
+  },
+  {
+    path: '/',
+    selector: '#tutorial-tinder-save-btn',
+    title: 'Swipe or Tap to Save',
+    text: 'นอกจากปัดแล้ว คุณยังสามารถแตะปุ่มเพื่อทำรายการได้ทันที ลองแตะปุ่ม <span style="color:#4ade80;font-weight:900">Save</span> สีเขียวเพื่อลองบันทึกเลยจ้า (หรือแตะปุ่ม <span style="color:#f87171;font-weight:900">Back</span> สีแดงเพื่อยกเลิก)',
+    position: 'top'
   },
   {
     path: '/purge',
@@ -76,7 +83,7 @@ const TUTORIAL_STEPS = [
     path: '/purge',
     selector: '#tutorial-flashcard-card',
     title: 'Swipe Gestures',
-    text: 'หรือจะ<span style="color:#facc15;font-weight:900">ปัดการ์ด 4 ทิศทาง</span>เพื่อตอบก็ได้เช่นกัน! <span style="color:#4ade80;font-weight:800">ปัดขวา = Easy</span> · <span style="color:#60a5fa;font-weight:800">ปัดขึ้น = Normal</span> · <span style="color:#f87171;font-weight:800">ปัดลง = Hard</span> · <span style="color:#a78bfa;font-weight:800">ปัดซ้าย = Again</span>',
+    text: 'ระบบช่วยจำ (SRS) จะคอยสุ่มทบทวนตามความยากง่ายที่คุณระบุ คุณสามารถ<span style="color:#facc15;font-weight:900">ปัดการ์ด 4 ทิศทาง</span>แทนการกดปุ่มได้:<br/>• <span style="color:#3b82f6;font-weight:800">ปัดขวา = Easy</span> (จำได้ดีที่สุด)<br/>• <span style="color:#10b981;font-weight:800">ปัดขึ้น = Good</span> (พอจำได้)<br/>• <span style="color:#f97316;font-weight:800">ปัดลง = Hard</span> (เริ่มทบทวนยาก)<br/>• <span style="color:#ef4444;font-weight:800">ปัดซ้าย = Again</span> (ลืม/ตอบผิด)',
     position: 'top',
     padding: 6,
     showSwipeDemo: true
@@ -85,7 +92,7 @@ const TUTORIAL_STEPS = [
     path: '/purge',
     selector: '#tutorial-srs-buttons',
     title: 'SRS Memory Rating',
-    text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น <span style="color:#facc15;font-weight:900">Easy</span> หรือ <span style="color:#facc15;font-weight:900">Normal</span> เพื่อเรียนรู้ต่อ',
+    text: 'หรือจะกดแถบปุ่มระดับความจำโดยตรงด้านล่างก็ได้เช่นกัน เช่น <span style="color:#facc15;font-weight:900">Easy</span> หรือ <span style="color:#facc15;font-weight:900">Normal</span> เพื่อเริ่มเรียนรู้คำศัพท์ถัดไป',
     position: 'top',
     padding: 6
   },
@@ -325,31 +332,18 @@ export const Tutorial = () => {
     const handleWordSaved = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
-        next[3] = true;
-        return next;
-      });
-      if (currentStep === 3) {
-        setTimeout(() => {
-          setCurrentStep(4);
-          navigate('/purge');
-        }, 800);
-      }
-    };
-
-    const handleCardRevealed = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
         next[4] = true;
         return next;
       });
       if (currentStep === 4) {
         setTimeout(() => {
           setCurrentStep(5);
+          navigate('/purge');
         }, 800);
       }
     };
 
-    const handleCardFullyRevealed = () => {
+    const handleCardRevealed = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[5] = true;
@@ -362,7 +356,7 @@ export const Tutorial = () => {
       }
     };
 
-    const handleTooltipOpened = (e) => {
+    const handleCardFullyRevealed = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[6] = true;
@@ -371,11 +365,11 @@ export const Tutorial = () => {
       if (currentStep === 6) {
         setTimeout(() => {
           setCurrentStep(7);
-        }, 1500);
+        }, 800);
       }
     };
 
-    const handleTooltipSpoken = () => {
+    const handleTooltipOpened = (e) => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[7] = true;
@@ -384,11 +378,11 @@ export const Tutorial = () => {
       if (currentStep === 7) {
         setTimeout(() => {
           setCurrentStep(8);
-        }, 1000);
+        }, 1500);
       }
     };
 
-    const handleTooltipSaved = () => {
+    const handleTooltipSpoken = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[8] = true;
@@ -397,25 +391,24 @@ export const Tutorial = () => {
       if (currentStep === 8) {
         setTimeout(() => {
           setCurrentStep(9);
+        }, 1000);
+      }
+    };
+
+    const handleTooltipSaved = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[9] = true;
+        return next;
+      });
+      if (currentStep === 9) {
+        setTimeout(() => {
+          setCurrentStep(10);
         }, 800);
       }
     };
 
     const handleSrsClicked = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[10] = true;
-        return next;
-      });
-      if (currentStep === 10) {
-        setTimeout(() => {
-          setCurrentStep(11);
-          navigate('/profile');
-        }, 800);
-      }
-    };
-
-    const handleCurriculumOpened = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[11] = true;
@@ -424,11 +417,12 @@ export const Tutorial = () => {
       if (currentStep === 11) {
         setTimeout(() => {
           setCurrentStep(12);
-        }, 300);
+          navigate('/profile');
+        }, 800);
       }
     };
 
-    const handleCurriculumSelected = () => {
+    const handleCurriculumOpened = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[12] = true;
@@ -437,11 +431,11 @@ export const Tutorial = () => {
       if (currentStep === 12) {
         setTimeout(() => {
           setCurrentStep(13);
-        }, 800);
+        }, 300);
       }
     };
 
-    const handleSrsModalOpened = () => {
+    const handleCurriculumSelected = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[13] = true;
@@ -450,6 +444,19 @@ export const Tutorial = () => {
       if (currentStep === 13) {
         setTimeout(() => {
           setCurrentStep(14);
+        }, 800);
+      }
+    };
+
+    const handleSrsModalOpened = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[14] = true;
+        return next;
+      });
+      if (currentStep === 14) {
+        setTimeout(() => {
+          setCurrentStep(15);
         }, 400);
       }
     };
@@ -734,12 +741,18 @@ export const Tutorial = () => {
     }
 
     if (currentStep === 2) {
-      // Move to Step 3: Swipe/tap to Save
+      // Move to Step 3: Swipe Gestures Demo (NEW)
       setCurrentStep(3);
       return;
     }
 
     if (currentStep === 3) {
+      // Move to Step 4: Swipe or Tap to Save
+      setCurrentStep(4);
+      return;
+    }
+
+    if (currentStep === 4) {
       // Simulate Save click or swipe
       const saveBtn = document.getElementById('tutorial-tinder-save-btn');
       if (saveBtn) {
@@ -751,21 +764,21 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 4) {
+    if (currentStep === 5) {
       // Simulate reveal front card click
       window.dispatchEvent(new Event('tutorial-card-revealed'));
-      setCurrentStep(5);
-      return;
-    }
-
-    if (currentStep === 5) {
-      // Simulate reveal back card click
-      window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
       setCurrentStep(6);
       return;
     }
 
     if (currentStep === 6) {
+      // Simulate reveal back card click
+      window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
+      setCurrentStep(7);
+      return;
+    }
+
+    if (currentStep === 7) {
       // Simulate clicking the "today" word
       const todaySpan = document.getElementById('tutorial-word-today') || document.getElementById('tutorial-word-greeting');
       if (todaySpan) {
@@ -776,15 +789,15 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 7) {
+    if (currentStep === 8) {
       // Play pronunciation and advance to Add to Deck step
       const speakBtn = document.getElementById('tutorial-tooltip-speak-btn');
       if (speakBtn) speakBtn.click();
-      setCurrentStep(8);
+      setCurrentStep(9);
       return;
     }
 
-    if (currentStep === 8) {
+    if (currentStep === 9) {
       // Simulate clicking Add to Deck inside the dictionary modal
       const addBtn = document.getElementById('tutorial-tooltip-add-btn');
       if (addBtn) {
@@ -795,13 +808,13 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 9) {
-      // Swipe Gestures: manual next step, just advance to SRS Memory Rating (step 10)
-      setCurrentStep(10);
+    if (currentStep === 10) {
+      // Swipe Gestures: manual next step, just advance to SRS Memory Rating (step 11)
+      setCurrentStep(11);
       return;
     }
 
-    if (currentStep === 10) {
+    if (currentStep === 11) {
       // Simulate SRS memory button click
       const easyBtn = document.querySelector('#tutorial-srs-buttons button:last-child');
       if (easyBtn) {
@@ -812,7 +825,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 11) {
+    if (currentStep === 12) {
       // Simulate curriculum switcher click
       const switcherBtn = document.getElementById('tutorial-profile-curriculum');
       if (switcherBtn) {
@@ -823,7 +836,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 12) {
+    if (currentStep === 13) {
       // Simulate selecting Self-Study option
       const selfStudyBtn = document.getElementById('tutorial-curriculum-option-self-study');
       if (selfStudyBtn) {
@@ -834,7 +847,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 13) {
+    if (currentStep === 14) {
       // Simulate SRS stage detail open
       window.dispatchEvent(new Event('tutorial-srs-modal-opened'));
       return;
@@ -878,8 +891,34 @@ export const Tutorial = () => {
   };
 
   const getTooltipStyle = () => {
-    // Keep tip at the bottom of the viewport for step 12 (index 11) so it does not overlay/block options
+    // For Swipe Gestures (step 10) in Purge: place at bottom center to avoid covering card image/words
+    if (currentStep === 10) {
+      return {
+        position: 'fixed',
+        bottom: '120px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '92%',
+        maxWidth: '340px',
+        zIndex: 100004
+      };
+    }
+
+    // For SRS Rating Buttons (step 11) in Purge: place above the buttons to avoid covering them
     if (currentStep === 11) {
+      return {
+        position: 'fixed',
+        bottom: '140px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '92%',
+        maxWidth: '340px',
+        zIndex: 100004
+      };
+    }
+
+    // Keep tip at the bottom of the viewport for profile modal switcher steps (steps 13-14)
+    if (currentStep === 13 || currentStep === 14) {
       return {
         position: 'fixed',
         bottom: '20px',
@@ -1095,13 +1134,13 @@ export const Tutorial = () => {
             {highlightRect && !isWrongPath && (
               currentStep === 0 || 
               currentStep === 1 || 
-              currentStep === 3 || 
-              currentStep === 6 || 
-              currentStep === 8 || 
-              currentStep === 10 || 
+              currentStep === 4 || 
+              currentStep === 7 || 
+              currentStep === 9 || 
               currentStep === 11 || 
               currentStep === 12 ||
-              currentStep === 13
+              currentStep === 13 ||
+              currentStep === 14
             ) && (
               <motion.div
                 animate={{ y: [0, -8, 0] }}
@@ -1119,7 +1158,7 @@ export const Tutorial = () => {
             )}
 
             {/* Finger tap animation inside the middle of target for card reveal steps */}
-            {highlightRect && !isWrongPath && (currentStep === 4 || currentStep === 5) && (
+            {highlightRect && !isWrongPath && (currentStep === 5 || currentStep === 6) && (
               <motion.div
                 animate={{ scale: [1, 1.12, 1], opacity: [0.95, 1, 0.95] }}
                 transition={{ repeat: Infinity, duration: 1.0, ease: "easeInOut" }}
@@ -1136,7 +1175,7 @@ export const Tutorial = () => {
             )}
 
             {/* Finger pointer for Step 8 (Sound) pointing at the speaker icon */}
-            {speakBtnRect && currentStep === 7 && (
+            {speakBtnRect && currentStep === 8 && (
               <motion.div
                 animate={{ x: [0, -6, 0] }}
                 transition={{ repeat: Infinity, duration: 0.8, ease: "easeInOut" }}
