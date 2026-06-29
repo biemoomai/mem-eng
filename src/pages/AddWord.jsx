@@ -10,6 +10,67 @@ import { SafeImage } from '../components/SafeImage';
 import { playClickSound } from '../utils/soundHelper';
 
 
+// Premium white minimal finger pointer SVG component for tutorial highlights
+const PremiumFingerPointer = ({ direction = 'down', scale = 1.0 }) => {
+  let rotateDeg = 0;
+  if (direction === 'up') rotateDeg = 0; // 👆
+  if (direction === 'down') rotateDeg = 180; // 👇
+  if (direction === 'left') rotateDeg = -90; // 👈
+  if (direction === 'right') rotateDeg = 90; // 👉
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: `scale(${scale})` }}>
+      {/* Radar pulse ripple effect */}
+      <div 
+        style={{
+          position: 'absolute',
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          border: '2px solid rgba(255, 255, 255, 0.75)',
+          boxShadow: '0 0 10px rgba(255,255,255,0.3)',
+          animation: 'radarPulseAdd 1.4s infinite ease-out',
+          top: '-4px',
+          left: '-2px',
+          pointerEvents: 'none'
+        }}
+      />
+      <svg
+        width="34"
+        height="34"
+        viewBox="0 0 24 24"
+        fill="rgba(255, 255, 255, 0.18)"
+        stroke="white"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          transform: `rotate(${rotateDeg}deg)`,
+          filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.65))',
+          pointerEvents: 'none'
+        }}
+      >
+        <path d="M10 14V6.5C10 5.67 10.67 5 11.5 5C12.33 5 13 5.67 13 6.5V12M13 12V8.5C13 7.67 13.67 7 14.5 7C15.33 7 16 7.67 16 8.5V12M16 12V9.5C16 8.67 16.67 8 17.5 8C18.33 8 19 8.67 19 9.5V15C19 18.31 16.31 21 13 21H11.5C9.01 21 7 18.99 7 16.5V13.62C7 13.06 7.45 12.6 8.01 12.62C8.52 12.64 8.93 13.06 8.95 13.57L9 14" />
+      </svg>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes radarPulseAdd {
+          0% {
+            transform: scale(0.5);
+            opacity: 1;
+            border-width: 3px;
+          }
+          100% {
+            transform: scale(1.7);
+            opacity: 0;
+            border-width: 1px;
+          }
+        }
+      `}} />
+    </div>
+  );
+};
+
+
 // Highlight the Thai translation word inside a Thai sentence with a distinct blue
 const renderHighlightedThaiText = (text, thaiWord) => {
   if (!text || !thaiWord) return text;
@@ -1946,13 +2007,13 @@ const AddWord = () => {
                 onDragEnd={handleTranslateDragEnd}
                 className="results-drag-wrapper"
                 animate={(!isSuccess && !isExiting && tutorialStep === 3) ? {
-                  x: [0, 65, 0, -65, 0],
-                  rotate: [0, 4, 0, -4, 0],
-                  transition: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', repeatDelay: 1.0 }
+                  x: [0, 135, 0, -135, 0],
+                  rotate: [0, 9, 0, -9, 0],
+                  transition: { repeat: Infinity, duration: 3.2, ease: 'easeInOut', repeatDelay: 0.8 }
                 } : undefined}
                 style={{ 
-                  x: (!isSuccess && !isExiting && tutorialStep === 3) ? undefined : translateX, 
-                  rotate: (!isSuccess && !isExiting && tutorialStep === 3) ? undefined : rotateTranslate,
+                  x: translateX, 
+                  rotate: rotateTranslate,
                   display: 'flex', 
                   flexDirection: 'column', 
                   width: '100%',
@@ -2938,26 +2999,28 @@ const AddWord = () => {
           <motion.div
             animate={{ x: [-8, 0, -8] }}
             transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
           >
-            <div style={{ fontSize: '1.6rem' }}>👈</div>
+            <PremiumFingerPointer direction="left" scale={0.9} />
             <span style={{
-              fontSize: '0.7rem', fontWeight: 900, color: '#ef4444',
+              fontSize: '0.72rem', fontWeight: 900, color: '#ef4444',
               letterSpacing: '1.5px', textTransform: 'uppercase',
-              textShadow: '0 0 12px rgba(239,68,68,0.7)'
+              textShadow: '0 0 12px rgba(239,68,68,0.7)',
+              marginTop: '4px'
             }}>Back</span>
           </motion.div>
           {/* SAVE → */}
           <motion.div
             animate={{ x: [8, 0, 8] }}
             transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
           >
-            <div style={{ fontSize: '1.6rem' }}>👉</div>
+            <PremiumFingerPointer direction="right" scale={0.9} />
             <span style={{
-              fontSize: '0.7rem', fontWeight: 900, color: '#10b981',
+              fontSize: '0.72rem', fontWeight: 900, color: '#10b981',
               letterSpacing: '1.5px', textTransform: 'uppercase',
-              textShadow: '0 0 12px rgba(16,185,129,0.7)'
+              textShadow: '0 0 12px rgba(16,185,129,0.7)',
+              marginTop: '4px'
             }}>Save</span>
           </motion.div>
         </motion.div>

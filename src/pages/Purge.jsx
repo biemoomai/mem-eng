@@ -9,6 +9,67 @@ import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { playClickSound, playSwipeSound, playSuccessSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
 
+// Premium white minimal finger pointer SVG component for tutorial highlights
+const PremiumFingerPointer = ({ direction = 'down', scale = 1.0 }) => {
+  let rotateDeg = 0;
+  if (direction === 'up') rotateDeg = 0; // 👆
+  if (direction === 'down') rotateDeg = 180; // 👇
+  if (direction === 'left') rotateDeg = -90; // 👈
+  if (direction === 'right') rotateDeg = 90; // 👉
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', transform: `scale(${scale})` }}>
+      {/* Radar pulse ripple effect */}
+      <div 
+        style={{
+          position: 'absolute',
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          border: '2px solid rgba(255, 255, 255, 0.75)',
+          boxShadow: '0 0 10px rgba(255,255,255,0.3)',
+          animation: 'radarPulsePurgeFinger 1.4s infinite ease-out',
+          top: '-4px',
+          left: '-2px',
+          pointerEvents: 'none'
+        }}
+      />
+      <svg
+        width="34"
+        height="34"
+        viewBox="0 0 24 24"
+        fill="rgba(255, 255, 255, 0.18)"
+        stroke="white"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          transform: `rotate(${rotateDeg}deg)`,
+          filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.65))',
+          pointerEvents: 'none'
+        }}
+      >
+        <path d="M10 14V6.5C10 5.67 10.67 5 11.5 5C12.33 5 13 5.67 13 6.5V12M13 12V8.5C13 7.67 13.67 7 14.5 7C15.33 7 16 7.67 16 8.5V12M16 12V9.5C16 8.67 16.67 8 17.5 8C18.33 8 19 8.67 19 9.5V15C19 18.31 16.31 21 13 21H11.5C9.01 21 7 18.99 7 16.5V13.62C7 13.06 7.45 12.6 8.01 12.62C8.52 12.64 8.93 13.06 8.95 13.57L9 14" />
+      </svg>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes radarPulsePurgeFinger {
+          0% {
+            transform: scale(0.5);
+            opacity: 1;
+            border-width: 3px;
+          }
+          100% {
+            transform: scale(1.7);
+            opacity: 0;
+            border-width: 1px;
+          }
+        }
+      `}} />
+    </div>
+  );
+};
+
+
 const cleanMediaUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('approved:')) return url.substring(9);
@@ -1571,8 +1632,8 @@ const Purge = () => {
         setExitDirection(null);
       } else if (step >= 6 && step <= 10) {
         setRevealStep(2);
-        // For step 10 (Swipe Demo): force reset the card so it's visible for the wobble animation
-        if (step === 10) {
+        // For step 9 (Swipe Demo): force reset the card so it's visible for the wobble animation
+        if (step === 9) {
           setExitDirection(null);
           x.set(0);
           y.set(0);
@@ -4505,17 +4566,77 @@ const Purge = () => {
           )}
         </AnimatePresence>
 
+        {/* Swipe Gestures HUD Overlay */}
+        {tutorialStep === 9 && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 90,
+            pointerEvents: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '24px 20px',
+          }}>
+            {/* UP: Good/Normal */}
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '30px' }}>
+              <motion.div
+                animate={{ y: [-4, 2, -4] }}
+                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+              >
+                <PremiumFingerPointer direction="up" scale={0.7} />
+                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(16,185,129,0.5)', marginTop: '2px' }}>↑ GOOD (Normal)</span>
+              </motion.div>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flex: 1, padding: '0 4px', zIndex: 91 }}>
+              {/* LEFT: Again */}
+              <motion.div
+                animate={{ x: [-4, 2, -4] }}
+                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+              >
+                <PremiumFingerPointer direction="left" scale={0.7} />
+                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#ef4444', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(239,68,68,0.5)', marginTop: '2px' }}>← AGAIN</span>
+              </motion.div>
+              
+              {/* RIGHT: Easy */}
+              <motion.div
+                animate={{ x: [4, -2, 4] }}
+                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+              >
+                <PremiumFingerPointer direction="right" scale={0.7} />
+                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#3b82f6', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(59,130,246,0.5)', marginTop: '2px' }}>EASY →</span>
+              </motion.div>
+            </div>
+            
+            {/* DOWN: Hard */}
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '120px' }}>
+              <motion.div
+                animate={{ y: [4, -2, 4] }}
+                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+              >
+                <PremiumFingerPointer direction="down" scale={0.7} />
+                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#f97316', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(249,115,22,0.5)', marginTop: '2px' }}>↓ HARD</span>
+              </motion.div>
+            </div>
+          </div>
+        )}
+
         <motion.div
           key={wordObj.id}
           id="tutorial-flashcard-card"
           className="snap-card"
           initial={{ opacity: 0, y: 20 }}
-          animate={tutorialStep === 10 ? {
-            x: [0, 70, 0, -70, 0, 0, 70, 0],
-            y: [0, 0, 0, 0, 0, -70, 0, 0],
-            rotate: [0, 5, 0, -5, 0, 0, 5, 0],
+          animate={tutorialStep === 9 ? {
+            x: [0, 135, 0, -135, 0, 0, 0, 0, 0],
+            y: [0, 0, 0, 0, 0, -135, 0, 135, 0],
+            rotate: [0, 9, 0, -9, 0, 0, 0, 0, 0],
             opacity: 1,
-            transition: { repeat: Infinity, duration: 3.2, ease: 'easeInOut', repeatDelay: 0.5 }
+            transition: { repeat: Infinity, duration: 4.2, ease: 'easeInOut', repeatDelay: 0.6 }
           } : { opacity: 1, y: 0 }}
           exit={{ 
             x: exitDirection === 'left' ? -1000 : (exitDirection === 'right' ? 1000 : 0), 
@@ -4523,7 +4644,7 @@ const Purge = () => {
             opacity: 0, 
             transition: { duration: 0.25 } 
           }}
-          drag={true}
+          drag={tutorialStep === 9 ? false : true}
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           dragSnapToOrigin={true}
           dragElastic={0.7}
@@ -4615,6 +4736,20 @@ const Purge = () => {
           >
             EASY ({projections.easy})
           </motion.div>
+
+          {/* Swipe finger pointer demo inside snap-card */}
+          {tutorialStep === 9 && (
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              top: '55%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 99,
+              pointerEvents: 'none'
+            }}>
+              <PremiumFingerPointer direction="up" scale={1.1} />
+            </div>
+          )}
 
           {/* Card body container */}
           {richCardData ? (

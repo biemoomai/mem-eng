@@ -74,20 +74,20 @@ const TUTORIAL_STEPS = [
   },
   {
     path: '/purge',
-    selector: '#tutorial-srs-buttons',
-    title: 'SRS Memory Rating',
-    text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น <span style="color:#facc15;font-weight:900">Easy</span> หรือ <span style="color:#facc15;font-weight:900">Normal</span> เพื่อเรียนรู้ต่อ',
-    position: 'top',
-    padding: 6
-  },
-  {
-    path: '/purge',
     selector: '#tutorial-flashcard-card',
     title: 'Swipe Gestures',
     text: 'หรือจะ<span style="color:#facc15;font-weight:900">ปัดการ์ด 4 ทิศทาง</span>เพื่อตอบก็ได้เช่นกัน! <span style="color:#4ade80;font-weight:800">ปัดขวา = Easy</span> · <span style="color:#60a5fa;font-weight:800">ปัดขึ้น = Normal</span> · <span style="color:#f87171;font-weight:800">ปัดลง = Hard</span> · <span style="color:#a78bfa;font-weight:800">ปัดซ้าย = Again</span>',
     position: 'top',
     padding: 6,
     showSwipeDemo: true
+  },
+  {
+    path: '/purge',
+    selector: '#tutorial-srs-buttons',
+    title: 'SRS Memory Rating',
+    text: 'เลือกความยากง่ายเพื่อกำหนดระยะทบทวนในอนาคต ลองกดปุ่มระดับความจำปุ่มใดก็ได้ เช่น <span style="color:#facc15;font-weight:900">Easy</span> หรือ <span style="color:#facc15;font-weight:900">Normal</span> เพื่อเรียนรู้ต่อ',
+    position: 'top',
+    padding: 6
   },
   {
     path: '/profile',
@@ -404,12 +404,12 @@ export const Tutorial = () => {
     const handleSrsClicked = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
-        next[9] = true;
+        next[10] = true;
         return next;
       });
-      if (currentStep === 9) {
+      if (currentStep === 10) {
         setTimeout(() => {
-          setCurrentStep(10);
+          setCurrentStep(11);
           navigate('/profile');
         }, 800);
       }
@@ -418,30 +418,17 @@ export const Tutorial = () => {
     const handleCurriculumOpened = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
-        next[10] = true;
-        return next;
-      });
-      if (currentStep === 10) {
-        setTimeout(() => {
-          setCurrentStep(11);
-        }, 300);
-      }
-    };
-
-    const handleCurriculumSelected = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
         next[11] = true;
         return next;
       });
       if (currentStep === 11) {
         setTimeout(() => {
           setCurrentStep(12);
-        }, 800);
+        }, 300);
       }
     };
 
-    const handleSrsModalOpened = () => {
+    const handleCurriculumSelected = () => {
       setCompletedSteps(prev => {
         const next = [...prev];
         next[12] = true;
@@ -450,6 +437,19 @@ export const Tutorial = () => {
       if (currentStep === 12) {
         setTimeout(() => {
           setCurrentStep(13);
+        }, 800);
+      }
+    };
+
+    const handleSrsModalOpened = () => {
+      setCompletedSteps(prev => {
+        const next = [...prev];
+        next[13] = true;
+        return next;
+      });
+      if (currentStep === 13) {
+        setTimeout(() => {
+          setCurrentStep(14);
         }, 400);
       }
     };
@@ -796,6 +796,12 @@ export const Tutorial = () => {
     }
 
     if (currentStep === 9) {
+      // Swipe Gestures: manual next step, just advance to SRS Memory Rating (step 10)
+      setCurrentStep(10);
+      return;
+    }
+
+    if (currentStep === 10) {
       // Simulate SRS memory button click
       const easyBtn = document.querySelector('#tutorial-srs-buttons button:last-child');
       if (easyBtn) {
@@ -806,7 +812,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 10) {
+    if (currentStep === 11) {
       // Simulate curriculum switcher click
       const switcherBtn = document.getElementById('tutorial-profile-curriculum');
       if (switcherBtn) {
@@ -817,7 +823,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 11) {
+    if (currentStep === 12) {
       // Simulate selecting Self-Study option
       const selfStudyBtn = document.getElementById('tutorial-curriculum-option-self-study');
       if (selfStudyBtn) {
@@ -828,7 +834,7 @@ export const Tutorial = () => {
       return;
     }
 
-    if (currentStep === 12) {
+    if (currentStep === 13) {
       // Simulate SRS stage detail open
       window.dispatchEvent(new Event('tutorial-srs-modal-opened'));
       return;
@@ -1092,10 +1098,10 @@ export const Tutorial = () => {
               currentStep === 3 || 
               currentStep === 6 || 
               currentStep === 8 || 
-              currentStep === 9 || 
               currentStep === 10 || 
               currentStep === 11 || 
-              currentStep === 12
+              currentStep === 12 ||
+              currentStep === 13
             ) && (
               <motion.div
                 animate={{ y: [0, -8, 0] }}
