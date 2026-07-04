@@ -1244,7 +1244,7 @@ const Purge = () => {
         animDone = true;
         completeProcess();
       }
-    }, 450); // Checks every 450ms, giving a very smooth and comfortable progression!
+    }, 220); // Keep the counter responsive without creating a long staged wait.
 
     const completeProcess = () => {
       setAddedProgress(null);
@@ -3967,11 +3967,11 @@ const Purge = () => {
             <AnimatePresence>
               {addedProgress !== null && addedProgress > 0 && (
                 <motion.div
-                  key={addedProgress}
-                  initial={{ opacity: 0, y: 15, scale: 0.7 }}
-                  animate={{ opacity: 1, y: -65, scale: 1.25 }}
-                  exit={{ opacity: 0, y: -90, scale: 0.8 }}
-                  transition={{ type: 'spring', stiffness: 180, damping: 16 }}
+                  key="added-progress"
+                  initial={{ opacity: 0, y: -56, scale: 0.96 }}
+                  animate={{ opacity: 1, y: -64, scale: 1 }}
+                  exit={{ opacity: 0, y: -72, scale: 0.96 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
                   style={{
                     position: 'absolute',
                     top: '25%',
@@ -3983,7 +3983,8 @@ const Purge = () => {
                     color: 'white',
                     fontWeight: 900,
                     fontSize: '0.85rem',
-                    boxShadow: '0 8px 25px rgba(239, 68, 68, 0.5)',
+                    boxShadow: lowGraphics ? 'none' : '0 8px 18px rgba(239, 68, 68, 0.28)',
+                    willChange: 'transform, opacity',
                     zIndex: 100,
                     pointerEvents: 'none',
                     whiteSpace: 'nowrap'
