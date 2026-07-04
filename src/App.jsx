@@ -16,9 +16,14 @@ import { playClickSound, playSwipeSound } from './utils/soundHelper';
 import { Tutorial } from './components/Tutorial';
 import NongMem from './components/NongMem';
 
+const prefersMobilePerformance = () => {
+  if (typeof window === 'undefined') return true;
+  return window.matchMedia?.('(max-width: 768px), (pointer: coarse), (prefers-reduced-motion: reduce)')?.matches ?? true;
+};
+
 
 function AppContent() {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading, isAnonymous } = useAuth();
   const { vocab, streak, clearDeckAndResetStats } = useVocab();
   const { theme, setTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -147,7 +152,9 @@ function AppContent() {
 
   const [showBottomNav, setShowBottomNav] = useState(() => {
     try {
-      return localStorage.getItem('chatgpt_anki_show_bottom_nav') !== 'false';
+      const val = localStorage.getItem('memeng_show_bottom_nav');
+      if (val !== null) return val !== 'false';
+      return true;
     } catch (e) {
       return true;
     }
@@ -619,7 +626,7 @@ function AppContent() {
       )}
 
       {/* Floating Translucent Silver Bottom Nav Dock */}
-      {showBottomNav && user && isTabRoute && (
+      {showBottomNav && user && isTabRoute && !menuOpen && (
         <div 
           className="bottom-nav-dock"
           style={{
@@ -968,31 +975,38 @@ function AppContent() {
                 margin: 0,
                 background: theme === 'theme-3'
                   ? 'none'
-                  : 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)',
+                  : 'linear-gradient(135deg, #a78bfa 0%, #60a5fa 100%)',
                 color: theme === 'theme-3' ? '#000000' : 'transparent',
                 WebkitBackgroundClip: theme === 'theme-3' ? 'initial' : 'text',
                 WebkitTextFillColor: theme === 'theme-3' ? 'initial' : 'transparent',
                 letterSpacing: '-1.5px'
               }}>
-                memeng
+                Mem-eng
               </h2>
-              <p style={{ color: theme === 'theme-3' ? '#666666' : 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Spaced Repetition Companion
-              </p>
             </div>
 
             {/* User Profile Info inside menu */}
             <div style={{
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '5px',
-              marginBottom: '10px',
-              color: theme === 'theme-3' ? '#666666' : 'var(--text-secondary)',
-              fontSize: '0.78rem'
+              alignSelf: 'center',
+              gap: '7px',
+              marginBottom: '12px',
+              padding: '6px 11px',
+              borderRadius: '999px',
+              background: isAnonymous ? 'rgba(250, 204, 21, 0.1)' : 'rgba(255, 255, 255, 0.035)',
+              border: isAnonymous ? '1px solid rgba(250, 204, 21, 0.28)' : '1px solid rgba(255, 255, 255, 0.06)',
+              color: isAnonymous ? '#fde68a' : (theme === 'theme-3' ? '#666666' : 'var(--text-secondary)'),
+              fontSize: '0.78rem',
+              fontWeight: 750
             }}>
-              <span style={{ display: 'inline-block', width: '4px', height: '4px', borderRadius: '50%', background: theme === 'theme-3' ? '#000000' : '#cbd5e1' }} />
-              <span>Logged in as <strong style={{ color: theme === 'theme-3' ? '#000000' : 'inherit' }}>{user?.email || 'cz01'}</strong></span>
+              <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', background: isAnonymous ? '#facc15' : (theme === 'theme-3' ? '#000000' : '#cbd5e1') }} />
+              {isAnonymous ? (
+                <span>Now you use <strong style={{ color: '#facc15' }}>Guest mode</strong></span>
+              ) : (
+                <span>Signed in as <strong style={{ color: theme === 'theme-3' ? '#000000' : 'inherit' }}>{user?.email || 'Account'}</strong></span>
+              )}
             </div>
 
             {/* Scrollable settings settings section */}
@@ -1104,84 +1118,13 @@ function AppContent() {
                   })}
                 </div>
               </motion.div>
-
-              {/* Setting Row 2: Review Buttons */}
-              <motion.div 
-                variants={itemVariants}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
-                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
-                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
-                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
-                  gap: '12px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#cbd5e1'
-                  }}>
-                    <Sliders size={16} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Review Buttons</span>
-                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Grading buttons or swipe gestures</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '4px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '2px' }}>
-                  {[
-                    { id: true, name: 'Show' },
-                    { id: false, name: 'Swipe' }
-                  ].map(opt => {
-                    const isActive = showShortcutButtons === opt.id;
-                    return (
-                      <button
-                        key={String(opt.id)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          localStorage.setItem('memeng_show_shortcut_buttons', String(opt.id));
-                          setShowShortcutButtons(opt.id);
-                          window.dispatchEvent(new CustomEvent('shortcut-buttons-changed', { detail: { show: opt.id } }));
-                        }}
-                        style={{
-                          background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-                          border: 'none',
-                          borderRadius: '6px',
-                          color: isActive ? '#ffffff' : '#94a3b8',
-                          padding: '5px 10px',
-                          fontSize: '0.75rem',
-                          fontWeight: isActive ? 700 : 500,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          outline: 'none'
-                        }}
-                      >
-                        {opt.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-
               {/* Setting Row 3: Bottom Nav Dock */}
               <motion.div 
                 variants={itemVariants}
                 onClick={() => {
                   const val = !showBottomNav;
                   setShowBottomNav(val);
-                  try { localStorage.setItem('chatgpt_anki_show_bottom_nav', val.toString()); } catch (err) {}
+                  try { localStorage.setItem('memeng_show_bottom_nav', val.toString()); } catch (err) {}
                 }}
                 style={{
                   display: 'flex',
@@ -1212,8 +1155,8 @@ function AppContent() {
                     <CheckSquare size={16} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Navigation Dock</span>
-                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Display bottom menu dock</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Bottom Navigation Bar</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Show Translate / Flashcards / My Profile at the bottom</span>
                   </div>
                 </div>
                 <div
@@ -1279,8 +1222,8 @@ function AppContent() {
                     <Sparkles size={16} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Low Graphics</span>
-                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Disable blur effects & animations</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>{lowGraphics ? 'Low Graphics Mode' : 'High Graphics Mode'}</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>{lowGraphics ? 'Runs smoother on phones' : 'More blur, glow, and animation'}</span>
                   </div>
                 </div>
                 <div
@@ -1470,10 +1413,17 @@ function AppContent() {
                   </button>
                 </motion.div>
 
-                {/* Sign Out */}
+                {/* Sign In / Sign Out */}
                 <motion.button
                   variants={itemVariants}
-                  onClick={handleLogout}
+                  onClick={() => {
+                    if (isAnonymous) {
+                      setMenuOpen(false);
+                      navigate('/login?auth=1');
+                      return;
+                    }
+                    handleLogout();
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1492,7 +1442,7 @@ function AppContent() {
                   }}
                 >
                   <LogOut size={16} />
-                  <span>Sign Out</span>
+                  <span>{isAnonymous ? 'Sign In to save deck' : 'Sign Out'}</span>
                 </motion.button>
               </div>
             </motion.div>

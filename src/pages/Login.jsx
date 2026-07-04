@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Login = () => {
   const { user, signIn, signUp, signInWithGoogle, isAnonymous, loginAsGuest } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    if (user && !isAnonymous) {
-      navigate('/');
+    if (!user) return;
+    const params = new URLSearchParams(location.search);
+    const wantsAuthPage = params.get('auth') === '1';
+    if (!wantsAuthPage) {
+      navigate('/', { replace: true });
     }
-  }, [user, isAnonymous, navigate]);
+  }, [user, isAnonymous, location.search, navigate]);
 
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
@@ -49,9 +53,8 @@ const Login = () => {
       
       <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1.5rem', width: '100%', maxWidth: '440px' }}>
         <h1 style={{ fontSize: '2.2rem', fontWeight: 950, letterSpacing: '-1px', background: 'linear-gradient(135deg, #a78bfa 0%, #06b6d4 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-          Mem-eng (จำอิ้ง)
+          Mem-eng
         </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.25rem', marginInline: 0 }}>Spaced Repetition with Rich Contexts</p>
       </div>
 
       {isAnonymous && (
@@ -77,10 +80,10 @@ const Login = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a78bfa', fontWeight: 800, fontSize: '0.8rem' }}>
-            <span>✨ คุณกำลังใช้งานแบบ Guest</span>
+            <span>You are using Guest mode</span>
           </div>
           <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-            กรอกข้อมูลเพื่อสมัครสมาชิกใหม่ด้านล่าง ระบบจะเชื่อมโยงข้อมูลคำศัพท์และประวัติการเรียนที่คุณเพิ่งเล่นไว้ให้ครบถ้วนทันที!
+            Sign in or create an account to save your deck and keep your progress across devices.
           </p>
         </motion.div>
       )}
@@ -127,7 +130,7 @@ const Login = () => {
               className="glass-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="password"
               required
               style={{ fontSize: '0.85rem', padding: '0.55rem 0.75rem' }}
             />
@@ -191,7 +194,7 @@ const Login = () => {
 
         {isAnonymous ? (
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/', { replace: true })}
             className="glass-button primary animate-scale"
             style={{
               width: '100%',
@@ -211,7 +214,7 @@ const Login = () => {
               boxShadow: '0 8px 25px rgba(167, 139, 250, 0.25)'
             }}
           >
-            <span>กลับสู่หน้าเรียนรู้ศัพท์ (Back to Translate) ➔</span>
+            <span>Continue guest mode</span>
           </button>
         ) : (
           <button
@@ -247,7 +250,7 @@ const Login = () => {
             }}
             disabled={loading}
           >
-            <span>Continue as Guest (ทดลองใช้งาน)</span>
+            <span>Continue guest mode</span>
           </button>
         )}
 

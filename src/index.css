@@ -484,3 +484,26 @@ input.glass-input::placeholder {
 
 
 
+
+/* Mobile-first performance defaults */
+.low-graphics *,
+.low-graphics *::before,
+.low-graphics *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+.low-graphics .glass-panel,
+.low-graphics .glass-button,
+.low-graphics .glass-input,
+.low-graphics [class*="glass"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.low-graphics img {
+  filter: none !important;
+}

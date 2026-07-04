@@ -2226,19 +2226,6 @@ const AddWord = () => {
                         const isLoading = sceneImagesLoading && !imgData;
                         const isRegenerating = imgData?.loading;
 
-                        const badgeColor = 
-                          imgData?.source === 'Pexels' ? '#10b981' : 
-                          imgData?.source === 'Pixabay' ? '#3b82f6' : 
-                          imgData?.source === 'Wikimedia' ? '#8b5cf6' : 
-                          imgData?.source === 'Openverse' ? '#f59e0b' : 
-                          imgData?.source === 'GIPHY' ? '#f43f5e' : '#a78bfa';
-
-                        const badgeBg = 
-                          imgData?.source === 'Pexels' ? 'rgba(16, 185, 129, 0.15)' : 
-                          imgData?.source === 'Pixabay' ? 'rgba(59, 130, 246, 0.15)' : 
-                          imgData?.source === 'Wikimedia' ? 'rgba(139, 92, 246, 0.15)' : 
-                          imgData?.source === 'Openverse' ? 'rgba(245, 158, 11, 0.15)' : 
-                          imgData?.source === 'GIPHY' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(167, 139, 250, 0.15)';
 
                         return (
                           <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -2422,17 +2409,6 @@ const AddWord = () => {
                                   zIndex: 2
                                 }}>
                                   <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>{String(scene.title || '')}</span>
-                                  <span style={{
-                                    fontSize: '0.48rem',
-                                    color: badgeColor,
-                                    background: badgeBg,
-                                    border: `1px solid ${badgeColor}35`,
-                                    padding: '0.1rem 0.35rem',
-                                    borderRadius: '4px',
-                                    fontWeight: 800,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em'
-                                  }}>{String(imgData.source || '')}</span>
                                 </div>
                               )}
 
@@ -2949,7 +2925,7 @@ const AddWord = () => {
                 <button
                   onClick={() => {
                     handleCloseNudge();
-                    navigate('/login');
+                    navigate('/login?auth=1');
                   }}
                   className="glass-button primary animate-scale"
                   style={{

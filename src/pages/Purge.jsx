@@ -9,6 +9,11 @@ import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { playClickSound, playSwipeSound, playSuccessSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
 
+const prefersMobilePerformance = () => {
+  if (typeof window === 'undefined') return true;
+  return window.matchMedia?.('(max-width: 768px), (pointer: coarse), (prefers-reduced-motion: reduce)')?.matches ?? true;
+};
+
 // Premium white minimal finger pointer SVG component for tutorial highlights
 const PremiumFingerPointer = ({ direction = 'down', scale = 1.0 }) => {
   let rotateDeg = 0;
@@ -1036,6 +1041,7 @@ const Purge = () => {
   const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
   const [lowGraphics, setLowGraphics] = useState(() => {
+    if (prefersMobilePerformance()) return true;
     try {
       return localStorage.getItem('memeng_low_graphics') !== 'false';
     } catch (e) {
@@ -3505,7 +3511,7 @@ const Purge = () => {
               <button
                 onClick={() => {
                   setShowGuestModePopup(false);
-                  navigate('/login');
+                  navigate('/login?auth=1');
                 }}
                 className="glass-button primary animate-scale"
                 style={{
