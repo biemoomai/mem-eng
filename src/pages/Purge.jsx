@@ -1316,11 +1316,10 @@ const Purge = () => {
 
   const handleStartWithNewWords = async () => {
     setIsLoadingNewWords(true);
-    setAddedProgress(0);
+    setAddedProgress(lowGraphics ? null : 0);
     
     let current = 0;
     let actualLoadedCount = 0;
-    let animDone = false;
     let apiResult = null;
     let apiCompleted = false;
 
@@ -1329,7 +1328,7 @@ const Purge = () => {
     };
 
     // Start count-up animation check interval
-    const interval = setInterval(() => {
+    const interval = lowGraphics ? null : setInterval(() => {
       if (current < actualLoadedCount) {
         current += 1;
         setAddedProgress(current);
@@ -1337,7 +1336,6 @@ const Purge = () => {
       
       if (apiCompleted && current >= actualLoadedCount) {
         clearInterval(interval);
-        animDone = true;
         completeProcess();
       }
     }, 220); // Keep the counter responsive without creating a long staged wait.
@@ -1367,10 +1365,12 @@ const Purge = () => {
       apiResult = res;
       apiCompleted = true;
       actualLoadedCount = res.success ? (res.addedWords?.length || 0) : 0;
+      if (lowGraphics) completeProcess();
     } catch (err) {
       console.error(err);
       apiResult = { success: false, error: 'เกิดข้อผิดพลาดในการโหลดคำใหม่' };
       apiCompleted = true;
+      if (lowGraphics) completeProcess();
     }
   };
 
@@ -4283,7 +4283,7 @@ const Purge = () => {
                     }}
                   >
                     {/* Diagonal Glass Shine Sweep Effect */}
-                    {theme !== 'theme-3' && !startHovered && (
+                    {theme !== 'theme-3' && !lowGraphics && !startHovered && (
                       <motion.div
                         animate={{ x: ['-100%', '200%'] }}
                         transition={{ repeat: Infinity, duration: 3.5, ease: 'linear', repeatDelay: 1.5 }}

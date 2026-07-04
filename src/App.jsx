@@ -258,6 +258,10 @@ function AppContent() {
         }
       }
     } else if (swipeDirection === 'horizontal') {
+      if (lowGraphics) {
+        swipeOffsetRef.current = dx;
+        return;
+      }
       if (Math.abs(dx - swipeOffsetRef.current) >= 12) {
         swipeOffsetRef.current = dx;
         setSwipeOffset(dx);
@@ -269,12 +273,13 @@ function AppContent() {
     if (pageSwipeEnabled && dragStart && swipeDirection === 'horizontal') {
       const routes = ['/', '/purge', '/profile'];
       const currentIdx = routes.indexOf(location.pathname);
+      const finalSwipeOffset = lowGraphics ? swipeOffsetRef.current : swipeOffset;
       
       if (currentIdx !== -1) {
-        if (swipeOffset < -minSwipeDistance && currentIdx < routes.length - 1) {
+        if (finalSwipeOffset < -minSwipeDistance && currentIdx < routes.length - 1) {
           playSwipeSound();
           navigate(routes[currentIdx + 1]);
-        } else if (swipeOffset > minSwipeDistance && currentIdx > 0) {
+        } else if (finalSwipeOffset > minSwipeDistance && currentIdx > 0) {
           playSwipeSound();
           navigate(routes[currentIdx - 1]);
         }
@@ -502,6 +507,12 @@ function AppContent() {
     return swipeOffset * 0.85;
   };
   const effectiveSwipeOffset = getEffectiveSwipeOffset();
+  const renderCurrentTabRoute = () => {
+    if (location.pathname === '/') return <AddWord />;
+    if (location.pathname === '/purge') return <Purge />;
+    if (location.pathname === '/profile') return <Profile />;
+    return null;
+  };
 
   return (
     <div 
@@ -601,25 +612,31 @@ function AppContent() {
           overflow: 'hidden',
           position: 'relative'
         }}>
-          <div
-            style={{
-              display: 'flex',
-              width: '300%',
-              height: '100%',
-              transform: `translate3d(calc(-${(currentIdx * 100) / 3}% + ${effectiveSwipeOffset}px), 0, 0)`,
-              transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}
-          >
-            <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-              <AddWord />
+          {lowGraphics ? (
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {renderCurrentTabRoute()}
             </div>
-            <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-              <Purge />
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                width: '300%',
+                height: '100%',
+                transform: `translate3d(calc(-${(currentIdx * 100) / 3}% + ${effectiveSwipeOffset}px), 0, 0)`,
+                transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <AddWord />
+              </div>
+              <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <Purge />
+              </div>
+              <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <Profile />
+              </div>
             </div>
-            <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-              <Profile />
-            </div>
-          </div>
+          )}
         </div>
       ) : (
         <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
