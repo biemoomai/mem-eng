@@ -1067,6 +1067,7 @@ const Purge = () => {
   const [tooltipLexicalFallback, setTooltipLexicalFallback] = useState({});
   // showThai toggle removed, defaults to true/always show when revealed
   const showThai = true;
+  const wordObj = sessionQueue[0];
 
   useEffect(() => {
     const targetWord = activeTooltipWord?.toLowerCase().trim();
@@ -1591,8 +1592,6 @@ const Purge = () => {
   const [exitDirection, setExitDirection] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [statusSearchQuery, setStatusSearchQuery] = useState('');
-
-  const wordObj = sessionQueue[0];
 
   const revealTimeRef = useRef(null);
   const cardShowTimeRef = useRef(null);
