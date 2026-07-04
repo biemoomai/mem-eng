@@ -1139,21 +1139,18 @@ const Profile = () => {
                 overflow: 'hidden'
               }}
             >
-              {/* Diagonal Glass Shine Sweep Effect */}
-              <motion.div
-                animate={{ x: ['-140%', '260%'] }}
-                transition={{ repeat: Infinity, duration: 5.2, ease: 'linear', repeatDelay: 1.2 }}
+              {/* Static glass highlight: keeps the premium feel without mobile animation jank */}
+              <div
                 style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  width: '38%',
+                  width: '46%',
                   height: '100%',
-                  background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0) 100%)',
+                  background: 'linear-gradient(90deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.035) 62%, rgba(255,255,255,0) 100%)',
                   transform: 'skewX(-18deg)',
                   pointerEvents: 'none',
-                  zIndex: 2,
-                  willChange: 'transform'
+                  zIndex: 2
                 }}
               />
 
@@ -2140,8 +2137,8 @@ const Profile = () => {
                                   boxSizing: 'border-box'
                                 }}
                               >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.55rem', width: '100%', minWidth: 0, overflow: 'hidden' }}>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ position: 'relative', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                                  <div style={{ minWidth: 0, paddingRight: item.videoUrl ? '74px' : 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.35rem', marginBottom: '0.35rem', minWidth: 0 }}>
                                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, minWidth: 0, flexWrap: 'wrap', lineHeight: 1.15 }}>
                                         {item.word}
@@ -2289,7 +2286,7 @@ const Profile = () => {
                                   
                                   {/* Image Thumbnail Box */}
                                   {item.videoUrl && (
-                                    <div style={{ width: 'clamp(52px, 15vw, 64px)', height: 'clamp(52px, 15vw, 64px)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flex: '0 0 clamp(52px, 15vw, 64px)', boxShadow: '0 4px 10px rgba(0,0,0,0.24)', alignSelf: 'center', maxWidth: '24%' }}>
+                                    <div style={{ width: '58px', height: '58px', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 10px rgba(0,0,0,0.24)', position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
                                       <img 
                                         src={cleanMediaUrl(item.videoUrl)} 
                                         alt={item.word} 
@@ -2320,8 +2317,8 @@ const Profile = () => {
                                   boxSizing: 'border-box'
                                 }}
                               >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.55rem', width: '100%', minWidth: 0, overflow: 'hidden' }}>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ position: 'relative', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                                  <div style={{ minWidth: 0, paddingRight: item.videoUrl ? '74px' : 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.35rem', marginBottom: '0.35rem', minWidth: 0 }}>
                                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, minWidth: 0, flexWrap: 'wrap', lineHeight: 1.15 }}>
                                         {item.word}
@@ -2453,7 +2450,7 @@ const Profile = () => {
                                   
                                   {/* Image Thumbnail Box */}
                                   {item.videoUrl && (
-                                    <div style={{ width: 'clamp(52px, 15vw, 64px)', height: 'clamp(52px, 15vw, 64px)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flex: '0 0 clamp(52px, 15vw, 64px)', boxShadow: '0 4px 10px rgba(0,0,0,0.24)', alignSelf: 'center', maxWidth: '24%' }}>
+                                    <div style={{ width: '58px', height: '58px', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 10px rgba(0,0,0,0.24)', position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
                                       <img 
                                         src={cleanMediaUrl(item.videoUrl)} 
                                         alt={item.word} 
