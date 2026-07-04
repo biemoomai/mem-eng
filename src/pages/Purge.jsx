@@ -5175,10 +5175,12 @@ const Purge = () => {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -16 }}
                           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                          style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: '30px' }}
+                          style={{ flex: revealStep === 2 ? 1 : 'none', display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: '30px' }}
                         >
                           {/* English word focus card */}
+                          {revealStep === 2 && (
                           <div className="glass-panel" style={{
+                            flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'center',
@@ -5219,6 +5221,7 @@ const Purge = () => {
                               {renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
                             </p>
                           </div>
+                          )}
                           {/* Thai Translation */}
                           {revealStep >= 3 && (
                           <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.18)' }}>
