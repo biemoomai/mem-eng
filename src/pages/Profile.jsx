@@ -6,6 +6,7 @@ import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { getVerbForms } from '../utils/textUtils';
+import { speakEnglish } from '../utils/speechHelper';
 
 const srsTapColors = {
   'Learning': '#cbd5e1', // Silver/white
@@ -101,16 +102,7 @@ const Profile = () => {
   };
 
   const handleSpeak = (text) => {
-    if (!text || !window.speechSynthesis) return;
-    try {
-      window.speechSynthesis.cancel();
-      const cleanText = text.replace(/\*\*/g, '');
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn("Speech synthesis error:", e);
-    }
+    speakEnglish(text);
   };
   
   const [activeCategory, setActiveCategory] = useState('All Categories');

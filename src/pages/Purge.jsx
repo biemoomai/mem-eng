@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { playClickSound, playSwipeSound, playSuccessSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
+import { speakEnglish } from '../utils/speechHelper';
 
 const getWordLookupCandidates = (word) => {
   const cleaned = String(word || '').toLowerCase().replace(/[^a-z\s-]/g, '').trim();
@@ -889,11 +890,7 @@ const Purge = () => {
   const { isAnonymous } = useAuth();
 
   const speakText = (text) => {
-    if (!text || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
+    speakEnglish(text);
   };
 
   // local active queue for this study session
@@ -1176,11 +1173,7 @@ const Purge = () => {
   }, [activeTooltipWord, tooltipDetails?.rawDetails, wordObj?.word, wordObj?.meaning]);
 
   const handleSpeak = (text) => {
-    if (!text || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
+    speakEnglish(text);
   };
 
   const handleRegenerateImage = async (e) => {
@@ -3849,11 +3842,7 @@ const Purge = () => {
   }, [wordObj]);
 
   const handleSpeakWord = () => {
-    if (!wordObj || !wordObj.word || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(wordObj.word);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
+    speakEnglish(wordObj?.word);
   };
 
   const handleReveal = () => {

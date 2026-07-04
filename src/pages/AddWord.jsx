@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchVocabImage, cleanKeyword } from '../utils/imageHelper';
 import { SafeImage } from '../components/SafeImage';
 import { playClickSound } from '../utils/soundHelper';
+import { speakEnglish } from '../utils/speechHelper';
 
 
 // Premium white minimal finger pointer SVG component for tutorial highlights
@@ -1241,12 +1242,7 @@ const AddWord = () => {
   };
 
   const handleSpeak = (text) => {
-    if (!text || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const cleanText = text.replace(/\*\*/g, '');
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
+    speakEnglish(text);
   };
 
   useEffect(() => {

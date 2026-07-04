@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Volume2, ChevronRight, Mic, Skull } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ClickableText from '../components/ClickableText';
+import { speakEnglish } from '../utils/speechHelper';
 
 const mockCard = {
   word: 'Mitigate',
@@ -42,10 +43,7 @@ const Flashcard = () => {
   };
 
   const playTTS = () => {
-    if (!window.speechSynthesis) return;
-    const utterance = new SpeechSynthesisUtterance(mockCard.word);
-    utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
+    speakEnglish(mockCard.word);
   };
 
   return (

@@ -4,6 +4,7 @@ import { X, ArrowLeft, Volume2, BookOpen, Loader, Plus, Rocket } from 'lucide-re
 import { useDictionary } from '../context/DictionaryContext';
 import { useVocab } from '../context/VocabContext';
 import { splitSentenceAroundWord } from '../utils/textUtils';
+import { speakEnglish } from '../utils/speechHelper';
 import ClickableText from './ClickableText';
 
 const DictionaryModal = () => {
@@ -47,11 +48,8 @@ const DictionaryModal = () => {
     if (phoneticObj) {
       const audio = new Audio(phoneticObj.audio);
       audio.play();
-    } else if (window.speechSynthesis) {
-      // Fallback to browser TTS
-      const utterance = new SpeechSynthesisUtterance(currentWord);
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
+    } else {
+      speakEnglish(currentWord);
     }
   };
 

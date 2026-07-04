@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Palette, Trash2, HelpCircle, Bot } from 'lucide-react';
+import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Trash2, HelpCircle, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VocabProvider, useVocab } from './context/VocabContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import { playClickSound, playSwipeSound } from './utils/soundHelper';
+import { speakEnglish } from './utils/speechHelper';
 import { Tutorial } from './components/Tutorial';
 import NongMem from './components/NongMem';
 
@@ -20,7 +21,7 @@ import NongMem from './components/NongMem';
 function AppContent() {
   const { user, signOut, loading, isAnonymous } = useAuth();
   const { vocab, streak, clearDeckAndResetStats } = useVocab();
-  const { theme, setTheme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -639,7 +640,7 @@ function AppContent() {
         </div>
       )}
 
-      {/* Floating Translucent Silver Bottom Nav Dock */}
+      {/* Floating translucent bottom nav dock */}
       {showBottomNav && user && isTabRoute && !menuOpen && (
         <div 
           className="bottom-nav-dock"
@@ -779,11 +780,7 @@ function AppContent() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!selectedWord || !window.speechSynthesis) return;
-                        window.speechSynthesis.cancel();
-                        const utterance = new SpeechSynthesisUtterance(selectedWord);
-                        utterance.lang = 'en-US';
-                        window.speechSynthesis.speak(utterance);
+                        speakEnglish(selectedWord);
                       }}
                       style={{
                         background: 'rgba(255, 255, 255, 0.05)',
@@ -1068,71 +1065,7 @@ function AppContent() {
                 </motion.button>
               )}
 
-              {/* Setting Row 1: Appearance */}
-              <motion.div 
-                variants={itemVariants}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
-                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
-                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
-                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
-                  gap: '12px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#cbd5e1'
-                  }}>
-                    <Palette size={16} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Appearance</span>
-                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Theme layout style</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '4px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '2px' }}>
-                  {[
-                    { id: 'theme-1', name: 'Glass' },
-                    { id: 'theme-2', name: 'Silver' }
-                  ].map(t => {
-                    const isActive = theme === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={(e) => { e.stopPropagation(); setTheme(t.id); }}
-                        style={{
-                          background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-                          border: 'none',
-                          borderRadius: '6px',
-                          color: isActive ? '#ffffff' : '#94a3b8',
-                          padding: '5px 10px',
-                          fontSize: '0.75rem',
-                          fontWeight: isActive ? 700 : 500,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          outline: 'none'
-                        }}
-                      >
-                        {t.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-              {/* Setting Row 3: Bottom Nav Dock */}
+              {/* Setting Row 1: Bottom Nav Dock */}
               <motion.div 
                 variants={itemVariants}
                 onClick={() => {
