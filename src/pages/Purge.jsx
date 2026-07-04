@@ -3990,7 +3990,15 @@ const Purge = () => {
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  +{addedProgress} words
+                  <motion.span
+                    key={addedProgress}
+                    initial={{ opacity: 0.72, y: 4, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.12, ease: 'easeOut' }}
+                    style={{ display: 'inline-block', willChange: 'transform, opacity' }}
+                  >
+                    +{addedProgress} words
+                  </motion.span>
                 </motion.div>
               )}
             </AnimatePresence>
