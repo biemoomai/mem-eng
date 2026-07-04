@@ -260,6 +260,13 @@ const Login = () => {
             {isLoginMode ? 'Sign Up' : 'Sign In'}
           </span>
         </p>
+
+        <p style={{ textAlign: 'center', margin: '0.35rem 0 0', fontSize: '0.68rem', color: 'rgba(148, 163, 184, 0.78)', lineHeight: 1.5 }}>
+          By continuing, you agree to our{' '}
+          <span onClick={() => navigate('/terms')} style={{ color: '#94a3b8', cursor: 'pointer', fontWeight: 700 }}>Terms</span>
+          {' '}and{' '}
+          <span onClick={() => navigate('/privacy')} style={{ color: '#94a3b8', cursor: 'pointer', fontWeight: 700 }}>Privacy Policy</span>.
+        </p>
       </motion.div>
     </div>
   );

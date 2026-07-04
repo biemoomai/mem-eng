@@ -49,7 +49,7 @@ const Sync = () => {
 
   // Helper to check if a word is already in the user's vocabulary deck
   const isWordInVocab = (wordStr) => {
-    return vocab.some(v => v.word.toLowerCase() === wordStr.toLowerCase());
+    return vocab.some(v => v && v.word && v.word.toLowerCase() === wordStr.toLowerCase());
   };
 
   return (

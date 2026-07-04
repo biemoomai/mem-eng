@@ -327,7 +327,10 @@ const Home = () => {
             let isRich = false;
             let richData = null;
             try {
-              if (item.meaning && item.meaning.startsWith('{')) {
+              if (item.meaning && typeof item.meaning === 'object') {
+                richData = item.meaning;
+                isRich = true;
+              } else if (item.meaning && typeof item.meaning === 'string' && item.meaning.startsWith('{')) {
                 richData = JSON.parse(item.meaning);
                 isRich = true;
               }

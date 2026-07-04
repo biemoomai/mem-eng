@@ -1,4 +1,4 @@
--- ==========================================
+﻿-- ==========================================
 -- Mem-eng Phase 3: Supabase Database Schema
 -- Run this in the Supabase SQL Editor
 -- ==========================================
@@ -9,7 +9,7 @@ create extension if not exists "uuid-ossp";
 -- 1. Create the Users Table
 CREATE TABLE if not exists public.users (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL PRIMARY KEY,
-  email TEXT NOT NULL,
+  email TEXT,
   display_name TEXT,
   xp INTEGER DEFAULT 0,
   streak_days INTEGER DEFAULT 1,
@@ -127,3 +127,4 @@ $$ language plpgsql security definer;
 create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+

@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+﻿import React, { createContext, useState, useContext, useEffect } from 'react';
 import { getVocabImageUrl, fetchVocabImage } from '../utils/imageHelper';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
+import { createEmptyCard, fsrs, Rating, State } from 'ts-fsrs';
 
 // Sanitizer to clean and correct Thai orthography / combining characters to prevent rendering errors
 const sanitizeThaiText = (text) => {
@@ -60,6 +61,77 @@ const sanitizeThaiInObject = (obj) => {
   return obj;
 };
 
+
+const fsrsScheduler = fsrs({
+  request_retention: 0.9,
+  maximum_interval: 36500,
+  enable_fuzz: false,
+  enable_short_term: true,
+  learning_steps: ['10m'],
+  relearning_steps: ['10m'],
+});
+
+const reviewRatingMap = {
+  again: Rating.Again,
+  hard: Rating.Hard,
+  normal: Rating.Good,
+  easy: Rating.Easy,
+};
+
+const toValidDate = (value, fallback = new Date()) => {
+  const date = value ? new Date(value) : fallback;
+  return Number.isNaN(date.getTime()) ? fallback : date;
+};
+
+const toFsrsCard = (card, now = new Date()) => {
+  if (!card || (card.reps || card.repetition || 0) === 0) {
+    return createEmptyCard(now);
+  }
+
+  const lastReviewValue = card.lastReviewDate || card.last_review || card.lastReview || null;
+  const fsrsCard = {
+    due: toValidDate(card.nextReviewDate, now),
+    stability: typeof card.stability === 'number' ? card.stability : 0,
+    difficulty: typeof card.difficulty === 'number' ? card.difficulty : 0,
+    elapsed_days: typeof card.elapsed_days === 'number' ? card.elapsed_days : 0,
+    scheduled_days: typeof card.scheduled_days === 'number' ? card.scheduled_days : (card.interval || 0),
+    learning_steps: typeof card.learning_steps === 'number' ? card.learning_steps : 0,
+    reps: typeof card.reps === 'number' ? card.reps : (card.repetition || 0),
+    lapses: typeof card.lapses === 'number' ? card.lapses : 0,
+    state: typeof card.state === 'number' ? card.state : State.Review,
+  };
+
+  if (lastReviewValue) {
+    const lastReview = new Date(lastReviewValue);
+    if (!Number.isNaN(lastReview.getTime())) {
+      fsrsCard.last_review = lastReview;
+    }
+  }
+
+  return fsrsCard;
+};
+
+const getDaysUntil = (date, now = new Date()) => {
+  return Math.max(0, Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+};
+
+const formatReviewInterval = (date, now = new Date()) => {
+  const minutes = Math.max(0, Math.round((date.getTime() - now.getTime()) / (1000 * 60)));
+  if (minutes < 60) return `${Math.max(1, minutes)}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.max(1, Math.round(minutes / (60 * 24)));
+  if (days < 30) return `${days}d`;
+  const months = Math.round(days / 30);
+  return `${months}mo`;
+};
+
+const getLevelFromFsrs = (fsrsCard, rating) => {
+  if (fsrsCard.state === State.Learning || fsrsCard.state === State.Relearning) return 'Learning';
+  if (rating === Rating.Hard) return 'Hard';
+  if (rating === Rating.Easy) return 'Easy';
+  return 'Normal';
+};
 const VocabContext = createContext();
 
 export const useVocab = () => useContext(VocabContext);
@@ -407,7 +479,7 @@ export const VocabProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(localDeck);
         // Normalize all existing cards to lowercase and inject FSRS fields if missing
-        const normalized = Array.isArray(parsed) ? parsed.filter(Boolean).map(item => {
+        const normalized = Array.isArray(parsed) ? parsed.filter(item => item && item.word).map(item => {
           const reps = typeof item.reps === 'number' ? item.reps : (item.repetition || 0);
           const easeFactor = typeof item.easeFactor === 'number' ? item.easeFactor : 2.5;
           const stability = typeof item.stability === 'number' ? item.stability : (item.interval || 1.0);
@@ -415,7 +487,7 @@ export const VocabProvider = ({ children }) => {
           const state = typeof item.state === 'number' ? item.state : (reps > 0 ? 2 : 0);
           return {
             ...item,
-            word: typeof item.word === 'string' ? item.word.toLowerCase() : item.word,
+            word: typeof item.word === 'string' ? item.word.toLowerCase() : String(item.word || '').toLowerCase(),
             stability,
             difficulty,
             reps,
@@ -461,7 +533,7 @@ export const VocabProvider = ({ children }) => {
   // Add a new word card using generated rich details
   const addWordToDeck = async (word, richDetails) => {
     const normalizedWord = typeof word === 'string' ? word.trim().toLowerCase() : '';
-    const existing = vocab.find(v => v.word.toLowerCase() === normalizedWord);
+    const existing = vocab.find(v => v && v.word && v.word.toLowerCase() === normalizedWord);
     if (existing) {
       return { success: false, error: 'Word already exists in your deck!' };
     }
@@ -812,13 +884,18 @@ export const VocabProvider = ({ children }) => {
 
   // Update a card's image in the database dynamically
   const updateCardImages = (word, mainImageUrl, sceneImagesArray, falImageUrl = null) => {
+    if (!word) return;
     setVocab(prevVocab => {
       const updated = prevVocab.map(item => {
-        if (item.word.toLowerCase() === word.toLowerCase()) {
+        if (item && item.word && item.word.toLowerCase() === word.toLowerCase()) {
           let parsedMeaning = null;
           try {
-            if (item.meaning && item.meaning.startsWith('{')) {
-              parsedMeaning = JSON.parse(item.meaning);
+            if (item.meaning) {
+              if (typeof item.meaning === 'object') {
+                parsedMeaning = item.meaning;
+              } else if (typeof item.meaning === 'string' && item.meaning.startsWith('{')) {
+                parsedMeaning = JSON.parse(item.meaning);
+              }
             }
           } catch (e) {}
 
@@ -845,159 +922,77 @@ export const VocabProvider = ({ children }) => {
     console.log(`💾 Card images updated in database for "${word}":`, mainImageUrl, sceneImagesArray, falImageUrl);
   };
 
-  // Helper to project intervals for a card given different review choices based on FSRS stability formulas
+  // Preview intervals with the official FSRS scheduler.
   const getProjectedIntervals = (card) => {
-    if (!card) return { again: '10m', hard: '1d', normal: '3d', easy: '6d' };
-    
-    let stability = typeof card.stability === 'number' ? card.stability : (card.interval || 1.0);
-    let reps = typeof card.reps === 'number' ? card.reps : (card.repetition || 0);
-    let easeFactor = typeof card.easeFactor === 'number' ? card.easeFactor : 2.5;
-    let difficulty = typeof card.difficulty === 'number' ? card.difficulty : Math.min(10, Math.max(1, 10 - (easeFactor - 1.3) * 7.5));
-
-    const getIntervalStr = (s) => {
-      const days = Math.max(1, Math.round(s));
-      if (days < 30) return `${days}d`;
-      const months = Math.round(days / 30);
-      return `${months}mo`;
-    };
-
-    if (reps === 0) {
-      return {
-        again: '10m',
-        hard: '1d',
-        normal: '2d',
-        easy: '6d'
-      };
-    }
-
-    // Again (r=1)
-    const sAgain = Math.max(0.1, 0.3 * stability * Math.exp(-0.1 * difficulty));
-    // Hard (r=2)
-    const sHard = stability * (1 + 1.6 * (11 - difficulty) * Math.pow(stability, -0.2) * 0.8);
-    // Good (r=3)
-    const sGood = stability * (1 + 1.6 * (11 - difficulty) * Math.pow(stability, -0.2) * 1.5);
-    // Easy (r=4)
-    const sEasy = stability * (1 + 1.6 * (11 - difficulty) * Math.pow(stability, -0.2) * 2.5);
+    if (!card) return { again: '10m', hard: '1d', normal: '2d', easy: '6d' };
+    const now = new Date();
+    const fsrsCard = toFsrsCard(card, now);
+    const preview = fsrsScheduler.repeat(fsrsCard, now);
 
     return {
-      again: '10m',
-      hard: getIntervalStr(sHard),
-      normal: getIntervalStr(sGood),
-      easy: getIntervalStr(sEasy)
+      again: formatReviewInterval(preview[Rating.Again].card.due, now),
+      hard: formatReviewInterval(preview[Rating.Hard].card.due, now),
+      normal: formatReviewInterval(preview[Rating.Good].card.due, now),
+      easy: formatReviewInterval(preview[Rating.Easy].card.due, now),
     };
   };
 
-  // Update SRS levels using standard FSRS algorithm locally with cognitive delay tracking
+  // Update SRS with official FSRS. Master is a product-level escape hatch, not an FSRS rating.
   const updateWordSrs = (cardId, actionOrLevel, responseTimeMs) => {
     const itemToUpdate = vocab.find(item => item.id === cardId);
     if (!itemToUpdate) return;
 
-    let stability = typeof itemToUpdate.stability === 'number' ? itemToUpdate.stability : (itemToUpdate.interval || 1.0);
+    const now = new Date();
+    const isMaster = actionOrLevel === 'master';
+    let nextReviewDate = new Date(now);
+    let stability = typeof itemToUpdate.stability === 'number' ? itemToUpdate.stability : 0;
+    let difficulty = typeof itemToUpdate.difficulty === 'number' ? itemToUpdate.difficulty : 0;
     let reps = typeof itemToUpdate.reps === 'number' ? itemToUpdate.reps : (itemToUpdate.repetition || 0);
     let lapses = typeof itemToUpdate.lapses === 'number' ? itemToUpdate.lapses : 0;
-    let easeFactor = typeof itemToUpdate.easeFactor === 'number' ? itemToUpdate.easeFactor : 2.5;
-    let difficulty = typeof itemToUpdate.difficulty === 'number' ? itemToUpdate.difficulty : Math.min(10, Math.max(1, 10 - (easeFactor - 1.3) * 7.5));
-    let state = typeof itemToUpdate.state === 'number' ? itemToUpdate.state : (reps > 0 ? 2 : 0);
+    let state = typeof itemToUpdate.state === 'number' ? itemToUpdate.state : (reps > 0 ? State.Review : State.New);
+    let scheduledDays = typeof itemToUpdate.scheduled_days === 'number' ? itemToUpdate.scheduled_days : (itemToUpdate.interval || 0);
+    let elapsedDays = typeof itemToUpdate.elapsed_days === 'number' ? itemToUpdate.elapsed_days : 0;
+    let learningSteps = typeof itemToUpdate.learning_steps === 'number' ? itemToUpdate.learning_steps : 0;
+    let newSrsLevel = itemToUpdate.srsLevel || 'Learning';
+    let newInterval = Math.max(0, scheduledDays);
 
-    const ratingMap = {
-      'again': 1,
-      'hard': 2,
-      'normal': 3,
-      'easy': 4
-    };
-    const r = ratingMap[actionOrLevel] || 3;
-
-    // Calculate Cognitive Hesitation Penalty (beta)
-    let beta = 1.0;
-    if (typeof responseTimeMs === 'number') {
-      const rtBase = 1500;
-      const rtThreshold = 4000;
-      if (responseTimeMs > rtThreshold) {
-        beta = Math.max(0.5, 1 - (responseTimeMs - rtBase) / 8000);
-      }
-    }
-
-
-
-    if (reps === 0) {
-      // First review initial stability/difficulty presets
-      if (r === 1) {
-        stability = 0.4;
-        difficulty = 5.0;
-        state = 1; // Learning
-      } else if (r === 2) {
-        stability = 0.6;
-        difficulty = 4.8;
-        state = 2; // Review
-      } else if (r === 3) {
-        stability = 2.4;
-        difficulty = 4.3;
-        state = 2; // Review
-      } else {
-        stability = 5.8;
-        difficulty = 3.5;
-        state = 2; // Review
-      }
-      reps = 1;
-    } else {
-      // Sequential reviews updates
-      reps += 1;
-      
-      // Update Difficulty
-      difficulty = difficulty - 0.4 * (r - 3);
-      difficulty = Math.min(10, Math.max(1, difficulty));
-
-      if (r === 1) {
-        // Forgotten
-        stability = Math.max(0.1, 0.3 * stability * Math.exp(-0.1 * difficulty));
-        lapses += 1;
-        state = 3; // Relearning
-      } else {
-        // Recalled
-        const scaleFactor = r === 2 ? 0.8 : (r === 3 ? 1.5 : 2.5);
-        const originalIncrease = 1.6 * (11 - difficulty) * Math.pow(stability, -0.2) * scaleFactor;
-        stability = stability * (1 + originalIncrease * beta);
-        state = 2; // Review
-      }
-    }
-
-    const nextInterval = Math.max(1, Math.round(stability));
-    const nextReviewDate = new Date();
-
-    let newSrsLevel = 'Normal';
-    if (nextInterval >= 21) {
+    if (isMaster) {
       newSrsLevel = 'Mastered';
-    } else if (r === 1) {
-      newSrsLevel = 'Learning';
-    } else if (r === 2) {
-      newSrsLevel = 'Hard';
-    } else if (r === 3) {
-      newSrsLevel = 'Normal';
+      state = State.Review;
+      reps += 1;
+      scheduledDays = 36500;
+      newInterval = scheduledDays;
+      nextReviewDate.setFullYear(nextReviewDate.getFullYear() + 100);
     } else {
-      newSrsLevel = 'Easy';
-    }
-    
-    if (r === 1) {
-      // Again goes back in the queue, scheduled to reappear in 10 minutes
-      nextReviewDate.setMinutes(nextReviewDate.getMinutes() + 10);
-    } else {
-      nextReviewDate.setDate(nextReviewDate.getDate() + nextInterval);
+      const rating = reviewRatingMap[actionOrLevel] || Rating.Good;
+      const fsrsCard = toFsrsCard(itemToUpdate, now);
+      const result = fsrsScheduler.next(fsrsCard, now, rating);
+      const nextCard = result.card;
+
+      stability = nextCard.stability;
+      difficulty = nextCard.difficulty;
+      reps = nextCard.reps;
+      lapses = nextCard.lapses;
+      state = nextCard.state;
+      scheduledDays = nextCard.scheduled_days;
+      elapsedDays = nextCard.elapsed_days;
+      learningSteps = nextCard.learning_steps;
+      nextReviewDate = nextCard.due;
+      newInterval = Math.max(0, getDaysUntil(nextReviewDate, now));
+      newSrsLevel = getLevelFromFsrs(nextCard, rating);
     }
 
-    // Keep legacy fields populated for backwards UI compatibility
     const newRepetition = reps;
-    const newInterval = nextInterval;
-    const newEaseFactor = 1.3 + (10 - difficulty) * (1.2 / 7.5);
+    const newEaseFactor = Math.max(1.3, Math.min(2.5, 1.3 + (10 - difficulty) * (1.2 / 10)));
 
-    // Save cognitive hesitation reviews log
     const newLog = {
       id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2),
       word: itemToUpdate.word,
       rating: actionOrLevel,
       response_time_ms: typeof responseTimeMs === 'number' ? responseTimeMs : 1500,
-      stability_before: itemToUpdate.stability || 0.1,
+      stability_before: itemToUpdate.stability || 0,
       stability_after: stability,
-      review_date: new Date().toISOString()
+      review_date: now.toISOString()
     };
     const updatedLogs = [...reviewLogs, newLog];
     setReviewLogs(updatedLogs);
@@ -1010,17 +1005,20 @@ export const VocabProvider = ({ children }) => {
       interval: newInterval,
       easeFactor: newEaseFactor,
       nextReviewDate: nextReviewDate.toISOString(),
+      lastReviewDate: now.toISOString(),
       stability,
       difficulty,
       reps,
       lapses,
-      state
+      state,
+      scheduled_days: scheduledDays,
+      elapsed_days: elapsedDays,
+      learning_steps: learningSteps
     } : item);
 
     setVocab(updated);
     saveDeckToLocal(updated);
 
-    // Push to Supabase if logged in
     if (user) {
       const isLocalId = typeof cardId === 'string' && cardId.startsWith('local-');
       if (!isLocalId) {
@@ -1040,11 +1038,10 @@ export const VocabProvider = ({ children }) => {
           })
           .eq('id', cardId)
           .then(({ error }) => {
-            if (error) console.error("Error updating remote deck:", error);
+            if (error) console.error('Error updating remote deck:', error);
           });
       }
 
-      // Log review log to Supabase review table
       supabase
         .from('user_review_logs')
         .insert({
@@ -1052,13 +1049,12 @@ export const VocabProvider = ({ children }) => {
           word: itemToUpdate.word,
           rating: actionOrLevel,
           response_time_ms: typeof responseTimeMs === 'number' ? responseTimeMs : 1500,
-          stability_before: itemToUpdate.stability || 0.1,
+          stability_before: itemToUpdate.stability || 0,
           stability_after: stability,
-          review_date: new Date().toISOString()
+          review_date: now.toISOString()
         })
         .then(({ error }) => {
           if (!error) {
-            // Remove from local reviewLogs queue since it was successfully saved
             setReviewLogs(prev => prev.filter(log => log.word !== itemToUpdate.word || log.review_date !== newLog.review_date));
           }
         });
@@ -1225,3 +1221,4 @@ export const VocabProvider = ({ children }) => {
     </VocabContext.Provider>
   );
 };
+

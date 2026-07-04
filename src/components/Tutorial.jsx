@@ -205,6 +205,38 @@ export const Tutorial = () => {
   const autoMinimizeTimerRef = useRef(null);
 
   const hasInitializedRef = useRef(false);
+  const handleCloseRef = useRef(null);
+
+  const handleClose = useCallback(async () => {
+    setActive(false);
+    localStorage.setItem('memeng_tutorial_done', 'true');
+    localStorage.removeItem('memeng_tutorial_started');
+    // Ensure all modals are closed when exiting tutorial
+    window.dispatchEvent(new Event('tutorial-close-modals'));
+    window.dispatchEvent(new Event('exit-study-session'));
+    window.dispatchEvent(new Event('tutorial-reset'));
+    
+    // Always revert curriculum back to Self-Study default after tutorial finish
+    try {
+      setActiveCurriculum('Self-Study only');
+      localStorage.setItem('chatgpt_anki_curriculum', 'Self-Study only');
+    } catch (err) {
+      console.error("Failed to reset curriculum default on finish:", err);
+    }
+
+    try {
+      await clearDeckAndResetStats();
+    } catch (err) {
+      console.error("Failed to clear deck on tutorial complete:", err);
+    }
+    
+    // Clean hard redirect to home screen to unmount all pages and boot cleanly
+    window.location.href = '/';
+  }, [clearDeckAndResetStats, setActiveCurriculum]);
+
+  useEffect(() => {
+    handleCloseRef.current = handleClose;
+  }, [handleClose]);
 
   // Show opt-in popup for new users visiting /purge (no auto-start)
   useEffect(() => {
@@ -252,7 +284,7 @@ export const Tutorial = () => {
   // Listen to exit-tutorial event from settings drawer
   useEffect(() => {
     const handleExit = () => {
-      handleClose();
+      if (handleCloseRef.current) handleCloseRef.current();
     };
     window.addEventListener('exit-tutorial', handleExit);
     return () => window.removeEventListener('exit-tutorial', handleExit);
@@ -886,33 +918,6 @@ export const Tutorial = () => {
       handleClose();
     }
   };
-  const handleClose = async () => {
-    setActive(false);
-    localStorage.setItem('memeng_tutorial_done', 'true');
-    localStorage.removeItem('memeng_tutorial_started');
-    // Ensure all modals are closed when exiting tutorial
-    window.dispatchEvent(new Event('tutorial-close-modals'));
-    window.dispatchEvent(new Event('exit-study-session'));
-    window.dispatchEvent(new Event('tutorial-reset'));
-    
-    // Always revert curriculum back to Self-Study default after tutorial finish
-    try {
-      setActiveCurriculum('Self-Study only');
-      localStorage.setItem('chatgpt_anki_curriculum', 'Self-Study only');
-    } catch (err) {
-      console.error("Failed to reset curriculum default on finish:", err);
-    }
-
-    try {
-      await clearDeckAndResetStats();
-    } catch (err) {
-      console.error("Failed to clear deck on tutorial complete:", err);
-    }
-    
-    // Clean hard redirect to home screen to unmount all pages and boot cleanly
-    window.location.href = '/';
-  };
-
   const getTooltipStyle = () => {
 
     // For SRS Rating Buttons (step 11) in Purge: place above the buttons to avoid covering them

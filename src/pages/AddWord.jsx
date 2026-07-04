@@ -74,14 +74,17 @@ const PremiumFingerPointer = ({ direction = 'down', scale = 1.0 }) => {
 // Highlight the Thai translation word inside a Thai sentence with a distinct blue
 const renderHighlightedThaiText = (text, thaiWord) => {
   if (!text || !thaiWord) return text;
-  const words = thaiWord
+  const strText = typeof text === 'string' ? text : JSON.stringify(text);
+  const strThaiWord = typeof thaiWord === 'string' ? thaiWord : JSON.stringify(thaiWord);
+
+  const words = strThaiWord
     .split(/[,/|]|\s*หรือ\s*/)
     .map(w => w.trim())
     .filter(Boolean);
-  if (words.length === 0) return text;
+  if (words.length === 0) return strText;
   words.sort((a, b) => b.length - a.length);
   const escaped = words.map(w => w.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
-  const parts = text.split(new RegExp(`(${escaped})`, 'g'));
+  const parts = strText.split(new RegExp(`(${escaped})`, 'g'));
   return parts.map((part, i) => {
     const isMatch = words.some(w => w === part);
     return isMatch
@@ -210,8 +213,8 @@ const getVerbForms = (word, pos) => {
 
 const renderInteractiveSentence = (text, targetWord, onWordClick) => {
   if (!text) return '';
-  
-  const parts = text.split(/(\s+|[.,\/#!$%\^&\*;:{}=\-_`~()?"'])/g).filter(Boolean);
+  const strText = typeof text === 'string' ? text : JSON.stringify(text);
+  const parts = strText.split(/(\s+|[.,\/#!$%\^&\*;:{}=\-_`~()?"'])/g).filter(Boolean);
   
   return parts.map((part, idx) => {
     if (/^\s+$/.test(part) || /^[.,\/#!$%\^&\*;:{}=\-_`~()?"']$/.test(part)) {
@@ -283,6 +286,13 @@ const AddWord = () => {
   const [activeSearchOverlays, setActiveSearchOverlays] = useState([false, false]);
   const [selectedPrimaryImageIdx, setSelectedPrimaryImageIdx] = useState(null);
   const [activeImageControlsIdx, setActiveImageControlsIdx] = useState(null);
+  const [isTutorialActive, setIsTutorialActive] = useState(() => {
+    try {
+      return localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
   const [tutorialStep, setTutorialStep] = useState(() => {
     try {
       const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
@@ -342,7 +352,9 @@ const AddWord = () => {
       setTutorialStep(e.detail.step);
     };
     const handleActiveChange = (e) => {
-      if (!e.detail) {
+      const nextActive = !!e.detail;
+      setIsTutorialActive(nextActive);
+      if (!nextActive) {
         setTutorialStep(null);
       } else {
         setTutorialStep(0);
@@ -374,7 +386,7 @@ const AddWord = () => {
     playClickSound();
     setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
     
-    const local = vocab.find(v => v.word.toLowerCase() === cleaned);
+    const local = vocab.find(v => v && v.word && v.word.toLowerCase() === cleaned);
     if (local) {
       let parsed = null;
       try {
@@ -696,7 +708,7 @@ const AddWord = () => {
       }, 300);
       return;
     }
-    const targetWord = richCardData?.word ? richCardData.word.trim().toLowerCase() : wordInput.trim().toLowerCase();
+    const targetWord = richCardData?.word ? String(richCardData.word).trim().toLowerCase() : String(wordInput).trim().toLowerCase();
     const selectedUrls = sceneImages.map(img => img?.url || null);
     const savedSceneImages = [...selectedUrls];
     
@@ -721,6 +733,7 @@ const AddWord = () => {
     };
     const res = await addWordToDeck(targetWord, updatedRichData);
     if (res.success) {
+      setIsExiting(true);
       setIsSuccess(true);
       window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
       setSourceToast({
@@ -834,7 +847,10 @@ const AddWord = () => {
     if (!newSceneImgs || newSceneImgs.length === 0) return;
     const mainImgUrl = newSceneImgs[0]?.url || null;
     const sceneImgsArray = newSceneImgs.map(img => img?.url || null);
-    const targetWord = wordInput.trim().toLowerCase();
+    const targetWord = richCardData?.word 
+      ? String(richCardData.word).trim().toLowerCase() 
+      : String(wordInput).trim().toLowerCase();
+    if (!targetWord) return;
     updateCardImages(targetWord, mainImgUrl, sceneImgsArray);
   };
 
@@ -984,8 +1000,6 @@ const AddWord = () => {
         handleScrollToCard(0);
       }, 350);
 
-      // Fetch real photos for scenes in background (non-blocking)
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
       if (isTutorialActive) {
         setSceneImages([
           {
@@ -998,7 +1012,7 @@ const AddWord = () => {
           }
         ]);
         setSceneImagesLoading(false);
-      } else if (!richCardData.validation?.isInvalid && richCardData.scenes?.length) {
+      } else if (richCardData && !richCardData.validation?.isInvalid && richCardData.scenes?.length) {
         setSceneImages([]);
         setSceneImagesLoading(true);
         Promise.all(
@@ -1072,8 +1086,8 @@ const AddWord = () => {
 
   const renderHighlightedText = (text, targetWord) => {
     if (!text) return '';
-    
-    const boldParts = text.split('**');
+    const strText = typeof text === 'string' ? text : JSON.stringify(text);
+    const boldParts = strText.split('**');
     return boldParts.map((part, idx) => {
       if (idx % 2 === 1) {
         return (
@@ -1160,7 +1174,7 @@ const AddWord = () => {
         return;
       }
       
-      const targetWord = richCardData.word ? richCardData.word.trim().toLowerCase() : wordInput.trim().toLowerCase();
+      const targetWord = richCardData.word ? String(richCardData.word).trim().toLowerCase() : String(wordInput).trim().toLowerCase();
       const selectedUrls = sceneImages.map(img => img?.url || null);
       const savedSceneImages = [...selectedUrls];
       
@@ -1290,10 +1304,6 @@ const AddWord = () => {
 
         setRichCardData(mockDetails);
         setIsSuccess(false);
-        setSourceToast({
-          message: `Translated via Offline Tutorial Mock API in 0.5s`,
-          type: 'live'
-        });
         
         setSceneImages([
           {
@@ -1318,13 +1328,15 @@ const AddWord = () => {
 
     // 1. Check if word already exists in deck (skip if Thai input since deck stores English)
     if (!isThaiInput) {
-      const existing = vocab.find(v => v.word.toLowerCase() === targetWord.toLowerCase());
+      const existing = vocab.find(v => v && v.word && v.word.toLowerCase() === targetWord.toLowerCase());
       if (existing) {
         let parsed = null;
         try {
-          parsed = typeof existing.meaning === 'string' && existing.meaning.startsWith('{')
-            ? JSON.parse(existing.meaning)
-            : null;
+          if (typeof existing.meaning === 'object' && existing.meaning !== null) {
+            parsed = existing.meaning;
+          } else if (typeof existing.meaning === 'string' && existing.meaning.startsWith('{')) {
+            parsed = JSON.parse(existing.meaning);
+          }
         } catch (err) {
           console.error(err);
         }
@@ -1332,10 +1344,7 @@ const AddWord = () => {
         if (parsed) {
           parsed.word = targetWord;
           setRichCardData(parsed);
-          setSourceToast({
-            message: `Loaded from Local Storage (Cached). Provider: ${parsed._provider || 'Gemini'}`,
-            type: 'cache'
-          });
+
         } else {
           setRichCardData({
             word: targetWord,
@@ -1399,27 +1408,26 @@ const AddWord = () => {
           setRichCardData(details);
           setIsSuccess(false);
           setIsAlreadyInDeck(false);
-          setSourceToast({
-            message: `Validated via ${details._provider || 'Gemini'} API in ${duration}s (Invalid Word / Typo Suggestion)`,
-            type: 'live'
-          });
+
         } else {
           // 3. Present swipe-to-save preview card (don't save automatically)
           const isThaiInput = /[\u0e00-\u0e7f]/.test(targetWord);
           if (isThaiInput) {
-            const translatedEnglishWord = (details.word || '').trim().toLowerCase();
+            const translatedEnglishWord = String(details.word || '').trim().toLowerCase();
             
             if (translatedEnglishWord) {
               // Since it's a Thai search input, check if this translated English word is already in the deck!
-              const existingEng = vocab.find(v => v.word.toLowerCase() === translatedEnglishWord);
+              const existingEng = vocab.find(v => v && v.word && v.word.toLowerCase() === translatedEnglishWord);
               if (existingEng) {
                 setIsAlreadyInDeck(true);
                 setExistingCard(existingEng);
                 let cached = null;
                 try {
-                  cached = typeof existingEng.meaning === 'string' && existingEng.meaning.startsWith('{')
-                    ? JSON.parse(existingEng.meaning)
-                    : null;
+                  if (typeof existingEng.meaning === 'object' && existingEng.meaning !== null) {
+                    cached = existingEng.meaning;
+                  } else if (typeof existingEng.meaning === 'string' && existingEng.meaning.startsWith('{')) {
+                    cached = JSON.parse(existingEng.meaning);
+                  }
                 } catch (err) {}
                 if (cached) {
                   cached.word = translatedEnglishWord;
@@ -1461,10 +1469,7 @@ const AddWord = () => {
           
           setRichCardData(details);
           setIsSuccess(false);
-          setSourceToast({
-            message: `Translated via ${details._provider || 'Gemini'} API in ${duration}s`,
-            type: 'live'
-          });
+
           window.dispatchEvent(new CustomEvent('tutorial-translated'));
         }
       } else {
@@ -1482,18 +1487,17 @@ const AddWord = () => {
     setWordInput(card.word.toLowerCase());
     let parsed = null;
     try {
-      parsed = typeof card.meaning === 'string' && card.meaning.startsWith('{')
-        ? JSON.parse(card.meaning)
-        : null;
+      if (typeof card.meaning === 'object' && card.meaning !== null) {
+        parsed = card.meaning;
+      } else if (typeof card.meaning === 'string' && card.meaning.startsWith('{')) {
+        parsed = JSON.parse(card.meaning);
+      }
     } catch (e) {}
 
     if (parsed) {
       parsed.word = card.word.toLowerCase();
       setRichCardData(parsed);
-      setSourceToast({
-        message: `Loaded from Local Storage (Recent Search). Provider: ${parsed._provider || 'Gemini'}`,
-        type: 'cache'
-      });
+
     } else {
       setRichCardData({
         word: card.word.toLowerCase(),
@@ -1561,6 +1565,41 @@ const AddWord = () => {
         overflow: 'hidden' 
       }}
     >
+      {richCardData && !isFilling && !isSuccess && !isExiting && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.85 }}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.94 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClear();
+          }}
+          className="glass-button animate-scale"
+          title="Close translation"
+          style={{
+            position: 'absolute',
+            top: '82px',
+            right: '24px',
+            width: '34px',
+            height: '34px',
+            borderRadius: '50%',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(15, 18, 24, 0.72)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: 'rgba(255, 255, 255, 0.78)',
+            boxShadow: '0 10px 24px rgba(0, 0, 0, 0.35)',
+            zIndex: 100004,
+            cursor: 'pointer'
+          }}
+        >
+          <X size={17} />
+        </motion.button>
+      )}
       {/* Fixed Swipe Feedback Overlay */}
       {!isSuccess && !isExiting && richCardData && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 100002 }}>
@@ -1816,6 +1855,7 @@ const AddWord = () => {
         <AnimatePresence>
           {isFilling && (
             <motion.div 
+              key="loading-pulsing"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -1883,12 +1923,14 @@ const AddWord = () => {
             richCardData.validation?.isInvalid ? (
               /* SUGGESTION CARD FOR TYPOS/GIBBERISH */
               <motion.div
+                key="invalid-card"
                 drag={isExiting ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragSnapToOrigin={true}
                 onDragEnd={handleTranslateDragEnd}
                 initial="offscreen"
                 whileInView="onscreen"
+                exit="offscreen"
                 viewport={{ once: false, amount: 0.15, margin: "-22% 0px -22% 0px" }}
                 variants={focusVariants}
                 className="snap-card glass-panel"
@@ -1935,7 +1977,7 @@ const AddWord = () => {
                   }}>
                     {/* Suggested word title */}
                     <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--text-primary)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '0.5rem' }}>
-                      {richCardData.validation.suggestion}
+                      {String(richCardData.validation.suggestion || '')}
                     </div>
 
                     {/* Quick Thai Translation */}
@@ -1967,7 +2009,7 @@ const AddWord = () => {
                 {richCardData.validation.suggestion && (
                   <button
                     onClick={() => {
-                      const sugg = richCardData.validation.suggestion.toLowerCase();
+                      const sugg = String(richCardData.validation.suggestion || '').toLowerCase();
                       setWordInput(sugg);
                       performTranslation(sugg, true);
                     }}
@@ -1982,12 +2024,14 @@ const AddWord = () => {
                     }}
                   >
                     <Sparkles size={14} />
-                    <span>Translate "{richCardData.validation.suggestion.toLowerCase()}"</span>
+                    <span>Translate "{String(richCardData.validation.suggestion || '').toLowerCase()}"</span>
                   </button>
                 )}
               </motion.div>
             ) : (
               <motion.div 
+                key="valid-card-wrapper"
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
                 drag={(isSuccess || isExiting || tutorialStep === 2 || tutorialStep === 3) ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragSnapToOrigin={true}
@@ -2084,23 +2128,6 @@ const AddWord = () => {
                         </h2>
                         <span className="badge-neon" style={{ fontSize: '0.65rem' }}>{richCardData.pos || 'n.'}</span>
                         <span className="badge-cyan" style={{ fontSize: '0.65rem' }}>{richCardData.cefrLevel || 'C1'}</span>
-                        {richCardData._provider && (
-                          <span 
-                            style={{ 
-                              fontSize: '0.55rem', 
-                              background: richCardData._provider.includes('Groq') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(167, 139, 250, 0.1)', 
-                              border: `1px solid ${richCardData._provider.includes('Groq') ? 'rgba(239, 68, 68, 0.25)' : 'rgba(167, 139, 250, 0.25)'}`,
-                              color: richCardData._provider.includes('Groq') ? '#ef4444' : '#a78bfa',
-                              padding: '0.15rem 0.45rem',
-                              borderRadius: '6px',
-                              fontWeight: 800,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em'
-                            }}
-                          >
-                            {richCardData._provider}
-                          </span>
-                        )}
                       </div>
 
                       <button 
@@ -2127,7 +2154,7 @@ const AddWord = () => {
                     <div style={{ marginTop: '0.8rem' }}>
                       <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', letterSpacing: '0.5px', marginBottom: '0.15rem' }}>English Definition</span>
                       <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.95)', lineHeight: 1.4 }}>
-                        {renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
+                        {renderInteractiveSentence(String(richCardData.englishExplanation?.definition || ''), null, handleWordClick)}
                       </p>
                     </div>
                   </div>
@@ -2140,14 +2167,14 @@ const AddWord = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.4rem' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
-                            {renderInteractiveSentence(richCardData.englishExplanation.phrase, null, handleWordClick)}
+                            {renderInteractiveSentence(String(richCardData.englishExplanation.phrase || ''), null, handleWordClick)}
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.25rem' }}>
-                            {renderInteractiveSentence(richCardData.englishExplanation.phraseMeaning, null, handleWordClick)}
+                            {renderInteractiveSentence(String(richCardData.englishExplanation.phraseMeaning || ''), null, handleWordClick)}
                           </div>
                         </div>
                         <button 
-                          onClick={() => handleSpeak(richCardData.englishExplanation.phrase)}
+                          onClick={() => handleSpeak(String(richCardData.englishExplanation.phrase || ''))}
                           className="glass-button animate-scale"
                           style={{ 
                             width: '28px', 
@@ -2194,7 +2221,7 @@ const AddWord = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                      {richCardData.scenes.map((scene, idx) => {
+                      {richCardData.scenes?.map((scene, idx) => {
                         const imgData = sceneImages[idx];
                         const isLoading = sceneImagesLoading && !imgData;
                         const isRegenerating = imgData?.loading;
@@ -2265,7 +2292,7 @@ const AddWord = () => {
                               {imgData?.url && !isLoading && (
                                 <img
                                   src={imgData.url}
-                                  alt={scene.title}
+                                  alt={String(scene.title || '')}
                                   draggable="false"
                                   onDragStart={(e) => e.preventDefault()}
                                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', userSelect: 'none', pointerEvents: 'none' }}
@@ -2394,7 +2421,7 @@ const AddWord = () => {
                                   alignItems: 'flex-end',
                                   zIndex: 2
                                 }}>
-                                  <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>{scene.title}</span>
+                                  <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>{String(scene.title || '')}</span>
                                   <span style={{
                                     fontSize: '0.48rem',
                                     color: badgeColor,
@@ -2405,7 +2432,7 @@ const AddWord = () => {
                                     fontWeight: 800,
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em'
-                                  }}>{imgData.source}</span>
+                                  }}>{String(imgData.source || '')}</span>
                                 </div>
                               )}
 
@@ -2581,7 +2608,7 @@ const AddWord = () => {
                     <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', letterSpacing: '0.5px' }}>Contextual Scenarios</span>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {richCardData.scenes.map((scene, idx) => (
+                      {richCardData.scenes?.map((scene, idx) => (
                         <div 
                           key={idx}
                           style={{ 
@@ -2595,16 +2622,16 @@ const AddWord = () => {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 800 }}>
-                            <span>{(scene.title || '').replace(/\p{Extended_Pictographic}/gu, '').trim()}</span>
+                            <span>{String(scene.title || '').replace(/\p{Extended_Pictographic}/gu, '').trim()}</span>
                           </div>
-                          <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{scene.situation}</p>
+                          <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{String(scene.situation || '')}</p>
                           
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.2rem' }}>
                             <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: '#e2e8f0', fontStyle: 'italic', flex: 1 }}>
-                              {renderInteractiveSentence(scene.dialogue, wordInput, handleWordClick)}
+                              {renderInteractiveSentence(String(scene.dialogue || ''), String(wordInput || ''), handleWordClick)}
                             </p>
                             <button 
-                              onClick={() => handleSpeak(scene.dialogue)}
+                              onClick={() => handleSpeak(String(scene.dialogue || ''))}
                               className="glass-button animate-scale"
                               style={{ 
                                 width: '24px', 
@@ -2625,7 +2652,7 @@ const AddWord = () => {
                           </div>
                           <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)' }}>
                             <strong>Meaning:</strong>{' '}
-                            {renderHighlightedThaiText(scene.meaning, scene.thaiWordUsed || richCardData?.thaiTranslation?.word)}
+                            {renderHighlightedThaiText(String(scene.meaning || ''), String(scene.thaiWordUsed || richCardData?.thaiTranslation?.word || ''))}
                           </p>
                         </div>
                       ))}
@@ -2656,12 +2683,12 @@ const AddWord = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.4rem' }}>
                         <div style={{ color: 'white', display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
                           <strong style={{ color: 'var(--text-secondary)', fontSize: '0.65rem', textTransform: 'uppercase', minWidth: '45px' }}>คำแปล:</strong>
-                          <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{richCardData.thaiTranslation.word}</span>
+                          <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{String(richCardData.thaiTranslation.word || '')}</span>
                         </div>
                         {richCardData.thaiTranslation.phrase && (
                           <div style={{ color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
                             <strong style={{ color: 'var(--text-secondary)', fontSize: '0.65rem', textTransform: 'uppercase', minWidth: '45px' }}>วลีไทย:</strong>
-                            <span style={{ fontWeight: 600 }}>{richCardData.thaiTranslation.phrase}</span>
+                            <span style={{ fontWeight: 600 }}>{String(richCardData.thaiTranslation.phrase || '')}</span>
                           </div>
                         )}
                       </div>
@@ -2686,7 +2713,7 @@ const AddWord = () => {
                     if (richCardData && 'verbForms' in richCardData) {
                       verbForms = richCardData.verbForms;
                     } else {
-                      verbForms = getVerbForms(richCardData.word, richCardData.pos);
+                      verbForms = getVerbForms(String(richCardData.word || ''), String(richCardData.pos || ''));
                     }
                     if (!verbForms || !Array.isArray(verbForms) || verbForms.length < 3) return null;
                     const [v1, v2, v3] = verbForms;
@@ -2909,13 +2936,13 @@ const AddWord = () => {
               </div>
 
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.3rem', fontWeight: 950, color: 'white', letterSpacing: '-0.5px' }}>
-                {guestNudge === 'soft' ? 'เก่งมากจ้า! ท่องได้ 10 คำแล้ว 🥳' : 'สุดยอดเลย! สะสมครบ 20 คำแล้ว 🔥'}
+                {guestNudge === 'soft' ? 'Nice work! You saved 10 words' : 'Great job! You saved 20 words'}
               </h3>
 
               <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                 {guestNudge === 'soft' 
-                  ? 'คุณกำลังเรียนรู้ได้ดีมากในโหมดทดลอง! สมัครสมาชิกง่ายๆ เพื่อเซฟคำศัพท์และประวัติการท่องไม่ให้หายไปไหน'
-                  : 'คลังคำศัพท์ของคุณเริ่มโตแล้วนะ! ป้องกันข้อมูลสูญหายจากการเคลียร์แคช สมัครสมาชิกเพียง 1 คลิกเพื่อสำรองข้อมูลขึ้นระบบคลาวด์ถาวร'}
+                  ? 'You are doing great. Create a free account to keep your words and study progress safe.'
+                  : 'Your word list is growing. Sign up to back it up and keep it safe on every device.'}
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
@@ -2938,7 +2965,7 @@ const AddWord = () => {
                     boxShadow: '0 8px 25px rgba(167, 139, 250, 0.3)'
                   }}
                 >
-                  สมัครสมาชิกเพื่อเซฟข้อมูล 🚀
+                  Create free account
                 </button>
 
                 <button
@@ -2956,7 +2983,7 @@ const AddWord = () => {
                     outline: 'none'
                   }}
                 >
-                  {guestNudge === 'soft' ? 'ไว้ทีหลัง (ท่องคำต่อไป)' : 'ยังก่อน (ฉันยอมรับความเสี่ยง)'}
+                  {guestNudge === 'soft' ? 'Later, keep studying' : 'Not now, I understand'}
                 </button>
               </div>
             </motion.div>
@@ -3113,3 +3140,4 @@ const AddWord = () => {
 };
 
 export default AddWord;
+

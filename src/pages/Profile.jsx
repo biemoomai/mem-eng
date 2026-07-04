@@ -464,7 +464,20 @@ const Profile = () => {
     
     if (searchQuery.trim().length > 0) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(w => w && ((w.word && w.word.toLowerCase().includes(q)) || (w.meaning && w.meaning.toLowerCase().includes(q))));
+      list = list.filter(w => {
+        if (!w) return false;
+        const wordMatch = w.word && w.word.toLowerCase().includes(q);
+        
+        let meaningStr = '';
+        if (typeof w.meaning === 'string') {
+          meaningStr = w.meaning;
+        } else if (typeof w.meaning === 'object' && w.meaning !== null) {
+          meaningStr = w.meaning.englishExplanation?.definition || w.meaning.thaiTranslation?.word || '';
+        }
+        const meaningMatch = meaningStr && meaningStr.toLowerCase().includes(q);
+        
+        return wordMatch || meaningMatch;
+      });
     }
     
     if (activeCategory !== 'All Categories') {
@@ -1123,7 +1136,9 @@ const Profile = () => {
                   ? '0 25px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 -1px 0 rgba(0, 0, 0, 0.4)'
                   : '0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.3)',
                 borderRadius: '24px',
-                padding: '1.25rem 2.5rem',
+                padding: '1.5rem 2rem',
+                width: '240px',
+                boxSizing: 'border-box',
                 cursor: 'pointer',
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 backdropFilter: 'blur(35px)',
@@ -1672,13 +1687,13 @@ const Profile = () => {
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setSelectedLevel(null)}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, backdropFilter: 'blur(8px)' }}
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, backdropFilter: 'blur(8px)' }}
             />
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0, height: '90%',
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: '90%',
                 background: `radial-gradient(circle at 50% 0%, ${getModalColor()}12 0%, #08090b 100%)`,
                 borderTop: `2px solid ${getModalColor()}`,
                 boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.6), 0 0 40px ${getModalColor()}20, inset 0 0 0 1px ${getModalColor()}30`,
@@ -1691,13 +1706,13 @@ const Profile = () => {
 
               {/* Modal Header */}
               <div style={{ padding: '0 1.5rem 1.0rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div>
-                  <h2 style={{ margin: '0 0 0.2rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white', fontSize: '1.4rem', fontWeight: 900 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ margin: '0 0 0.2rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ffffff', fontSize: '1.4rem', fontWeight: 900 }}>
                      <span style={{ color: getModalColor() }}>{selectedLevel}</span> Library
                   </h2>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Viewing {modalList.length} words</p>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>Viewing {modalList.length} words</p>
                 </div>
-                <button onClick={() => setSelectedLevel(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <button onClick={() => setSelectedLevel(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
                   <X size={24} />
                 </button>
               </div>
@@ -1705,7 +1720,7 @@ const Profile = () => {
               {/* Search Bar */}
               <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ position: 'relative' }}>
-                  <Search size={16} color="var(--text-secondary)" style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)' }} />
+                  <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)' }} />
                   <input 
                     type="text" 
                     placeholder="Search dictionary..."
@@ -1714,7 +1729,7 @@ const Profile = () => {
                     style={{
                       width: '100%', padding: '0.8rem 2rem 0.8rem 2.2rem', borderRadius: '12px',
                       background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'white', fontSize: '0.9rem', outline: 'none',
+                      color: '#ffffff', fontSize: '0.9rem', outline: 'none',
                       transition: 'border-color 0.2s, box-shadow 0.2s'
                     }}
                     onFocus={(e) => {
@@ -1727,7 +1742,7 @@ const Profile = () => {
                     }}
                   />
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}>
+                    <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#94a3b8' }}>
                       <X size={14} />
                     </button>
                   )}
@@ -1737,64 +1752,52 @@ const Profile = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '1rem', padding: '0 1.5rem 1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', width: '100%' }}>
                     {/* Category Filter */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Category:</span>
-                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', overflow: 'hidden' }}>
-                        <AnimatePresence mode="wait">
-                          {!isCatExpanded ? (
-                            <motion.button
-                              key="collapsed-cat"
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              onClick={() => setIsCatExpanded(true)}
-                              className="glass-button"
-                              style={{ 
-                                padding: '0.25rem 0.65rem', borderRadius: '16px', fontSize: '0.75rem',
-                                background: getModalColor() + '15',
-                                color: getModalColor(),
-                                borderColor: getModalColor() + '40',
-                                cursor: 'pointer',
-                                fontWeight: 800,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '3px'
-                              }}
-                            >
-                              <span>{activeCategory}</span>
-                              <ChevronDown size={11} />
-                            </motion.button>
-                          ) : (
-                            <motion.div
-                              key="expanded-cat"
-                              initial={{ opacity: 0, x: -10, width: 0 }}
-                              animate={{ opacity: 1, x: 0, width: 'auto' }}
-                              exit={{ opacity: 0, x: -10, width: 0 }}
-                              style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                            >
-                              {categories.map(cat => (
-                                <button 
-                                  key={cat}
-                                  onClick={() => {
-                                    setActiveCategory(cat);
-                                    setIsCatExpanded(false);
-                                  }}
-                                  className="glass-button"
-                                  style={{ 
-                                    padding: '0.25rem 0.65rem', borderRadius: '16px', fontSize: '0.75rem', whiteSpace: 'nowrap',
-                                    background: activeCategory === cat ? getModalColor() : 'rgba(255,255,255,0.03)',
-                                    color: activeCategory === cat ? '#08090b' : 'var(--text-secondary)',
-                                    borderColor: activeCategory === cat ? 'transparent' : 'rgba(255,255,255,0.1)',
-                                    cursor: 'pointer',
-                                    fontWeight: 800
-                                  }}
-                                >
-                                  {cat}
-                                </button>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Category:</span>
+                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        {!isCatExpanded ? (
+                          <button
+                            onClick={() => setIsCatExpanded(true)}
+                            className="glass-button"
+                            style={{ 
+                              padding: '0.25rem 0.65rem', borderRadius: '16px', fontSize: '0.75rem',
+                              background: getModalColor() + '15',
+                              color: getModalColor(),
+                              borderColor: getModalColor() + '40',
+                              cursor: 'pointer',
+                              fontWeight: 800,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}
+                          >
+                            <span>{activeCategory}</span>
+                            <ChevronDown size={11} />
+                          </button>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {categories.map(cat => (
+                              <button 
+                                key={cat}
+                                onClick={() => {
+                                  setActiveCategory(cat);
+                                  setIsCatExpanded(false);
+                                }}
+                                className="glass-button"
+                                style={{ 
+                                  padding: '0.25rem 0.65rem', borderRadius: '16px', fontSize: '0.75rem', whiteSpace: 'nowrap',
+                                  background: activeCategory === cat ? getModalColor() : 'rgba(255,255,255,0.03)',
+                                  color: activeCategory === cat ? '#08090b' : '#94a3b8',
+                                  borderColor: activeCategory === cat ? 'transparent' : 'rgba(255,255,255,0.1)',
+                                  cursor: 'pointer',
+                                  fontWeight: 800
+                                }}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1802,28 +1805,23 @@ const Profile = () => {
                     <button 
                       onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                       style={{ 
-                        background: 'transparent', border: 'none', color: 'var(--accent-color)', 
+                        background: 'transparent', border: 'none', color: '#94a3b8', 
                         display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer',
                         marginLeft: 'auto'
                       }}
                     >
-                      {sortOrder === 'asc' ? <ArrowUpZA size={16} /> : <ArrowDownAZ size={16} />}
+                      {sortOrder === 'asc' ? <ArrowUpZA size={16} color="#94a3b8" /> : <ArrowDownAZ size={16} color="#94a3b8" />}
                       {sortOrder === 'asc' ? 'Z-A' : 'A-Z'}
                     </button>
                   </div>
 
                   {/* POS Filter */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>POS:</span>
-                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', overflow: 'hidden' }}>
-                      <AnimatePresence mode="wait">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>POS:</span>
+                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                         {!isPosExpanded ? (
-                          <motion.button
-                            key="collapsed-pos"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
+                          <button
                             onClick={() => setIsPosExpanded(true)}
                             className="glass-button"
                             style={{ 
@@ -1840,15 +1838,9 @@ const Profile = () => {
                           >
                             <span>{activePos}</span>
                             <ChevronDown size={11} />
-                          </motion.button>
+                          </button>
                         ) : (
-                          <motion.div
-                            key="expanded-pos"
-                            initial={{ opacity: 0, x: -10, width: 0 }}
-                            animate={{ opacity: 1, x: 0, width: 'auto' }}
-                            exit={{ opacity: 0, x: -10, width: 0 }}
-                            style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                          >
+                          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             {posTypes.map(pos => (
                               <button 
                                 key={pos}
@@ -1860,7 +1852,7 @@ const Profile = () => {
                                 style={{ 
                                   padding: '0.25rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem', whiteSpace: 'nowrap',
                                   background: activePos === pos ? getModalColor() : 'rgba(255,255,255,0.03)',
-                                  color: activePos === pos ? '#08090b' : 'var(--text-secondary)',
+                                  color: activePos === pos ? '#08090b' : '#94a3b8',
                                   borderColor: activePos === pos ? 'transparent' : 'rgba(255,255,255,0.1)',
                                   cursor: 'pointer',
                                   fontWeight: 800
@@ -1869,14 +1861,13 @@ const Profile = () => {
                                 {pos}
                               </button>
                             ))}
-                          </motion.div>
+                          </div>
                         )}
-                      </AnimatePresence>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
               <div 
                 className="scrollable-content"
@@ -1911,7 +1902,7 @@ const Profile = () => {
                         borderTopColor: getModalColor(), 
                         animation: 'spin 0.8s linear infinite' 
                       }} />
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      <div style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600 }}>
                         Loading vocabulary library...
                       </div>
                     </div>
@@ -1923,7 +1914,7 @@ const Profile = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: '3.5rem 1.5rem',
-                        color: 'var(--text-secondary)',
+                        color: '#94a3b8',
                         textAlign: 'center',
                         background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.0) 100%)',
                         border: '1.5px dashed rgba(255, 255, 255, 0.07)',
@@ -1949,7 +1940,7 @@ const Profile = () => {
                       <h4 style={{ margin: '0 0 0.25rem 0', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, fontSize: '0.9rem', letterSpacing: '-0.3px' }}>
                         No Words Found
                       </h4>
-                      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-secondary)', maxWidth: '240px', lineHeight: 1.5 }}>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', maxWidth: '240px', lineHeight: 1.5 }}>
                         There are no words matching your filters in this stage. Try changing POS or adding some new words to deck!
                       </p>
                     </div>
@@ -1958,11 +1949,8 @@ const Profile = () => {
                       if (item.isWaiting) {
                         const isCurrentlyAdding = addingWordId === item.word;
                         return (
-                          <motion.div 
+                          <div 
                             key={item.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
                             style={{ width: '100%' }}
                           >
                             <div 
@@ -1989,14 +1977,14 @@ const Profile = () => {
                                   <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'rgba(255,255,255,0.7)', fontWeight: 800 }}>
                                     {item.word}
                                   </h3>
-                                  <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', padding: '0.08rem 0.35rem', borderRadius: '4px' }}>
+                                  <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', padding: '0.08rem 0.35rem', borderRadius: '4px' }}>
                                     {item.pos}
                                   </span>
                                   <span style={{ fontSize: '0.55rem', background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: '1px solid rgba(249, 115, 22, 0.2)', padding: '0.05rem 0.25rem', borderRadius: '4px', fontWeight: 800, textTransform: 'uppercase' }}>
                                     {item.srsLevel}
                                   </span>
                                 </div>
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
                                   Click '+' to import and learn this word
                                 </div>
                               </div>
@@ -2075,7 +2063,7 @@ const Profile = () => {
                                 </button>
                               </div>
                             </div>
-                          </motion.div>
+                          </div>
                         );
                       }
 
@@ -2126,11 +2114,8 @@ const Profile = () => {
                       const srsColor = getWordSrsColor(item.srsLevel);
 
                       return (
-                        <motion.div 
+                        <div 
                           key={item.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
                           style={{ width: '100%' }}
                         >
                           <div className="flip-card-container" style={{ height: 'auto', flexShrink: 0, transition: 'height 0.6s cubic-bezier(0.4, 0, 0.2, 1)', marginBottom: '1rem' }}>
@@ -2165,9 +2150,9 @@ const Profile = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                      <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+                                      <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
                                         {item.word}
-                                        <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{item.pos}</span>
+                                        <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: '#94a3b8', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{item.pos}</span>
                                       </h3>
                                       
                                       {/* Action Buttons */}
@@ -2295,7 +2280,7 @@ const Profile = () => {
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                                       {/* Definition */}
-                                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.4' }}>
                                         {definition}
                                       </p>
 
@@ -2345,9 +2330,9 @@ const Profile = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                      <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+                                      <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
                                         {item.word}
-                                        <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{item.pos}</span>
+                                        <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: '#94a3b8', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{item.pos}</span>
                                       </h3>
                                       
                                       {/* Action Buttons */}
@@ -2490,7 +2475,7 @@ const Profile = () => {
 
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       );
                     })
                   )}

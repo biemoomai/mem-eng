@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Sparkles, Loader2, ArrowRight, Activity, CheckSquare, Search, Trash2, RotateCw, Bookmark, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Info } from 'lucide-react';
+import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Sparkles, Loader2, ArrowRight, Activity, CheckSquare, Search, Trash2, RotateCw, Bookmark, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Info, Plus } from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -632,8 +632,8 @@ const getNextReviewText = (nextReviewDate) => {
 
 const renderHighlightedText = (text, targetWord) => {
   if (!text) return '';
-  
-  const boldParts = text.split('**');
+  const strText = typeof text === 'string' ? text : JSON.stringify(text);
+  const boldParts = strText.split('**');
   return boldParts.map((part, idx) => {
     if (idx % 2 === 1) {
       return (
@@ -667,8 +667,8 @@ const renderHighlightedText = (text, targetWord) => {
 
 const renderInteractiveSentence = (text, targetWord, onWordClick) => {
   if (!text) return '';
-  
-  const parts = text.split(/(\s+|[.,\/#!$%\^&\*;:{}=\-_`~()?"'])/g).filter(Boolean);
+  const strText = typeof text === 'string' ? text : JSON.stringify(text);
+  const parts = strText.split(/(\s+|[.,\/#!$%\^&\*;:{}=\-_`~()?"'])/g).filter(Boolean);
   
   return parts.map((part, idx) => {
     if (/^\s+$/.test(part) || /^[.,\/#!$%\^&\*;:{}=\-_`~()?"']$/.test(part)) {
@@ -726,22 +726,28 @@ const renderInteractiveSentence = (text, targetWord, onWordClick) => {
 
 const maskWord = (text, word) => {
   if (!text || !word) return '';
-  const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const strText = typeof text === 'string' ? text : JSON.stringify(text);
+  const strWord = typeof word === 'string' ? word : JSON.stringify(word);
+  const escaped = strWord.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
   const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
-  return text.replace(regex, '[_____]');
+  return strText.replace(regex, '[_____]');
 };
 
 const renderHighlightedThaiText = (thaiSentence, thaiWord) => {
   if (!thaiSentence) return '';
   if (!thaiWord) return thaiSentence;
-  const words = thaiWord
+  
+  const strThaiSentence = typeof thaiSentence === 'string' ? thaiSentence : JSON.stringify(thaiSentence);
+  const strThaiWord = typeof thaiWord === 'string' ? thaiWord : JSON.stringify(thaiWord);
+
+  const words = strThaiWord
     .split(/[,/|]|\s*หรือ\s*/)
     .map(w => w.trim())
     .filter(Boolean);
-  if (words.length === 0) return thaiSentence;
+  if (words.length === 0) return strThaiSentence;
   words.sort((a, b) => b.length - a.length);
   const escaped = words.map(w => w.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
-  const parts = thaiSentence.split(new RegExp(`(${escaped})`, 'g'));
+  const parts = strThaiSentence.split(new RegExp(`(${escaped})`, 'g'));
   return parts.map((part, idx) => {
     const isMatch = words.some(w => w === part);
     return isMatch ? (
@@ -791,7 +797,7 @@ const ReviewOptionButton = ({ onClick, disabled, label, color, icon: Icon, isLoa
     newWords: '1px solid #7c3aed'
   };
 
-  const stageId = id || (label === '+10' ? 'newWords' : label);
+  const stageId = id || (label === '+5' ? 'newWords' : label);
 
   if (hovered && !disabled) {
     bg = hoverGradients[stageId] || `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`;
@@ -851,7 +857,7 @@ const Purge = () => {
       if (activeCurriculum === 'Self-Study only') {
         return !item.curriculum || item.curriculum === 'Self-Study only';
       }
-      return item.curriculum === activeCurriculum || (item.word && curriculumWords.has(item.word.toLowerCase().trim()));
+      return item.curriculum === activeCurriculum || (item.word && curriculumWords && curriculumWords.has(item.word.toLowerCase().trim()));
     });
   }, [rawVocab, activeCurriculum, curriculumWords]);
   const { theme } = useTheme();
@@ -902,6 +908,8 @@ const Purge = () => {
   const pressTimerRef = useRef(null);
   const isLongPressRef = useRef(false);
   const touchActiveRef = useRef(false);
+  const masterPressTimerRef = useRef(null);
+  const masterLongPressTriggeredRef = useRef(false);
 
   const startPress = (e, isTouch) => {
     e.stopPropagation();
@@ -962,6 +970,42 @@ const Purge = () => {
       pressTimerRef.current = null;
     }
   };
+
+  const clearMasterPress = () => {
+    if (masterPressTimerRef.current) {
+      clearTimeout(masterPressTimerRef.current);
+      masterPressTimerRef.current = null;
+    }
+  };
+
+  const startMasterPress = (event) => {
+    const target = event.target;
+    if (
+      !wordObj ||
+      revealStep < 2 ||
+      tutorialStep === 10 ||
+      (target && (target.closest('button') || target.closest('a') || target.closest('svg') || target.closest('[role="button"]')))
+    ) {
+      return;
+    }
+
+    clearMasterPress();
+    masterLongPressTriggeredRef.current = false;
+    masterPressTimerRef.current = setTimeout(() => {
+      masterLongPressTriggeredRef.current = true;
+      playSuccessSound();
+      if (navigator.vibrate) {
+        try {
+          navigator.vibrate([40, 40, 80]);
+        } catch (err) {}
+      }
+      handleSrsChoice('master');
+    }, 2500);
+  };
+
+  useEffect(() => {
+    return () => clearMasterPress();
+  }, []);
 
   const highlightThaiTranslation = (sentence, translation) => {
     if (!sentence) return '';
@@ -1217,7 +1261,7 @@ const Purge = () => {
     };
 
     try {
-      const res = await addNewCurriculumWords(activeCurriculum, 10, onWordAdded);
+      const res = await addNewCurriculumWords(activeCurriculum, 5, onWordAdded);
       apiResult = res;
       apiCompleted = true;
       actualLoadedCount = res.success ? (res.addedWords?.length || 0) : 0;
@@ -1241,7 +1285,7 @@ const Purge = () => {
 
     setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
     
-    const local = vocab.find(v => v.word.toLowerCase() === cleaned);
+    const local = vocab.find(v => v && v.word && v.word.toLowerCase() === cleaned);
     if (local) {
       let parsed = null;
       try {
@@ -1266,7 +1310,7 @@ const Purge = () => {
           detailsObj = {
             definition: details.englishExplanation?.definition || details.definition || 'No definition available',
             translation: details.thaiTranslation?.word || details.translation || 'ไม่มีคำแปล',
-            pos: details.pos || parsed?.pos || 'n.',
+            pos: details.pos || 'n.',
             alreadyInDeck: false,
             rawDetails: details
           };
@@ -1351,7 +1395,7 @@ const Purge = () => {
   };
 
   const handleAddInterestingWords = async () => {
-    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
     for (const w of unadded) {
       if (selectedInterestingWords[w.word] !== false) {
@@ -1372,7 +1416,7 @@ const Purge = () => {
     setShowCollectionChoice(false);
     
     const colWords = COLLECTIONS_DATA[colName] || [];
-    const unadded = colWords.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = colWords.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     
     if (unadded.length > 0) {
       const defaultSelected = {};
@@ -1389,7 +1433,7 @@ const Purge = () => {
   const handleAddCollectionWords = async () => {
     if (!selectedCollection) return;
     const colWords = COLLECTIONS_DATA[selectedCollection] || [];
-    const unadded = colWords.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = colWords.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
     for (const w of unadded) {
       if (selectedCollectionWords[w.word] !== false) {
@@ -1722,7 +1766,7 @@ const Purge = () => {
 
     if (lastSeenDate !== todayStr) {
       const unadded = TODAY_INTERESTING_WORDS.filter(
-        w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase())
+        w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase())
       );
       if (unadded.length > 0) {
         const defaultSelected = {};
@@ -1855,7 +1899,7 @@ const Purge = () => {
           {activeCurriculum !== 'Self-Study only' && (
             <ReviewOptionButton
               id="newWords"
-              label="+10"
+              label="+5"
               color="#a78bfa"
               disabled={isLoadingNewWords}
               isLoading={isLoadingNewWords}
@@ -2850,7 +2894,7 @@ const Purge = () => {
   };
 
   const renderInterestingWordsModal = () => {
-    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     
     return (
       <>
@@ -3190,7 +3234,7 @@ const Purge = () => {
   const renderCollectionImportModal = () => {
     if (!selectedCollection) return null;
     const colWords = COLLECTIONS_DATA[selectedCollection] || [];
-    const unadded = colWords.filter(w => !vocab.some(v => v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = colWords.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
 
     return (
       <>
@@ -4056,35 +4100,6 @@ const Purge = () => {
                     </div>
                   )}
 
-                  <motion.button
-                      whileHover={!isLoadingNewWords ? { scale: 1.05 } : {}}
-                      whileTap={!isLoadingNewWords ? { scale: 0.95 } : {}}
-                      disabled={isLoadingNewWords}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartWithNewWords();
-                      }}
-                      style={{
-                        marginTop: '0.75rem',
-                        background: 'transparent',
-                        border: '1px dashed rgba(255, 255, 255, 0.25)',
-                        borderRadius: '16px',
-                        padding: '0.45rem 1rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        cursor: isLoadingNewWords ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        transition: 'all 0.2s',
-                        zIndex: 10,
-                        opacity: isLoadingNewWords ? 0.5 : 1
-                      }}
-                    >
-                      <Plus size={12} />
-                      Get 5 more words
-                    </motion.button>
                 </motion.div>
               ) : (
                 <motion.div
@@ -4125,53 +4140,43 @@ const Purge = () => {
                     ) : (
                       <CheckCircle size={36} color={theme === 'theme-3' ? '#000000' : '#f97316'} style={{ filter: theme === 'theme-3' ? 'none' : 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.35))' }} />
                     )}
+                    {!isLoadingNewWords && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.75, y: 4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        whileHover={{ scale: 1.08 }}
+                        style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          right: '-92px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '6px 11px',
+                          minWidth: '92px',
+                          justifyContent: 'center',
+                          borderRadius: '999px',
+                          background: '#f97316',
+                          color: '#0b0b0f',
+                          fontSize: '0.68rem',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 950,
+                          boxShadow: '0 8px 22px rgba(249, 115, 22, 0.35)',
+                          border: '1px solid rgba(255, 255, 255, 0.28)',
+                          pointerEvents: 'none'
+                        }}
+                      >
+                        <span>Tap + 5 Word</span>
+                      </motion.div>
+                    )}
                   </motion.div>
 
                   <h2 style={{ color: theme === 'theme-3' ? '#000000' : 'white', marginBottom: '0.2rem', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px' }}>All caught up!</h2>
                   <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontSize: '0.85rem' }}>You've reviewed all cards for today.</p>
-                  <p style={{ fontSize: '0.68rem', color: '#f97316', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }}>
-                      Tap check mark to load new words
-                    </p>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {isCustomSession && (
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
-                  setSessionQueue(due);
-                  setIsCustomSession(false);
-                  setIsStudying(false);
-                  try {
-                    localStorage.removeItem('memeng_is_studying');
-                  } catch (err) {}
-                }}
-                className="glass-button animate-scale"
-                style={{
-                  marginTop: '1rem',
-                  marginBottom: '1rem',
-                  padding: '0.6rem 2rem',
-                  fontSize: '0.82rem',
-                  borderRadius: '20px',
-                  background: 'rgba(239, 68, 68, 0.05)',
-                  border: '1px solid rgba(239, 68, 68, 0.15)',
-                  color: '#ef4444',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  zIndex: 30
-                }}
-              >
-                <RotateCcw size={13} />
-                <span>กลับไป Flashcard ปกติ</span>
-              </motion.button>
-            )}
 
             {!showStats && (
               <motion.div 
@@ -4649,7 +4654,11 @@ const Purge = () => {
           dragSnapToOrigin={true}
           dragElastic={0.7}
           dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
-          onDragStart={() => startDragSound()}
+          onPointerDown={startMasterPress}
+          onPointerUp={clearMasterPress}
+          onPointerCancel={clearMasterPress}
+          onPointerLeave={clearMasterPress}
+          onDragStart={() => { clearMasterPress(); startDragSound(); }}
           onDrag={(event, info) => {
             const distance = Math.sqrt(info.offset.x * info.offset.x + info.offset.y * info.offset.y);
             updateDragSound(distance);
@@ -5433,3 +5442,6 @@ const Purge = () => {
 };
 
 export default Purge;
+
+
+

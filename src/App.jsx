@@ -10,6 +10,8 @@ import AddWord from './pages/AddWord';
 import Purge from './pages/Purge';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import { playClickSound, playSwipeSound } from './utils/soundHelper';
 import { Tutorial } from './components/Tutorial';
 import NongMem from './components/NongMem';
@@ -153,6 +155,14 @@ function AppContent() {
   const [lowGraphics, setLowGraphics] = useState(() => {
     try {
       const val = localStorage.getItem('memeng_low_graphics');
+      return val !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+  const [dueReminders, setDueReminders] = useState(() => {
+    try {
+      const val = localStorage.getItem('memeng_due_reminders');
       return val !== 'false';
     } catch (e) {
       return true;
@@ -380,7 +390,8 @@ function AppContent() {
   // Redirect to login if user is not authenticated and auth loading is done
   useEffect(() => {
     if (loading) return;
-    if (!user && location.pathname !== '/login') {
+    const publicRoutes = ['/login', '/privacy', '/terms'];
+    if (!user && !publicRoutes.includes(location.pathname)) {
       navigate('/login');
     }
   }, [user, loading, location.pathname, navigate]);
@@ -600,13 +611,15 @@ function AppContent() {
         <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="*" element={<AddWord />} />
           </Routes>
         </div>
       )}
 
       {/* Floating Translucent Silver Bottom Nav Dock */}
-      {showBottomNav && user && location.pathname !== '/login' && (
+      {showBottomNav && user && isTabRoute && (
         <div 
           className="bottom-nav-dock"
           style={{
@@ -805,7 +818,7 @@ function AppContent() {
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
-                    const isInDeck = vocab.some(v => v.word.toLowerCase() === selectedWord.toLowerCase());
+                    const isInDeck = vocab.some(v => v && v.word && v.word.toLowerCase() === selectedWord.toLowerCase());
                     if (isInDeck) return;
                     setIsAdding(true);
                     try {
@@ -827,31 +840,31 @@ function AppContent() {
                       setIsAdding(false);
                     }
                   }}
-                  disabled={isAdding || addSuccess || vocab.some(v => v.word.toLowerCase() === selectedWord.toLowerCase())}
+                  disabled={isAdding || addSuccess || vocab.some(v => v && v.word && v.word.toLowerCase() === selectedWord.toLowerCase())}
                   style={{
                     width: '100%',
                     padding: '0.4rem 0.5rem',
                     borderRadius: '8px',
                     fontSize: '0.68rem',
                     fontWeight: 800,
-                    cursor: vocab.some(v => v.word.toLowerCase() === selectedWord.toLowerCase()) ? 'default' : 'pointer',
+                    cursor: vocab.some(v => v && v.word && v.word.toLowerCase() === selectedWord.toLowerCase()) ? 'default' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.25rem',
                     outline: 'none',
                     border: '1px solid',
-                    borderColor: vocab.some(v => v.word.toLowerCase() === selectedWord.toLowerCase()) 
+                    borderColor: vocab.some(v => v && v.word && v.word.toLowerCase() === selectedWord.toLowerCase()) 
                       ? 'rgba(255,255,255,0.1)' 
                       : addSuccess 
                         ? 'rgba(16, 185, 129, 0.35)' 
                         : 'rgba(234, 179, 8, 0.35)',
-                    background: vocab.some(v => v.word.toLowerCase() === selectedWord.toLowerCase()) 
+                    background: vocab.some(v => v && v.word && v.word.toLowerCase() === selectedWord.toLowerCase()) 
                       ? 'rgba(255,255,255,0.02)' 
                       : addSuccess 
                         ? 'rgba(16, 185, 129, 0.15)' 
                         : 'rgba(234, 179, 8, 0.15)',
-                    color: vocab.some(v => v.word.toLowerCase() === selectedWord.toLowerCase()) 
+                    color: vocab.some(v => v && v.word && v.word.toLowerCase() === selectedWord.toLowerCase()) 
                       ? 'rgba(255,255,255,0.4)' 
                       : addSuccess 
                         ? '#10b981' 
@@ -867,7 +880,7 @@ function AppContent() {
                     </>
                   ) : addSuccess ? (
                     <span>Added to Deck!</span>
-                  ) : vocab.some(v => v.word.toLowerCase() === selectedWord.toLowerCase()) ? (
+                  ) : vocab.some(v => v && v.word && v.word.toLowerCase() === selectedWord.toLowerCase()) ? (
                     <span>In Deck</span>
                   ) : (
                     <>
@@ -982,168 +995,24 @@ function AppContent() {
               <span>Logged in as <strong style={{ color: theme === 'theme-3' ? '#000000' : 'inherit' }}>{user?.email || 'cz01'}</strong></span>
             </div>
 
-            {/* Navigation Items (The 3 Modes - Compact horizontal tabs) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '8px' }}>
-              {navItems.map((item) => {
-                const IconComponent = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => {
-                      setMenuOpen(false);
-                      handleNavigation(item.path);
-                    }}
-                    style={{
-                      background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                      border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.04)'}`,
-                      borderRadius: '8px',
-                      color: isActive ? 'white' : '#94a3b8',
-                      padding: '10px 2px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '3px',
-                      fontSize: '0.82rem',
-                      fontWeight: isActive ? 'bold' : 'normal',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <div style={{ position: 'relative' }}>
-                      <IconComponent size={18} color={isActive ? 'white' : '#94a3b8'} />
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span style={{
-                          position: 'absolute',
-                          top: '-4px',
-                          right: '-6px',
-                          background: '#ef4444',
-                          color: 'white',
-                          fontSize: '0.5rem',
-                          fontWeight: 900,
-                          borderRadius: '50%',
-                          width: '11px',
-                          height: '11px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Scrollable settings settings section */}
             <motion.div 
               variants={containerVariants}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px',
+                gap: '12px',
                 flex: 1,
-                paddingRight: '2px',
-                paddingBottom: '10px'
+                paddingRight: '4px',
+                paddingBottom: '16px',
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch'
               }}
             >
-              {/* Appearance & Quick Buttons in a side-by-side grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '4px' }}>
-                {/* Appearance */}
-                <div style={{
-                  padding: '8px 10px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.01)',
-                  border: '1px solid rgba(255, 255, 255, 0.03)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 800, color: '#94a3b8' }}>
-                    <Palette size={15} />
-                    <span>Appearance</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-                    {[
-                      { id: 'theme-1', name: 'Glass' },
-                      { id: 'theme-2', name: 'Silver' }
-                    ].map(t => {
-                      const isActive = theme === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          onClick={(e) => { e.stopPropagation(); setTheme(t.id); }}
-                          style={{
-                            background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                            border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
-                            borderRadius: '6px',
-                            color: isActive ? 'white' : '#94a3b8',
-                            padding: '4px 2px',
-                            fontSize: '0.78rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Quick Buttons */}
-                <div style={{
-                  padding: '8px 10px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.01)',
-                  border: '1px solid rgba(255, 255, 255, 0.03)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 800, color: '#94a3b8' }}>
-                    <Sliders size={15} />
-                    <span>Quick Buttons</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-                    {[
-                      { id: true, name: 'Show' },
-                      { id: false, name: 'Swipe' }
-                    ].map(opt => {
-                      const isActive = showShortcutButtons === opt.id;
-                      return (
-                        <button
-                          key={String(opt.id)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            localStorage.setItem('memeng_show_shortcut_buttons', String(opt.id));
-                            setShowShortcutButtons(opt.id);
-                            window.dispatchEvent(new CustomEvent('shortcut-buttons-changed', { detail: { show: opt.id } }));
-                          }}
-                          style={{
-                            background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                            border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
-                            borderRadius: '6px',
-                            color: isActive ? 'white' : '#94a3b8',
-                            padding: '4px 2px',
-                            fontSize: '0.78rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {opt.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
               {/* Exit Study Session */}
               {localStorage.getItem('memeng_is_studying') === 'true' && (
-                <button
+                <motion.button
+                  variants={itemVariants}
                   onClick={() => {
                     window.dispatchEvent(new Event('exit-study-session'));
                     setMenuOpen(false);
@@ -1154,236 +1023,362 @@ function AppContent() {
                     justifyContent: 'center',
                     gap: '8px',
                     padding: '12px',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     background: 'rgba(239, 68, 68, 0.12)',
                     border: '1px solid rgba(239, 68, 68, 0.25)',
                     color: '#ef4444',
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
                     marginBottom: '4px'
                   }}
                 >
                   <XCircle size={16} />
                   <span>Exit Study Session</span>
-                </button>
+                </motion.button>
               )}
 
-              {/* Settings grid (Reminder & Nav Dock) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '4px' }}>
-                {/* Reminder */}
-                <div style={{
+              {/* Setting Row 1: Appearance */}
+              <motion.div 
+                variants={itemVariants}
+                style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '10px 10px',
-                  borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.01)',
-                  border: '1px solid rgba(255,255,255,0.03)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Bell size={15} />
-                    <span>Reminder</span>
-                  </div>
-                  <input 
-                    type="time" 
-                    value={reminderTime}
-                    onChange={(e) => {
-                      setReminderTime(e.target.value);
-                      try { localStorage.setItem('chatgpt_anki_reminder', e.target.value); } catch (err) {}
-                    }}
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '4px',
-                      padding: '1px 2px',
-                      color: 'white',
-                      fontSize: '0.78rem',
-                      width: '50px'
-                    }}
-                  />
-                </div>
-
-                {/* Nav Dock Switch */}
-                <div
-                  onClick={() => {
-                    const val = !showBottomNav;
-                    setShowBottomNav(val);
-                    try { localStorage.setItem('chatgpt_anki_show_bottom_nav', val.toString()); } catch (err) {}
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 10px',
-                    borderRadius: '10px',
-                    background: 'rgba(255,255,255,0.01)',
-                    border: '1px solid rgba(255,255,255,0.03)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Sliders size={15} />
-                    <span>Nav Dock</span>
-                  </div>
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
+                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
+                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
                   <div style={{
-                    width: '36px',
-                    height: '20px',
-                    borderRadius: '10px',
-                    background: showBottomNav ? '#3b82f6' : 'rgba(255,255,255,0.04)',
-                    position: 'relative',
-                    border: '1px solid rgba(255,255,255,0.08)'
-                  }}>
-                    <div style={{
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      background: '#ffffff',
-                      position: 'absolute',
-                      top: '2px',
-                      left: showBottomNav ? '19px' : '2px',
-                      transition: 'left 0.15s'
-                    }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Low Graphics & Mascot Toggles in a grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '4px' }}>
-                {/* Low Graphics Switch */}
-                <div
-                  onClick={() => {
-                    const val = !lowGraphics;
-                    setLowGraphics(val);
-                    try { localStorage.setItem('memeng_low_graphics', val.toString()); } catch (err) {}
-                    window.dispatchEvent(new CustomEvent('low-graphics-change', { detail: val }));
-                  }}
-                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 10px',
-                    borderRadius: '10px',
-                    background: 'rgba(255,255,255,0.01)',
-                    border: '1px solid rgba(255,255,255,0.03)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Sliders size={15} />
-                    <span>Low Graphics</span>
+                    justifyContent: 'center',
+                    color: '#cbd5e1'
+                  }}>
+                    <Palette size={16} />
                   </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Appearance</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Theme layout style</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '4px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '2px' }}>
+                  {[
+                    { id: 'theme-1', name: 'Glass' },
+                    { id: 'theme-2', name: 'Silver' }
+                  ].map(t => {
+                    const isActive = theme === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={(e) => { e.stopPropagation(); setTheme(t.id); }}
+                        style={{
+                          background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '6px',
+                          color: isActive ? '#ffffff' : '#94a3b8',
+                          padding: '5px 10px',
+                          fontSize: '0.75rem',
+                          fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          outline: 'none'
+                        }}
+                      >
+                        {t.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              {/* Setting Row 2: Review Buttons */}
+              <motion.div 
+                variants={itemVariants}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
+                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
+                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
                   <div style={{
-                    width: '36px',
-                    height: '20px',
-                    borderRadius: '10px',
-                    background: lowGraphics ? '#3b82f6' : 'rgba(255,255,255,0.04)',
-                    position: 'relative',
-                    border: '1px solid rgba(255,255,255,0.08)'
-                  }}>
-                    <div style={{
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      background: '#ffffff',
-                      position: 'absolute',
-                      top: '2px',
-                      left: lowGraphics ? '19px' : '2px',
-                      transition: 'left 0.15s'
-                    }} />
-                  </div>
-                </div>
-
-                {/* Mascot Toggle */}
-                <div
-                  onClick={() => {
-                    const val = !showNongMem;
-                    setShowNongMem(val);
-                    try { localStorage.setItem('memeng_show_nong_mem', val.toString()); } catch (err) {}
-                    window.dispatchEvent(new CustomEvent('nongmem-visibility-change', { detail: val }));
-                  }}
-                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 10px',
-                    borderRadius: '10px',
-                    background: 'rgba(255,255,255,0.01)',
-                    border: '1px solid rgba(255,255,255,0.03)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
-                    <Bot size={15} />
-                    <span>Nong Mem</span>
+                    justifyContent: 'center',
+                    color: '#cbd5e1'
+                  }}>
+                    <Sliders size={16} />
                   </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Review Buttons</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Grading buttons or swipe gestures</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '4px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '2px' }}>
+                  {[
+                    { id: true, name: 'Show' },
+                    { id: false, name: 'Swipe' }
+                  ].map(opt => {
+                    const isActive = showShortcutButtons === opt.id;
+                    return (
+                      <button
+                        key={String(opt.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          localStorage.setItem('memeng_show_shortcut_buttons', String(opt.id));
+                          setShowShortcutButtons(opt.id);
+                          window.dispatchEvent(new CustomEvent('shortcut-buttons-changed', { detail: { show: opt.id } }));
+                        }}
+                        style={{
+                          background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '6px',
+                          color: isActive ? '#ffffff' : '#94a3b8',
+                          padding: '5px 10px',
+                          fontSize: '0.75rem',
+                          fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          outline: 'none'
+                        }}
+                      >
+                        {opt.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              {/* Setting Row 3: Bottom Nav Dock */}
+              <motion.div 
+                variants={itemVariants}
+                onClick={() => {
+                  const val = !showBottomNav;
+                  setShowBottomNav(val);
+                  try { localStorage.setItem('chatgpt_anki_show_bottom_nav', val.toString()); } catch (err) {}
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
+                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
+                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  cursor: 'pointer',
+                  gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
                   <div style={{
-                    width: '36px',
-                    height: '20px',
-                    borderRadius: '10px',
-                    background: showNongMem ? '#3b82f6' : 'rgba(255,255,255,0.04)',
-                    position: 'relative',
-                    border: '1px solid rgba(255,255,255,0.08)'
-                  }}>
-                    <div style={{
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      background: '#ffffff',
-                      position: 'absolute',
-                      top: '2px',
-                      left: showNongMem ? '19px' : '2px',
-                      transition: 'left 0.15s'
-                    }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Nong Mem Sound Setting (Horizontal full width card, compact) */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 10px',
-                borderRadius: '10px',
-                background: 'rgba(255,255,255,0.01)',
-                border: '1px solid rgba(255,255,255,0.03)',
-                marginBottom: '4px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8' }}>
-                  <Volume2 size={15} />
-                  <span>Nong Mem Sound</span>
-                </div>
-                <button
-                  onClick={() => {
-                    const val = !nongMemMuted;
-                    setNongMemMuted(val);
-                    try { localStorage.setItem('memeng_nong_mem_muted', val.toString()); } catch (err) {}
-                    window.dispatchEvent(new CustomEvent('nongmem-mute-change', { detail: val }));
-                  }}
-                  style={{
-                    border: 'none',
-                    background: !nongMemMuted ? 'rgba(74, 222, 128, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                    padding: '3px 8px',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    color: !nongMemMuted ? '#4ade80' : '#f87171',
-                    fontSize: '0.78rem',
-                    fontWeight: 700
+                    justifyContent: 'center',
+                    color: '#cbd5e1'
+                  }}>
+                    <CheckSquare size={16} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Navigation Dock</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Display bottom menu dock</span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '22px',
+                    borderRadius: '11px',
+                    background: showBottomNav ? '#3b82f6' : 'rgba(255,255,255,0.06)',
+                    position: 'relative',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    transition: 'background 0.2s ease'
                   }}
                 >
-                  {!nongMemMuted ? <Volume2 size={14} /> : <VolumeX size={14} />}
-                  {!nongMemMuted ? 'Sound' : 'Muted'}
-                </button>
-              </div>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    background: '#ffffff',
+                    position: 'absolute',
+                    top: '2px',
+                    left: showBottomNav ? '18px' : '2px',
+                    transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+                  }} />
+                </div>
+              </motion.div>
+
+              {/* Setting Row 4: Low Graphics */}
+              <motion.div 
+                variants={itemVariants}
+                onClick={() => {
+                  const val = !lowGraphics;
+                  setLowGraphics(val);
+                  try { localStorage.setItem('memeng_low_graphics', val.toString()); } catch (err) {}
+                  window.dispatchEvent(new CustomEvent('low-graphics-change', { detail: val }));
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
+                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
+                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  cursor: 'pointer',
+                  gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#cbd5e1'
+                  }}>
+                    <Sparkles size={16} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Low Graphics</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Disable blur effects & animations</span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '22px',
+                    borderRadius: '11px',
+                    background: lowGraphics ? '#3b82f6' : 'rgba(255,255,255,0.06)',
+                    position: 'relative',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    transition: 'background 0.2s ease'
+                  }}
+                >
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    background: '#ffffff',
+                    position: 'absolute',
+                    top: '2px',
+                    left: lowGraphics ? '18px' : '2px',
+                    transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+                  }} />
+                </div>
+              </motion.div>
+
+              {/* Setting Row 5: Due Reminders */}
+              <motion.div 
+                variants={itemVariants}
+                onClick={() => {
+                  const val = !dueReminders;
+                  setDueReminders(val);
+                  try { localStorage.setItem('memeng_due_reminders', val.toString()); } catch (err) {}
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
+                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
+                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
+                  cursor: 'pointer',
+                  gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#cbd5e1'
+                  }}>
+                    <Bell size={16} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Due Reminders</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Notify when reviews are ready</span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '22px',
+                    borderRadius: '11px',
+                    background: dueReminders ? '#3b82f6' : 'rgba(255,255,255,0.06)',
+                    position: 'relative',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    transition: 'background 0.2s ease'
+                  }}
+                >
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    background: '#ffffff',
+                    position: 'absolute',
+                    top: '2px',
+                    left: dueReminders ? '18px' : '2px',
+                    transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+                  }} />
+                </div>
+              </motion.div>
 
               {/* Action Buttons Stack (Without descriptions, compact, full-width) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                 {/* Guide Tour */}
-                <button
+                <motion.button
+                  variants={itemVariants}
                   onClick={() => {
                     setMenuOpen(false);
                     if (isTutorialActive) {
@@ -1398,21 +1393,24 @@ function AppContent() {
                     justifyContent: 'center',
                     gap: '8px',
                     padding: '12px',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     background: isTutorialActive ? 'rgba(239, 68, 68, 0.08)' : 'rgba(251, 191, 36, 0.08)',
                     border: isTutorialActive ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(251, 191, 36, 0.2)',
                     color: isTutorialActive ? '#ef4444' : '#facc15',
                     fontSize: '0.85rem',
                     fontWeight: 700,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   {isTutorialActive ? <XCircle size={16} /> : <HelpCircle size={16} />}
                   <span>{isTutorialActive ? 'Exit Interactive Guide' : 'Interactive Guide Tour'}</span>
-                </button>
+                </motion.button>
 
                 {/* Reset Deck */}
-                <button
+                <motion.button
+                  variants={itemVariants}
                   onClick={() => {
                     setMenuOpen(false);
                     setShowResetConfirm(true);
@@ -1423,21 +1421,58 @@ function AppContent() {
                     justifyContent: 'center',
                     gap: '8px',
                     padding: '12px',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     background: 'rgba(239, 68, 68, 0.06)',
                     border: '1px solid rgba(239, 68, 68, 0.15)',
                     color: '#fca5a5',
                     fontSize: '0.85rem',
                     fontWeight: 700,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   <Trash2 size={16} />
                   <span>Reset Deck & Stats</span>
-                </button>
+                </motion.button>
+
+                {/* Privacy & Terms */}
+                <motion.div
+                  variants={itemVariants}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '14px',
+                    marginTop: '4px',
+                    marginBottom: '4px',
+                    fontSize: '0.72rem',
+                    color: '#64748b'
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate('/privacy');
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 'inherit', padding: '2px 0', outline: 'none' }}
+                  >
+                    Privacy Policy
+                  </button>
+                  <span style={{ opacity: 0.45 }}>-</span>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate('/terms');
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 'inherit', padding: '2px 0', outline: 'none' }}
+                  >
+                    Terms of Service
+                  </button>
+                </motion.div>
 
                 {/* Sign Out */}
-                <button
+                <motion.button
+                  variants={itemVariants}
                   onClick={handleLogout}
                   style={{
                     display: 'flex',
@@ -1445,18 +1480,20 @@ function AppContent() {
                     justifyContent: 'center',
                     gap: '8px',
                     padding: '12px',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     background: 'rgba(255, 255, 255, 0.03)',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                     color: '#cbd5e1',
                     fontSize: '0.85rem',
                     fontWeight: 700,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   <LogOut size={16} />
                   <span>Sign Out</span>
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
