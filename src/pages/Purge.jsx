@@ -1352,7 +1352,11 @@ const Purge = () => {
     if (!activeTooltipWord || !tooltipDetails || !tooltipDetails.rawDetails) return;
     setIsAddingTooltipWord(true);
     try {
-      const res = await addWordToDeck(activeTooltipWord, tooltipDetails.rawDetails);
+      const richData = {
+        ...tooltipDetails.rawDetails,
+        curriculum: activeCurriculum || 'Self-Study only'
+      };
+      const res = await addWordToDeck(activeTooltipWord, richData);
       if (res.success || res.error?.includes('already exists')) {
         window.dispatchEvent(new Event('tutorial-tooltip-saved'));
         setTooltipStack(prev => prev.map((item, idx) => 
@@ -1401,7 +1405,7 @@ const Purge = () => {
   };
 
   const handleAddInterestingWords = async () => {
-    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = TODAY_INTERESTING_WORDS.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
     for (const w of unadded) {
       if (selectedInterestingWords[w.word] !== false) {
@@ -1422,7 +1426,7 @@ const Purge = () => {
     setShowCollectionChoice(false);
     
     const colWords = COLLECTIONS_DATA[colName] || [];
-    const unadded = colWords.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     
     if (unadded.length > 0) {
       const defaultSelected = {};
@@ -1439,11 +1443,14 @@ const Purge = () => {
   const handleAddCollectionWords = async () => {
     if (!selectedCollection) return;
     const colWords = COLLECTIONS_DATA[selectedCollection] || [];
-    const unadded = colWords.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
     for (const w of unadded) {
       if (selectedCollectionWords[w.word] !== false) {
-        const richData = JSON.parse(w.meaning);
+        const richData = {
+          ...JSON.parse(w.meaning),
+          curriculum: selectedCollection
+        };
         await addWordToDeck(w.word, richData);
         count += 1;
       }
@@ -3240,7 +3247,7 @@ const Purge = () => {
   const renderCollectionImportModal = () => {
     if (!selectedCollection) return null;
     const colWords = COLLECTIONS_DATA[selectedCollection] || [];
-    const unadded = colWords.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
 
     return (
       <>
