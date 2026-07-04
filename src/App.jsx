@@ -199,7 +199,7 @@ function AppContent() {
   });
 
   const [isTutorialActive, setIsTutorialActive] = useState(false);
-  const pageSwipeEnabled = !prefersMobilePerformance() && !lowGraphics;
+  const pageSwipeEnabled = !isTutorialActive && !menuOpen;
 
   useEffect(() => {
     const handleMuteChange = (e) => {
@@ -221,6 +221,7 @@ function AppContent() {
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  const swipeOffsetRef = useRef(0);
   const minSwipeDistance = 60;
 
   const getDragStart = (x, y, target) => {
@@ -257,7 +258,10 @@ function AppContent() {
         }
       }
     } else if (swipeDirection === 'horizontal') {
-      setSwipeOffset(dx);
+      if (Math.abs(dx - swipeOffsetRef.current) >= 12) {
+        swipeOffsetRef.current = dx;
+        setSwipeOffset(dx);
+      }
     }
   };
 
@@ -278,6 +282,7 @@ function AppContent() {
     }
     setDragStart(null);
     setSwipeDirection(null);
+    swipeOffsetRef.current = 0;
     setSwipeOffset(0);
     setIsSwiping(false);
   };
@@ -519,7 +524,7 @@ function AppContent() {
 
       {/* Visual Tinder Swipe Stamps */}
       {(() => {
-        if (!pageSwipeEnabled || Math.abs(swipeOffset) < 20) return null;
+        if (!pageSwipeEnabled || lowGraphics || Math.abs(swipeOffset) < 20) return null;
         
         const routes = ['/', '/purge', '/profile'];
         const currentIdx = routes.indexOf(location.pathname);

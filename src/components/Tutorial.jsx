@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X, ChevronRight, HelpCircle, Minimize2, Maximize2 } from 'lucide-react';
@@ -6,7 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useVocab } from '../context/VocabContext';
 
-const TUTORIAL_STEPS = [
+const TUTORIAL_STEPS_EN = [
   { path: '/', selector: '#tutorial-translate-input', title: 'Translate a Word', text: 'Type a word you want to learn, for example <span style="color:#facc15;font-weight:900">hello</span>. You can type any letter during the guide and Mem-eng will fill in hello for you.', position: 'bottom' },
   { path: '/', selector: '#tutorial-translate-submit-btn', title: 'Run Translation', text: 'Tap <span style="color:#facc15;font-weight:900">Translate</span> to create a learning card with meaning, examples, and context.', position: 'bottom' },
   { path: '/', selector: '.results-drag-wrapper', title: 'Explore the Card', text: 'Scroll through the result card to see the definition, example sentence, collocation, and visual context. When you are done, tap <span style="color:#facc15;font-weight:900">Next</span>.', position: 'top' },
@@ -23,6 +23,24 @@ const TUTORIAL_STEPS = [
   { path: '/profile', selector: '#tutorial-profile-curriculum-modal-content', title: 'Pick Your Focus', text: 'Choose the list you want to study. Use <span style="color:#facc15;font-weight:900">Self-Study</span> when you want to build your own deck.', position: 'top', padding: 10 },
   { path: '/profile', selector: '#tutorial-profile-srs', title: 'Check Memory Stages', text: 'Tap a memory stage, such as Learning or Mastered, to see the words in that group.', position: 'top', padding: 6 },
   { path: '/profile', selector: null, title: 'You Are Ready', text: 'That is the full tour. You can now translate words, save them, and review them with spaced repetition.', position: 'top' }
+];
+const TUTORIAL_STEPS_TH = [
+  { path: '/', selector: '#tutorial-translate-input', title: 'แปลคำศัพท์', text: 'พิมพ์คำศัพท์ที่อยากเรียน เช่น <span style="color:#facc15;font-weight:900">hello</span> ระหว่างทัวร์นี้พิมพ์ตัวไหนก็ได้ เดี๋ยว Mem-eng จะใส่ hello ให้เอง', position: 'bottom' },
+  { path: '/', selector: '#tutorial-translate-submit-btn', title: 'เริ่มแปล', text: 'แตะ <span style="color:#facc15;font-weight:900">Translate</span> เพื่อสร้างการ์ดเรียนรู้ที่มีความหมาย ตัวอย่าง และบริบทของคำ', position: 'bottom' },
+  { path: '/', selector: '.results-drag-wrapper', title: 'อ่านการ์ดคำศัพท์', text: 'เลื่อนดูการ์ดผลลัพธ์เพื่ออ่าน definition, example sentence, collocation และรูปบริบท ดูเสร็จแล้วแตะ <span style="color:#facc15;font-weight:900">ถัดไป</span>', position: 'top' },
+  { path: '/', selector: '.results-drag-wrapper', title: 'ลอง gesture สำหรับบันทึก', text: 'คำที่แปลแล้วจัดการได้ด้วย gesture ง่าย ๆ:<br/>- <span style="color:#ef4444;font-weight:900">ปัดซ้าย</span> เพื่อย้อนกลับหรือข้าม<br/>- <span style="color:#10b981;font-weight:900">ปัดขวา</span> เพื่อบันทึกเข้าคลังคำศัพท์', position: 'top', showSwipeDemo: true },
+  { path: '/', selector: '#tutorial-tinder-save-btn', title: 'บันทึกคำศัพท์', text: 'ถ้าไม่อยากปัด ก็กดปุ่ม <span style="color:#4ade80;font-weight:900">Save</span> ได้เลย คำนี้จะถูกเพิ่มเข้า deck สำหรับทบทวน', position: 'top' },
+  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'เปิด Flashcards', text: 'นี่คือ deck flashcard ของคุณ แตะการ์ดตรงกลางเพื่อเปิดคำตอบและรายละเอียดการเรียนรู้', position: 'top' },
+  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'ดูคำแปล', text: 'แตะการ์ดอีกครั้งเพื่อดูคำแปลไทยและปุ่มให้คะแนนความจำ', position: 'top' },
+  { path: '/purge', selector: '#tutorial-word-today', title: 'เปิดพจนานุกรมด่วน', text: 'แตะคำในประโยคตัวอย่าง เช่น <span style="color:#facc15;font-weight:900">today</span> เพื่อเปิด popup ความหมายแบบเร็ว', position: 'top' },
+  { path: '/purge', selector: '#tutorial-tooltip-info-container', title: 'ดูรายละเอียดและฟังเสียง', text: 'อ่านความหมายแบบเร็ว หรือแตะปุ่มลำโพงเพื่อฟังเสียงออกเสียง แล้วไปขั้นตอนถัดไป', position: 'bottom', padding: 12 },
+  { path: '/purge', selector: '#tutorial-tooltip-add-btn', title: 'เพิ่มคำจาก Lookup', text: 'แตะ <span style="color:#facc15;font-weight:900">Add to Deck</span> เพื่อเก็บคำนั้นเข้า deck ของคุณ', position: 'bottom' },
+  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'ให้คะแนนความจำ', text: 'Mem-eng จะนัดทบทวนตามความจำของคุณ ปัดได้ 4 ทิศทาง:<br/>- <span style="color:#3b82f6;font-weight:800">ขวา = Easy</span><br/>- <span style="color:#10b981;font-weight:800">ขึ้น = Normal</span><br/>- <span style="color:#f97316;font-weight:800">ลง = Hard</span><br/>- <span style="color:#ef4444;font-weight:800">ซ้าย = Again</span>', position: 'top', padding: 6, showSwipeDemo: true },
+  { path: '/purge', selector: '#tutorial-srs-buttons', title: 'ใช้ปุ่มให้คะแนน', text: 'ถ้าไม่อยากปัด สามารถกดปุ่มคะแนนด้านล่างได้ แต่ละตัวเลือกจะเปลี่ยนเวลาทบทวนครั้งต่อไป', position: 'top', padding: 6 },
+  { path: '/profile', selector: '#tutorial-profile-curriculum', title: 'เลือกชุดคำศัพท์', text: 'แตะชื่อหลักสูตรเพื่อเลือกชุดคำ เช่น Oxford, TOEIC หรือ Self-Study', position: 'bottom', padding: 4 },
+  { path: '/profile', selector: '#tutorial-profile-curriculum-modal-content', title: 'เลือกโฟกัสการเรียน', text: 'เลือกชุดคำที่อยากฝึก ใช้ <span style="color:#facc15;font-weight:900">Self-Study</span> ถ้าอยากสร้าง deck เอง', position: 'top', padding: 10 },
+  { path: '/profile', selector: '#tutorial-profile-srs', title: 'ดูระดับความจำ', text: 'แตะระดับความจำ เช่น Learning หรือ Mastered เพื่อดูคำในกลุ่มนั้น', position: 'top', padding: 6 },
+  { path: '/profile', selector: null, title: 'พร้อมใช้งานแล้ว', text: 'จบทัวร์แล้ว คุณสามารถแปลคำ บันทึกคำ และทบทวนด้วย spaced repetition ได้เลย', position: 'top' }
 ];
 const PremiumFingerPointer = ({ direction = 'down' }) => {
   let rotateDeg = 0;
@@ -97,6 +115,39 @@ export const Tutorial = () => {
   const [speakBtnRect, setSpeakBtnRect] = useState(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [showOptIn, setShowOptIn] = useState(false);
+  const [tutorialLanguage, setTutorialLanguage] = useState(() => {
+    try {
+      return localStorage.getItem('memeng_tutorial_language') || 'en';
+    } catch (e) {
+      return 'en';
+    }
+  });
+  const TUTORIAL_STEPS = useMemo(() => tutorialLanguage === 'th' ? TUTORIAL_STEPS_TH : TUTORIAL_STEPS_EN, [tutorialLanguage]);
+  const tutorialCopy = tutorialLanguage === 'th'
+    ? {
+      skip: 'ข้าม',
+      next: 'ถัดไป',
+      finish: 'เสร็จ',
+      openPage: 'เปิดหน้าถัดไป',
+      useNav: (label) => 'ใช้แถบนำทางด้านล่างเพื่อเปิดหน้า ' + label + ' แล้วเรียนต่อ',
+      chooseTitle: 'เลือกภาษาของ Guide',
+      chooseText: 'อยากให้ทัวร์สอนเป็นภาษาไหน?',
+      thai: 'สอนภาษาไทย',
+      english: 'Teach in English',
+      later: 'ไว้ทีหลัง'
+    }
+    : {
+      skip: 'Skip',
+      next: 'Next',
+      finish: 'Finish',
+      openPage: 'Open the next page',
+      useNav: (label) => 'Use the bottom navigation bar to open ' + label + ' and continue the guide.',
+      chooseTitle: 'Choose guide language',
+      chooseText: 'How do you want the tour to explain each step?',
+      thai: 'สอนภาษาไทย',
+      english: 'Teach in English',
+      later: 'Maybe later'
+    };
   const autoMinimizeTimerRef = useRef(null);
 
   const hasInitializedRef = useRef(false);
@@ -155,10 +206,9 @@ export const Tutorial = () => {
     const handleTrigger = () => {
       if (!user) return;
       localStorage.setItem('memeng_tutorial_done', 'false');
-      localStorage.setItem('memeng_tutorial_started', 'true');
-      setActive(true);
+      setActive(false);
       setCurrentStep(0);
-      navigate('/');
+      setShowOptIn(true);
     };
     window.addEventListener('trigger-tutorial', handleTrigger);
     return () => window.removeEventListener('trigger-tutorial', handleTrigger);
@@ -564,7 +614,10 @@ export const Tutorial = () => {
   }, []);
 
   // Opt-in popup handlers
-  const handleOptInAccept = () => {
+  const handleOptInAccept = (language) => {
+    const nextLanguage = language || tutorialLanguage || 'en';
+    setTutorialLanguage(nextLanguage);
+    localStorage.setItem('memeng_tutorial_language', nextLanguage);
     localStorage.setItem('memeng_tutorial_offered', 'true');
     localStorage.setItem('memeng_tutorial_done', 'false');
     localStorage.setItem('memeng_tutorial_started', 'true');
@@ -606,16 +659,12 @@ export const Tutorial = () => {
             textAlign: 'center'
           }}
         >
-          <div style={{ fontSize: '2.2rem', marginBottom: '0.5rem' }}>👋</div>
-          <h3 style={{ margin: '0 0 0.4rem 0', color: 'white', fontWeight: 800, fontSize: '1.1rem' }}>
-            สวัสดี!
-          </h3>
-          <p style={{ margin: '0 0 1.2rem 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.6' }}>
-            อยากลองทำ Tutorial แนะนำการใช้งานไหม?
-          </p>
+          <div style={{ fontSize: '0.75rem', marginBottom: '0.5rem', color: '#facc15', fontWeight: 900, letterSpacing: '0.12em' }}>GUIDE TOUR</div>
+          <h3 style={{ margin: '0 0 0.4rem 0', color: 'white', fontWeight: 800, fontSize: '1.1rem' }}>{tutorialCopy.chooseTitle}</h3>
+          <p style={{ margin: '0 0 1.2rem 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.6' }}>{tutorialCopy.chooseText}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <button
-              onClick={handleOptInAccept}
+              onClick={() => handleOptInAccept('th')}
               className="glass-button primary"
               style={{
                 width: '100%',
@@ -627,7 +676,23 @@ export const Tutorial = () => {
                 border: 'none'
               }}
             >
-              ลองเลย!
+              {tutorialCopy.thai}
+            </button>
+            <button
+              onClick={() => handleOptInAccept('en')}
+              style={{
+                width: '100%',
+                padding: '0.6rem 1rem',
+                borderRadius: '14px',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: '#e2e8f0'
+              }}
+            >
+              {tutorialCopy.english}
             </button>
             <button
               onClick={handleOptInDismiss}
@@ -638,15 +703,14 @@ export const Tutorial = () => {
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'transparent',
+                border: 'none',
                 color: 'rgba(255,255,255,0.55)'
               }}
             >
-              ไม่ล่ะ ขอเล่นเอง
+              {tutorialCopy.later}
             </button>
-          </div>
-        </motion.div>
+          </div></motion.div>
       </div>
     );
   }
@@ -1172,7 +1236,7 @@ export const Tutorial = () => {
                 {/* Guide Text */}
                 {isWrongPath ? (
                   <div>
-                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>Open the next page</h4><p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>Use the bottom navigation bar to open {stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'My Profile' : 'Translate')} and continue the guide.</p></div>) : (
+                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>{tutorialCopy.openPage}</h4><p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>{tutorialCopy.useNav(stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'My Profile' : 'Translate'))}</p></div>) : (
                   <div>
                     <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
                       {stepConf.title}
@@ -1186,9 +1250,7 @@ export const Tutorial = () => {
                   <button 
                     onClick={handleClose}
                     style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700 }}
-                  >
-                    Skip
-                  </button>
+                  >{tutorialCopy.skip}</button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {currentStep < TUTORIAL_STEPS.length - 1 ? (
                       <button 
@@ -1221,7 +1283,7 @@ export const Tutorial = () => {
                           cursor: 'pointer'
                         }}
                       >
-                        <span>Next</span>
+                        <span>{tutorialCopy.next}</span>
                         <ChevronRight size={11} />
                       </button>
                     ) : (
@@ -1242,7 +1304,7 @@ export const Tutorial = () => {
                           boxShadow: '0 0 15px rgba(250, 204, 21, 0.35)'
                         }}
                       >
-                        <span>Finish</span>
+                        <span>{tutorialCopy.finish}</span>
                         <ChevronRight size={11} />
                       </button>
                     )}
