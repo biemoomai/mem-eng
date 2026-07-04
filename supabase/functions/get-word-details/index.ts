@@ -124,6 +124,7 @@ CRITICAL INSTRUCTIONS FOR "imagePrompts":
 
 CRITICAL INSTRUCTIONS FOR FORMATTING AND TEXT CONTENT:
 - DO NOT include any emojis, icons, or pictorial representations in the title, situation, dialogue, meaning, takeaway, or any other output fields. Keep them strictly as clean, standard plain text.
+- englishExplanation.definition MUST be concise: maximum 12 words, simple English, no semicolons, no long explanation.
 
 CRITICAL INSTRUCTIONS FOR LEXICAL RELATIONS:
 - The Datamuse lists are reference candidates, not guaranteed truth. You must filter them.
@@ -159,7 +160,7 @@ Return a JSON object with this exact structure:
     }
   ],
   "englishExplanation": {
-    "definition": "Explain the English word using the simplest English vocabulary possible (e.g., instead of 'a domesticated carnivorous mammal...' use 'a common house pet that barks'). Keep the explanation extremely simple, basic, and easy for non-native learners to understand, avoiding academic or complex jargon. If absolutely necessary, harder words can be used occasionally, but prioritize simple words.",
+    "definition": "Very short learner definition in simple English. Maximum 12 words. Example: 'a pet animal that barks' or 'to make something better'.",
     "phrase": "Most common collocation/phrase using the word, else null.",
     "phraseMeaning": "Meaning of the collocation/phrase, else null."
   },

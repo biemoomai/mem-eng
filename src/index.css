@@ -465,6 +465,11 @@ input.glass-input::placeholder {
 }
 
 /* Low Graphics Performance Mode Overrides */
+.low-graphics {
+  background: #08090b !important;
+  background-image: none !important;
+}
+
 .low-graphics .glass-panel,
 .low-graphics .glass-button,
 .low-graphics .glass-input {
@@ -517,4 +522,10 @@ input.glass-input::placeholder {
 }
 .low-graphics img {
   filter: none !important;
+}
+
+.low-graphics .spin {
+  animation: spin 0.9s linear infinite !important;
+  animation-duration: 0.9s !important;
+  animation-iteration-count: infinite !important;
 }

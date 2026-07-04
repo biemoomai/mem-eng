@@ -9,9 +9,28 @@ import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { playClickSound, playSwipeSound, playSuccessSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
 
-const prefersMobilePerformance = () => {
-  if (typeof window === 'undefined') return true;
-  return window.matchMedia?.('(max-width: 768px), (pointer: coarse), (prefers-reduced-motion: reduce)')?.matches ?? true;
+const getWordLookupCandidates = (word) => {
+  const cleaned = String(word || '').toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+  if (!cleaned) return [];
+  const candidates = new Set([cleaned]);
+  if (cleaned.endsWith('ies') && cleaned.length > 4) candidates.add(`${cleaned.slice(0, -3)}y`);
+  if (cleaned.endsWith('es') && cleaned.length > 3) candidates.add(cleaned.slice(0, -2));
+  if (cleaned.endsWith('s') && cleaned.length > 3) candidates.add(cleaned.slice(0, -1));
+  if (cleaned.endsWith('ed') && cleaned.length > 4) {
+    candidates.add(cleaned.slice(0, -2));
+    candidates.add(cleaned.slice(0, -1));
+  }
+  if (cleaned.endsWith('ing') && cleaned.length > 5) {
+    candidates.add(cleaned.slice(0, -3));
+    candidates.add(`${cleaned.slice(0, -3)}e`);
+  }
+  return [...candidates].filter(Boolean);
+};
+
+const wordsMatchForLookup = (a, b) => {
+  const aCandidates = getWordLookupCandidates(a);
+  const bCandidates = getWordLookupCandidates(b);
+  return aCandidates.some(candidate => bCandidates.includes(candidate));
 };
 
 // Premium white minimal finger pointer SVG component for tutorial highlights
@@ -1040,14 +1059,7 @@ const Purge = () => {
   const [flippedCollectionWords, setFlippedCollectionWords] = useState({});
   const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
-  const [lowGraphics, setLowGraphics] = useState(() => {
-    if (prefersMobilePerformance()) return true;
-    try {
-      return localStorage.getItem('memeng_low_graphics') !== 'false';
-    } catch (e) {
-      return true;
-    }
-  });
+  const lowGraphics = false;
   const [addedProgress, setAddedProgress] = useState(null);
   
   const [tooltipStack, setTooltipStack] = useState([]);
@@ -1072,7 +1084,7 @@ const Purge = () => {
   useEffect(() => {
     const targetWord = activeTooltipWord?.toLowerCase().trim();
     const currentWord = wordObj?.word?.toLowerCase().trim();
-    if (!targetWord || !currentWord || targetWord !== currentWord) return;
+    if (!targetWord || !currentWord || !wordsMatchForLookup(targetWord, currentWord)) return;
 
     const activeRich = tooltipDetails?.rawDetails || (wordObj ? parseMeaningField(wordObj.meaning) : {});
     const hasBuiltInLexical =
@@ -1140,7 +1152,7 @@ const Purge = () => {
           .filter(item => !synonyms.includes(item));
         const wordFamily = targetWord.length >= 4
           ? uniqueWords(familyRaw, 5)
-            .filter(item => item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))))
+            .filter(item => !item.includes(' ') && item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))))
           : [];
 
         setTooltipLexicalFallback(prev => ({
@@ -1172,6 +1184,7 @@ const Purge = () => {
   };
 
   const handleRegenerateImage = async (e) => {
+    e.preventDefault();
     e.stopPropagation();
     if (!wordObj || isRegenerating) return;
     setRegenCount(prev => prev + 1);
@@ -1387,7 +1400,8 @@ const Purge = () => {
 
     setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
     
-    const local = vocab.find(v => v && v.word && v.word.toLowerCase() === cleaned);
+    const lookupCandidates = getWordLookupCandidates(cleaned);
+    const local = vocab.find(v => v && v.word && lookupCandidates.includes(v.word.toLowerCase()));
     if (local) {
       let parsed = null;
       try {
@@ -1406,7 +1420,7 @@ const Purge = () => {
         idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details } : item
       ));
     } else {
-      getAiWordRichDetails(cleaned).then(details => {
+      getAiWordRichDetails(lookupCandidates[0] || cleaned).then(details => {
         let detailsObj;
         if (details && !details.error) {
           detailsObj = {
@@ -1833,19 +1847,13 @@ const Purge = () => {
       }
     };
 
-    const handleLowGraphicsChange = (e) => {
-      setLowGraphics(!!e.detail);
-    };
-
     window.addEventListener('exit-study-session', handleExitSession);
     window.addEventListener('tutorial-step-changed', handleStepChanged);
     window.addEventListener('tutorial-reset', handleResetEvent);
-    window.addEventListener('low-graphics-change', handleLowGraphicsChange);
     return () => {
       window.removeEventListener('exit-study-session', handleExitSession);
       window.removeEventListener('tutorial-step-changed', handleStepChanged);
       window.removeEventListener('tutorial-reset', handleResetEvent);
-      window.removeEventListener('low-graphics-change', handleLowGraphicsChange);
     };
   }, [vocab]);
 
@@ -2503,7 +2511,7 @@ const Purge = () => {
     const isCurrentCardWord = !!(
       wordObj?.word &&
       activeTooltipWord &&
-      activeTooltipWord.toLowerCase() === wordObj.word.toLowerCase()
+      wordsMatchForLookup(activeTooltipWord, wordObj.word)
     );
     const activeRichData = tooltipDetails?.rawDetails || richCardData || {};
     const getWordList = (...keys) => {
@@ -2580,9 +2588,9 @@ const Purge = () => {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 15000,
-          background: 'rgba(0,0,0,0.6)',
+          background: lowGraphics ? 'rgba(0,0,0,0.84)' : 'rgba(0,0,0,0.78)',
           backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)'
+          WebkitBackdropFilter: lowGraphics ? 'none' : 'blur(8px)'
         }}
         onClick={() => {
           setTooltipStack(prev => prev.slice(0, -1));
@@ -2600,7 +2608,7 @@ const Purge = () => {
               overflowY: 'auto',
               background: (localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true')
                 ? 'rgba(15, 23, 42, 0.99)'
-                : 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 12, 17, 0.72) 100%)',
+                : (lowGraphics ? 'rgba(12, 14, 18, 0.98)' : 'rgba(12, 14, 18, 0.94)'),
               backdropFilter: (localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true')
                 ? 'none'
                 : (lowGraphics ? 'none' : 'blur(20px)'),
@@ -2677,8 +2685,9 @@ const Purge = () => {
 
             {/* Content loading state */}
             {isSearchingTooltipWord ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem 0' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', alignItems: 'center', justifyContent: 'center', padding: '1rem 0', color: 'rgba(255,255,255,0.65)', fontSize: '0.75rem', fontWeight: 800 }}>
                 <Loader2 size={24} className="spin" color="#ff7a00" />
+                <span>Looking up word...</span>
               </div>
             ) : (
               <>
@@ -4154,7 +4163,7 @@ const Purge = () => {
         >
 
           {/* Premium Artsy Morphing Ambient Glow in Minimal Mode */}
-          {theme === 'theme-1' && !showStats && (
+          {theme === 'theme-1' && !showStats && !lowGraphics && (
             <motion.div 
               animate={{ 
                 borderRadius: ['42% 58% 70% 30% / 45% 45% 55% 55%', '70% 30% 52% 48% / 60% 40% 60% 40%', '42% 58% 70% 30% / 45% 45% 55% 55%'],
@@ -4283,20 +4292,21 @@ const Purge = () => {
                     }}
                   >
                     {/* Diagonal Glass Shine Sweep Effect */}
-                    {theme !== 'theme-3' && !lowGraphics && !startHovered && (
+                    {theme !== 'theme-3' && !startHovered && (
                       <motion.div
-                        animate={{ x: ['-100%', '200%'] }}
-                        transition={{ repeat: Infinity, duration: 3.5, ease: 'linear', repeatDelay: 1.5 }}
+                        animate={{ x: ['-140%', '260%'] }}
+                        transition={{ repeat: Infinity, duration: 5.2, ease: 'linear', repeatDelay: 1.2 }}
                         style={{
                           position: 'absolute',
                           top: 0,
                           left: 0,
-                          width: '50%',
+                          width: '38%',
                           height: '100%',
-                          background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%)',
-                          transform: 'skewX(-25deg)',
+                          background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0) 100%)',
+                          transform: 'skewX(-18deg)',
                           pointerEvents: 'none',
-                          zIndex: 2
+                          zIndex: 2,
+                          willChange: 'transform'
                         }}
                       />
                     )}
@@ -5025,9 +5035,9 @@ const Purge = () => {
                     display: 'flex', 
                     gap: '6px', 
                     zIndex: 30,
-                    opacity: isImageHovered ? 1 : 0,
-                    pointerEvents: isImageHovered ? 'auto' : 'none',
-                    transition: 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
+                    opacity: (lowGraphics || isImageHovered) ? 1 : 0,
+                    pointerEvents: (lowGraphics || isImageHovered) ? 'auto' : 'none',
+                    transition: lowGraphics ? 'none' : 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}>
                     {/* Regenerate Button */}
                     <motion.button
@@ -5056,7 +5066,7 @@ const Purge = () => {
                         color: 'rgba(255, 255, 255, 0.7)',
                         cursor: 'pointer',
                         outline: 'none',
-                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                        transition: lowGraphics ? 'none' : 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                       }}
                     >
                       <RotateCw size={14} className={isRegenerating ? "spin" : ""} />

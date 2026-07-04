@@ -16,11 +16,6 @@ import { playClickSound, playSwipeSound } from './utils/soundHelper';
 import { Tutorial } from './components/Tutorial';
 import NongMem from './components/NongMem';
 
-const prefersMobilePerformance = () => {
-  if (typeof window === 'undefined') return true;
-  return window.matchMedia?.('(max-width: 768px), (pointer: coarse), (prefers-reduced-motion: reduce)')?.matches ?? true;
-};
-
 
 function AppContent() {
   const { user, signOut, loading, isAnonymous } = useAuth();
@@ -159,14 +154,7 @@ function AppContent() {
       return true;
     }
   });
-  const [lowGraphics, setLowGraphics] = useState(() => {
-    try {
-      const val = localStorage.getItem('memeng_low_graphics');
-      return val !== 'false';
-    } catch (e) {
-      return true;
-    }
-  });
+  const lowGraphics = false;
   const [dueReminders, setDueReminders] = useState(() => {
     try {
       const val = localStorage.getItem('memeng_due_reminders');
@@ -528,10 +516,12 @@ function AppContent() {
         userSelect: isSwiping ? 'none' : 'auto',
         WebkitUserSelect: isSwiping ? 'none' : 'auto',
         MozUserSelect: isSwiping ? 'none' : 'auto',
-        msUserSelect: isSwiping ? 'none' : 'auto'
+        msUserSelect: isSwiping ? 'none' : 'auto',
+        background: lowGraphics ? '#08090b' : undefined,
+        backgroundImage: lowGraphics ? 'none' : undefined
       }}
     >
-      <ThemeBackground />
+      {!lowGraphics && <ThemeBackground />}
 
       {/* Visual Tinder Swipe Stamps */}
       {(() => {
@@ -1208,74 +1198,7 @@ function AppContent() {
                 </div>
               </motion.div>
 
-              {/* Setting Row 4: Low Graphics */}
-              <motion.div 
-                variants={itemVariants}
-                onClick={() => {
-                  const val = !lowGraphics;
-                  setLowGraphics(val);
-                  try { localStorage.setItem('memeng_low_graphics', val.toString()); } catch (err) {}
-                  window.dispatchEvent(new CustomEvent('low-graphics-change', { detail: val }));
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  background: theme === 'theme-2' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.015)',
-                  border: theme === 'theme-2' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
-                  backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
-                  WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(8px)',
-                  cursor: 'pointer',
-                  gap: '12px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#cbd5e1'
-                  }}>
-                    <Sparkles size={16} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>{lowGraphics ? 'Low Graphics Mode' : 'High Graphics Mode'}</span>
-                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>{lowGraphics ? 'Runs smoother on phones' : 'More blur, glow, and animation'}</span>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    width: '38px',
-                    height: '22px',
-                    borderRadius: '11px',
-                    background: lowGraphics ? '#3b82f6' : 'rgba(255,255,255,0.06)',
-                    position: 'relative',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    transition: 'background 0.2s ease'
-                  }}
-                >
-                  <div style={{
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    background: '#ffffff',
-                    position: 'absolute',
-                    top: '2px',
-                    left: lowGraphics ? '18px' : '2px',
-                    transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
-                  }} />
-                </div>
-              </motion.div>
-
-              {/* Setting Row 5: Due Reminders */}
+              {/* Setting Row 4: Due Reminders */}
               <motion.div 
                 variants={itemVariants}
                 onClick={() => {

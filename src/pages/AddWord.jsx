@@ -128,6 +128,24 @@ const getLexicalList = (source, fallbackSource, ...keys) => {
   return [];
 };
 
+const getWordLookupCandidates = (word) => {
+  const cleaned = String(word || '').toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+  if (!cleaned) return [];
+  const candidates = new Set([cleaned]);
+  if (cleaned.endsWith('ies') && cleaned.length > 4) candidates.add(`${cleaned.slice(0, -3)}y`);
+  if (cleaned.endsWith('es') && cleaned.length > 3) candidates.add(cleaned.slice(0, -2));
+  if (cleaned.endsWith('s') && cleaned.length > 3) candidates.add(cleaned.slice(0, -1));
+  if (cleaned.endsWith('ed') && cleaned.length > 4) {
+    candidates.add(cleaned.slice(0, -2));
+    candidates.add(cleaned.slice(0, -1));
+  }
+  if (cleaned.endsWith('ing') && cleaned.length > 5) {
+    candidates.add(cleaned.slice(0, -3));
+    candidates.add(`${cleaned.slice(0, -3)}e`);
+  }
+  return [...candidates].filter(Boolean);
+};
+
 const irregularVerbs = {
   be: ['am/is/are', 'was/were', 'been'],
   go: ['go', 'went', 'gone'],
@@ -422,7 +440,8 @@ const AddWord = () => {
     playClickSound();
     setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
     
-    const local = vocab.find(v => v && v.word && v.word.toLowerCase() === cleaned);
+    const lookupCandidates = getWordLookupCandidates(cleaned);
+    const local = vocab.find(v => v && v.word && lookupCandidates.includes(v.word.toLowerCase()));
     if (local) {
       let parsed = null;
       try {
@@ -441,7 +460,7 @@ const AddWord = () => {
         idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details } : item
       ));
     } else {
-      getAiWordRichDetails(cleaned).then(details => {
+      getAiWordRichDetails(lookupCandidates[0] || cleaned).then(details => {
         let detailsObj;
         if (details && !details.error) {
           detailsObj = {
@@ -517,7 +536,7 @@ const AddWord = () => {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 15000,
-          background: 'rgba(0,0,0,0.6)',
+          background: 'rgba(0,0,0,0.78)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)'
         }}
@@ -534,7 +553,7 @@ const AddWord = () => {
             style={{
               width: '85%',
               maxWidth: '320px',
-              background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 12, 17, 0.72) 100%)',
+              background: 'rgba(12, 14, 18, 0.94)',
               backdropFilter: 'blur(20px)',
               borderRadius: '24px',
               border: '1px solid rgba(255,255,255,0.12)',
@@ -723,7 +742,7 @@ const AddWord = () => {
         .filter(item => !synonyms.includes(item));
       const wordFamily = targetWord.length >= 4
         ? uniqueLexicalWords(familyRaw, targetWord, 5)
-          .filter(item => item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))))
+          .filter(item => !item.includes(' ') && item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))))
         : [];
 
       setLexicalFallback(prev => ({
@@ -2786,8 +2805,13 @@ const AddWord = () => {
                     const renderChips = (items, color) => (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.35rem' }}>
                         {items.map(item => (
-                          <span
+                          <button
                             key={item}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleWordClick(item);
+                            }}
                             style={{
                               borderRadius: '999px',
                               border: `1px solid ${color.border}`,
@@ -2796,11 +2820,13 @@ const AddWord = () => {
                               fontSize: '0.72rem',
                               fontWeight: 800,
                               padding: '0.32rem 0.55rem',
-                              lineHeight: 1
+                              lineHeight: 1,
+                              fontFamily: 'inherit',
+                              cursor: 'pointer'
                             }}
                           >
                             {item}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     );

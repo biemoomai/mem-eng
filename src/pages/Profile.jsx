@@ -1149,18 +1149,19 @@ const Profile = () => {
             >
               {/* Diagonal Glass Shine Sweep Effect */}
               <motion.div
-                animate={{ x: ['-100%', '200%'] }}
-                transition={{ repeat: Infinity, duration: 3.5, ease: 'linear', repeatDelay: 1.5 }}
+                animate={{ x: ['-140%', '260%'] }}
+                transition={{ repeat: Infinity, duration: 5.2, ease: 'linear', repeatDelay: 1.2 }}
                 style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  width: '50%',
+                  width: '38%',
                   height: '100%',
-                  background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%)',
-                  transform: 'skewX(-25deg)',
+                  background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0) 100%)',
+                  transform: 'skewX(-18deg)',
                   pointerEvents: 'none',
-                  zIndex: 2
+                  zIndex: 2,
+                  willChange: 'transform'
                 }}
               />
 
