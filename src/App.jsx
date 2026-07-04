@@ -199,6 +199,7 @@ function AppContent() {
   });
 
   const [isTutorialActive, setIsTutorialActive] = useState(false);
+  const pageSwipeEnabled = !prefersMobilePerformance() && !lowGraphics;
 
   useEffect(() => {
     const handleMuteChange = (e) => {
@@ -223,6 +224,7 @@ function AppContent() {
   const minSwipeDistance = 60;
 
   const getDragStart = (x, y, target) => {
+    if (!pageSwipeEnabled) return null;
     if (
       target.closest('.snap-card') || 
       target.closest('button') || 
@@ -239,7 +241,7 @@ function AppContent() {
   };
 
   const handleDragMove = (x, y) => {
-    if (!dragStart) return;
+    if (!pageSwipeEnabled || !dragStart) return;
     const dx = x - dragStart.x;
     const dy = y - dragStart.y;
 
@@ -260,7 +262,7 @@ function AppContent() {
   };
 
   const handleDragEnd = () => {
-    if (dragStart && swipeDirection === 'horizontal') {
+    if (pageSwipeEnabled && dragStart && swipeDirection === 'horizontal') {
       const routes = ['/', '/purge', '/profile'];
       const currentIdx = routes.indexOf(location.pathname);
       
@@ -517,7 +519,7 @@ function AppContent() {
 
       {/* Visual Tinder Swipe Stamps */}
       {(() => {
-        if (Math.abs(swipeOffset) < 20) return null;
+        if (!pageSwipeEnabled || Math.abs(swipeOffset) < 20) return null;
         
         const routes = ['/', '/purge', '/profile'];
         const currentIdx = routes.indexOf(location.pathname);

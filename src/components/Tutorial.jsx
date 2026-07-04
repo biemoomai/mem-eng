@@ -7,128 +7,23 @@ import { useAuth } from '../context/AuthContext';
 import { useVocab } from '../context/VocabContext';
 
 const TUTORIAL_STEPS = [
-  {
-    path: '/',
-    selector: '#tutorial-translate-input',
-    title: 'Translate Word',
-    text: 'พิมพ์คำศัพท์ที่ต้องการเรียนรู้ลงในช่องค้นหา เช่น <span style="color:#facc15;font-weight:900">hello</span> (พิมพ์ตัวอักษรใดก็ได้ ระบบจะป้อนคำว่า hello ให้อัตโนมัติ)',
-    position: 'bottom'
-  },
-  {
-    path: '/',
-    selector: '#tutorial-translate-submit-btn',
-    title: 'Click Translate',
-    text: 'เก่งมาก! ตอนนี้กดปุ่ม <span style="color:#facc15;font-weight:900">Translate</span> เพื่อแปลคำศัพท์ผ่านระบบจำลองออฟไลน์',
-    position: 'bottom'
-  },
-  {
-    path: '/',
-    selector: '.results-drag-wrapper',
-    title: 'Explore AI Card',
-    text: 'ผลการเรียนรู้ผ่าน AI ได้รับการจัดรูปแบบเป็นการ์ดสวยงาม ลอง<span style="color:#facc15;font-weight:900">ปัดหน้าจอเลื่อนขึ้น-ลง</span>เพื่อสำรวจเนื้อหา ตัวอย่างประโยค และรูปภาพประกอบให้ครบก่อน เมื่อดูเสร็จแล้ว ให้คลิกปุ่ม "ถัดไป"',
-    position: 'top'
-  },
-  {
-    path: '/',
-    selector: '.results-drag-wrapper',
-    title: 'Swipe Gestures Demo',
-    text: 'คุณสามารถปัดการ์ดไปทางซ้ายหรือขวาเพื่อจัดการคำศัพท์ได้ ลองดูแอนิเมชันจำลองการปัดนี้:<br/>• <span style="color:#ef4444;font-weight:900">ปัดซ้าย (Back)</span> = ยกเลิก/ข้าม<br/>• <span style="color:#10b981;font-weight:900">ปัดขวา (Save)</span> = บันทึกคำศัพท์เข้าระบบช่วยจำ',
-    position: 'top',
-    showSwipeDemo: true
-  },
-  {
-    path: '/',
-    selector: '#tutorial-tinder-save-btn',
-    title: 'Swipe or Tap to Save',
-    text: 'นอกจากปัดแล้ว คุณยังสามารถแตะปุ่มเพื่อทำรายการได้ทันที ลองแตะปุ่ม <span style="color:#4ade80;font-weight:900">Save</span> สีเขียวเพื่อลองบันทึกเลยจ้า (หรือแตะปุ่ม <span style="color:#f87171;font-weight:900">Back</span> สีแดงเพื่อยกเลิก)',
-    position: 'top'
-  },
-  {
-    path: '/purge',
-    selector: '#tutorial-flashcard-card',
-    title: 'Flashcard Deck',
-    text: 'การ์ดคำศัพท์ที่คุณกำลังเรียนอยู่ ลอง<span style="color:#facc15;font-weight:900">แตะที่การ์ด</span>เบาๆ เพื่อเปิดเผยคำอธิบายภาษาอังกฤษและตัวอย่างประโยค',
-    position: 'top'
-  },
-  {
-    path: '/purge',
-    selector: '#tutorial-flashcard-card',
-    title: 'Reveal Thai Translation',
-    text: 'ลอง<span style="color:#facc15;font-weight:900">แตะที่การ์ดอีกครั้ง</span> เพื่อเปิดเผยคำแปลภาษาไทยและแถบปุ่มระบบช่วยจำ',
-    position: 'top'
-  },
-  {
-    path: '/purge',
-    selector: '#tutorial-word-today',
-    title: 'Dictionary Lookup',
-    text: 'ลองแตะที่คำว่า <span style="color:#facc15;font-weight:900">today</span> หรือคำศัพท์ใดก็ได้ในประโยคตัวอย่าง เพื่อจำลองการเปิดพจนานุกรมความหมายด่วน',
-    position: 'top'
-  },
-  {
-    path: '/purge',
-    selector: '#tutorial-tooltip-info-container',
-    title: 'Word Details & Sound',
-    text: 'นี่คือความหมายและคำแปลภาษาไทยของคำศัพท์ที่แตะ ลองอ่านทบทวนหรือ<span style="color:#facc15;font-weight:900">แตะปุ่มลำโพง🔊</span>เพื่อทดลองฟังเสียงพูดออกเสียงได้จ้า เสร็จแล้วกดปุ่ม "ถัดไป"',
-    position: 'bottom',
-    padding: 12
-  },
-  {
-    path: '/purge',
-    selector: '#tutorial-tooltip-add-btn',
-    title: 'Add Word to Deck',
-    text: 'แตะปุ่ม <span style="color:#facc15;font-weight:900">"Add to Deck"</span> เพื่อเก็บสะสมคำศัพท์นั้นเข้าคลังเรียนรู้ของคุณทันที',
-    position: 'bottom'
-  },
-  {
-    path: '/purge',
-    selector: '#tutorial-flashcard-card',
-    title: 'Swipe Gestures',
-    text: 'ระบบช่วยจำ (SRS) จะคอยสุ่มทบทวนตามความยากง่ายที่คุณระบุ คุณสามารถ<span style="color:#facc15;font-weight:900">ปัดการ์ด 4 ทิศทาง</span>แทนการกดปุ่มได้:<br/>• <span style="color:#3b82f6;font-weight:800">ปัดขวา = Easy</span> (จำได้ดีที่สุด)<br/>• <span style="color:#10b981;font-weight:800">ปัดขึ้น = Good</span> (พอจำได้)<br/>• <span style="color:#f97316;font-weight:800">ปัดลง = Hard</span> (เริ่มทบทวนยาก)<br/>• <span style="color:#ef4444;font-weight:800">ปัดซ้าย = Again</span> (ลืม/ตอบผิด)',
-    position: 'top',
-    padding: 6,
-    showSwipeDemo: true
-  },
-  {
-    path: '/purge',
-    selector: '#tutorial-srs-buttons',
-    title: 'SRS Memory Rating',
-    text: 'หรือจะกดแถบปุ่มระดับความจำโดยตรงด้านล่างก็ได้เช่นกัน เช่น <span style="color:#facc15;font-weight:900">Easy</span> หรือ <span style="color:#facc15;font-weight:900">Normal</span> เพื่อเริ่มเรียนรู้คำศัพท์ถัดไป',
-    position: 'top',
-    padding: 6
-  },
-  {
-    path: '/profile',
-    selector: '#tutorial-profile-curriculum',
-    title: 'Curriculum Switcher',
-    text: 'กดเลือก<span style="color:#facc15;font-weight:900">ปุ่มหลักสูตร</span>นี้ เพื่อเปิดตัวเลือกการสลับโหมดคำศัพท์',
-    position: 'bottom',
-    padding: 4
-  },
-  {
-    path: '/profile',
-    selector: '#tutorial-profile-curriculum-modal-content',
-    title: 'Choose Curriculum Focus',
-    text: 'นี่คือรายการตัวเลือกหลักสูตรที่เลือกเล่นได้ เช่น <span style="color:#facc15;font-weight:900">Oxford</span> หรือ <span style="color:#facc15;font-weight:900">TOEIC</span> แตะเลือกหลักสูตรที่สนใจ หรือแตะเลือก <span style="color:#facc15;font-weight:900">Self-Study</span> เพื่อใช้งานโหมดทั่วไป แล้วกดปุ่มถัดไป',
-    position: 'top',
-    padding: 10
-  },
-  {
-    path: '/profile',
-    selector: '#tutorial-profile-srs',
-    title: 'SRS Memory Stages',
-    text: 'ลองกดที่ปุ่มระดับความจำกลุ่มใดก็ได้ เช่น <span style="color:#facc15;font-weight:900">Learning</span> หรือ <span style="color:#facc15;font-weight:900">Mastered</span> เพื่อแสดงรายชื่อคำศัพท์ของกลุ่มนั้น',
-    position: 'top',
-    padding: 6
-  },
-  {
-    path: '/profile',
-    selector: null,
-    title: 'Profile Summary',
-    text: 'หน้านี้เป็นส่วนของโปรไฟล์ผู้ใช้ เพื่อดูสถิติและคำศัพท์ทั้งหมดที่คุณได้เรียนและสะสมมาครับ ยินดีด้วย! การแนะนำโปรแกรมเสร็จสิ้นแล้ว ระบบจะพาคุณกลับไปหน้าค้นหาเพื่อเริ่มต้นใหม่ครับ',
-    position: 'top'
-  }
+  { path: '/', selector: '#tutorial-translate-input', title: 'Translate a Word', text: 'Type a word you want to learn, for example <span style="color:#facc15;font-weight:900">hello</span>. You can type any letter during the guide and Mem-eng will fill in hello for you.', position: 'bottom' },
+  { path: '/', selector: '#tutorial-translate-submit-btn', title: 'Run Translation', text: 'Tap <span style="color:#facc15;font-weight:900">Translate</span> to create a learning card with meaning, examples, and context.', position: 'bottom' },
+  { path: '/', selector: '.results-drag-wrapper', title: 'Explore the Card', text: 'Scroll through the result card to see the definition, example sentence, collocation, and visual context. When you are done, tap <span style="color:#facc15;font-weight:900">Next</span>.', position: 'top' },
+  { path: '/', selector: '.results-drag-wrapper', title: 'Save Gesture Demo', text: 'You can manage a translated word with simple gestures:<br/>- <span style="color:#ef4444;font-weight:900">Swipe left</span> to go back or skip.<br/>- <span style="color:#10b981;font-weight:900">Swipe right</span> to save it to your deck.', position: 'top', showSwipeDemo: true },
+  { path: '/', selector: '#tutorial-tinder-save-btn', title: 'Save the Word', text: 'You can also tap the <span style="color:#4ade80;font-weight:900">Save</span> button directly. This adds the word to your review deck.', position: 'top' },
+  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'Open Flashcards', text: 'This is your flashcard deck. Tap the center card to reveal the answer and learning details.', position: 'top' },
+  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'Reveal the Answer', text: 'Tap the card again to reveal the Thai meaning and the memory-rating controls.', position: 'top' },
+  { path: '/purge', selector: '#tutorial-word-today', title: 'Quick Lookup', text: 'Tap a word inside an example sentence, such as <span style="color:#facc15;font-weight:900">today</span>, to open a quick dictionary popup.', position: 'top' },
+  { path: '/purge', selector: '#tutorial-tooltip-info-container', title: 'Word Details and Sound', text: 'Read the quick meaning or tap the speaker button to hear the word. Then continue to the next step.', position: 'bottom', padding: 12 },
+  { path: '/purge', selector: '#tutorial-tooltip-add-btn', title: 'Add From Lookup', text: 'Tap <span style="color:#facc15;font-weight:900">Add to Deck</span> to save that word into your learning deck.', position: 'bottom' },
+  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'Rate Your Memory', text: 'Mem-eng reviews words based on how well you remember them. You can swipe in four directions:<br/>- <span style="color:#3b82f6;font-weight:800">Right = Easy</span><br/>- <span style="color:#10b981;font-weight:800">Up = Normal</span><br/>- <span style="color:#f97316;font-weight:800">Down = Hard</span><br/>- <span style="color:#ef4444;font-weight:800">Left = Again</span>', position: 'top', padding: 6, showSwipeDemo: true },
+  { path: '/purge', selector: '#tutorial-srs-buttons', title: 'Use Rating Buttons', text: 'If you do not want to swipe, you can tap the rating buttons at the bottom. Each choice changes the next review time.', position: 'top', padding: 6 },
+  { path: '/profile', selector: '#tutorial-profile-curriculum', title: 'Choose a Word Set', text: 'Tap the curriculum label to choose a word set such as Oxford, TOEIC, or Self-Study.', position: 'bottom', padding: 4 },
+  { path: '/profile', selector: '#tutorial-profile-curriculum-modal-content', title: 'Pick Your Focus', text: 'Choose the list you want to study. Use <span style="color:#facc15;font-weight:900">Self-Study</span> when you want to build your own deck.', position: 'top', padding: 10 },
+  { path: '/profile', selector: '#tutorial-profile-srs', title: 'Check Memory Stages', text: 'Tap a memory stage, such as Learning or Mastered, to see the words in that group.', position: 'top', padding: 6 },
+  { path: '/profile', selector: null, title: 'You Are Ready', text: 'That is the full tour. You can now translate words, save them, and review them with spaced repetition.', position: 'top' }
 ];
-
 const PremiumFingerPointer = ({ direction = 'down' }) => {
   let rotateDeg = 0;
   if (direction === 'up') rotateDeg = 0; // 👆
@@ -1261,7 +1156,7 @@ export const Tutorial = () => {
                     <button 
                       onClick={handleMinimize}
                       style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '2px' }}
-                      title="ย่อ Tutorial"
+                      title="Minimize tutorial"
                     >
                       <Minimize2 size={13} />
                     </button>
@@ -1277,14 +1172,7 @@ export const Tutorial = () => {
                 {/* Guide Text */}
                 {isWrongPath ? (
                   <div>
-                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
-                      สลับหน้าจอเพื่อเรียนรู้ต่อ
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>
-                      กรุณากดเลือกแถบนำทางที่ {stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'Profile' : 'Translate')} ด้านล่างของจอเพื่อดูขั้นตอนสอนการใช้งานถัดไปครับ!
-                    </p>
-                  </div>
-                ) : (
+                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>Open the next page</h4><p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>Use the bottom navigation bar to open {stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'My Profile' : 'Translate')} and continue the guide.</p></div>) : (
                   <div>
                     <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
                       {stepConf.title}
@@ -1333,7 +1221,7 @@ export const Tutorial = () => {
                           cursor: 'pointer'
                         }}
                       >
-                        <span>{completedSteps[currentStep] ? 'ถัดไป' : 'ข้าม'}</span>
+                        <span>Next</span>
                         <ChevronRight size={11} />
                       </button>
                     ) : (
