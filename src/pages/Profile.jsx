@@ -2147,16 +2147,16 @@ const Profile = () => {
                                   boxSizing: 'border-box'
                                 }}
                               >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.55rem', width: '100%', minWidth: 0, overflow: 'hidden' }}>
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.35rem', minWidth: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.35rem', marginBottom: '0.35rem', minWidth: 0 }}>
                                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, minWidth: 0, flexWrap: 'wrap', lineHeight: 1.15 }}>
                                         {item.word}
                                         <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: '#94a3b8', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{item.pos}</span>
                                       </h3>
                                       
                                       {/* Action Buttons */}
-                                      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
+                                      <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0 }}>
                                         <span style={{ 
                                           fontSize: '0.55rem', 
                                           padding: '0.22rem 0.5rem', 
@@ -2296,7 +2296,7 @@ const Profile = () => {
                                   
                                   {/* Image Thumbnail Box */}
                                   {item.videoUrl && (
-                                    <div style={{ width: 'clamp(62px, 21vw, 80px)', height: 'clamp(62px, 21vw, 80px)', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flex: '0 0 clamp(62px, 21vw, 80px)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', alignSelf: 'center', maxWidth: '32%' }}>
+                                    <div style={{ width: 'clamp(52px, 15vw, 64px)', height: 'clamp(52px, 15vw, 64px)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flex: '0 0 clamp(52px, 15vw, 64px)', boxShadow: '0 4px 10px rgba(0,0,0,0.24)', alignSelf: 'center', maxWidth: '24%' }}>
                                       <img 
                                         src={cleanMediaUrl(item.videoUrl)} 
                                         alt={item.word} 
@@ -2327,16 +2327,16 @@ const Profile = () => {
                                   boxSizing: 'border-box'
                                 }}
                               >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.55rem', width: '100%', minWidth: 0, overflow: 'hidden' }}>
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.35rem', minWidth: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.35rem', marginBottom: '0.35rem', minWidth: 0 }}>
                                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, minWidth: 0, flexWrap: 'wrap', lineHeight: 1.15 }}>
                                         {item.word}
                                         <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: '#94a3b8', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{item.pos}</span>
                                       </h3>
                                       
                                       {/* Action Buttons */}
-                                      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
+                                      <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0 }}>
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -2460,7 +2460,7 @@ const Profile = () => {
                                   
                                   {/* Image Thumbnail Box */}
                                   {item.videoUrl && (
-                                    <div style={{ width: 'clamp(62px, 21vw, 80px)', height: 'clamp(62px, 21vw, 80px)', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flex: '0 0 clamp(62px, 21vw, 80px)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', alignSelf: 'center', maxWidth: '32%' }}>
+                                    <div style={{ width: 'clamp(52px, 15vw, 64px)', height: 'clamp(52px, 15vw, 64px)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flex: '0 0 clamp(52px, 15vw, 64px)', boxShadow: '0 4px 10px rgba(0,0,0,0.24)', alignSelf: 'center', maxWidth: '24%' }}>
                                       <img 
                                         src={cleanMediaUrl(item.videoUrl)} 
                                         alt={item.word} 
