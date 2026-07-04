@@ -2406,6 +2406,60 @@ const Purge = () => {
 
   const renderWordTooltip = () => {
     if (tooltipStack.length === 0) return null;
+    const isCurrentCardWord = !!(
+      wordObj?.word &&
+      activeTooltipWord &&
+      activeTooltipWord.toLowerCase() === wordObj.word.toLowerCase()
+    );
+    const activeRichData = tooltipDetails?.rawDetails || richCardData || {};
+    const getWordList = (...keys) => {
+      for (const key of keys) {
+        const value = activeRichData?.[key] || activeRichData?.englishExplanation?.[key];
+        if (Array.isArray(value)) {
+          return value.map(item => String(item).trim()).filter(Boolean).slice(0, 6);
+        }
+        if (typeof value === 'string' && value.trim()) {
+          return value.split(/[,|/]/).map(item => item.trim()).filter(Boolean).slice(0, 6);
+        }
+      }
+      return [];
+    };
+    const extraContexts = [
+      ...(Array.isArray(activeRichData?.scenes) ? activeRichData.scenes : [])
+        .map(scene => scene?.dialogue)
+        .filter(Boolean),
+      activeRichData?.englishExplanation?.phrase
+    ]
+      .filter(Boolean)
+      .filter((text, idx, arr) => arr.indexOf(text) === idx)
+      .slice(0, 3);
+    const synonymWords = getWordList('synonyms', 'nearWords', 'relatedWords');
+    const familyWords = getWordList('wordFamily', 'wordFamilies', 'family');
+    const hasDeepData = isCurrentCardWord && (extraContexts.length > 0 || synonymWords.length > 0 || familyWords.length > 0);
+
+    const renderWordChip = (label, accent = '#f97316') => (
+      <button
+        key={label}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleWordClick(label);
+        }}
+        className="glass-button animate-scale"
+        style={{
+          padding: '0.35rem 0.55rem',
+          borderRadius: '999px',
+          fontSize: '0.68rem',
+          fontWeight: 850,
+          color: accent,
+          borderColor: `${accent}40`,
+          background: `${accent}12`,
+          lineHeight: 1
+        }}
+      >
+        {label}
+      </button>
+    );
+
     return (
       <AnimatePresence>
         <div style={{
@@ -2430,7 +2484,9 @@ const Purge = () => {
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '85%',
-              maxWidth: '320px',
+              maxWidth: isCurrentCardWord ? '350px' : '320px',
+              maxHeight: '78vh',
+              overflowY: 'auto',
               background: (localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true')
                 ? 'rgba(15, 23, 42, 0.99)'
                 : 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 12, 17, 0.72) 100%)',
@@ -2527,6 +2583,44 @@ const Purge = () => {
                     <span style={{ color: 'rgba(16,185,129,0.4)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.55rem', display: 'block', marginBottom: '0.1rem' }}>Thai Translation</span>
                     {renderInteractiveSentence(tooltipDetails?.translation, null, handleWordClick)}
                   </div>
+
+                  {hasDeepData && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '0.25rem', paddingTop: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.82)', fontWeight: 900, fontSize: '0.78rem' }}>Deepen this word</span>
+                        <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 800, fontSize: '0.56rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Same card</span>
+                      </div>
+
+                      {extraContexts.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.34)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.55rem' }}>More contexts</span>
+                          {extraContexts.map((contextText, idx) => (
+                            <div key={`${contextText}-${idx}`} style={{ padding: '0.55rem 0.65rem', borderRadius: '14px', background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.8)', fontSize: '0.76rem', lineHeight: 1.35, fontWeight: 650 }}>
+                              {renderInteractiveSentence(contextText, activeTooltipWord, handleWordClick)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {synonymWords.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.34)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.55rem' }}>Related words</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                            {synonymWords.map(word => renderWordChip(word, '#f97316'))}
+                          </div>
+                        </div>
+                      )}
+
+                      {familyWords.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.34)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.55rem' }}>Word family</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                            {familyWords.map(word => renderWordChip(word, '#38bdf8'))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             )}
