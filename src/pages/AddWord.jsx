@@ -93,6 +93,41 @@ const renderHighlightedThaiText = (text, thaiWord) => {
   });
 };
 
+const cleanLexicalCandidate = (value, targetWord = '') => {
+  if (!value || typeof value !== 'string') return null;
+  const cleaned = value.toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+  if (!cleaned || cleaned === targetWord || cleaned.length > 28 || cleaned.split(/\s+/).length > 3) return null;
+  return cleaned;
+};
+
+const uniqueLexicalWords = (items, targetWord = '', max = 6) => {
+  const seen = new Set();
+  const result = [];
+  for (const item of items || []) {
+    const candidate = cleanLexicalCandidate(item?.word || item, targetWord);
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
+    result.push(candidate);
+    if (result.length >= max) break;
+  }
+  return result;
+};
+
+const getLexicalList = (source, fallbackSource, ...keys) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (Array.isArray(value) && value.length > 0) return value.map(String).filter(Boolean);
+    if (typeof value === 'string' && value.trim()) {
+      return value.split(/[,;|]/).map(item => item.trim()).filter(Boolean);
+    }
+  }
+  for (const key of keys) {
+    const value = fallbackSource?.[key];
+    if (Array.isArray(value) && value.length > 0) return value.map(String).filter(Boolean);
+  }
+  return [];
+};
+
 const irregularVerbs = {
   be: ['am/is/are', 'was/were', 'been'],
   go: ['go', 'went', 'gone'],
@@ -282,6 +317,7 @@ const AddWord = () => {
   const [sourceToast, setSourceToast] = useState(null);
   const [sceneImages, setSceneImages] = useState([]);       // [{url, source}, ...]
   const [sceneImagesLoading, setSceneImagesLoading] = useState(false);
+  const [lexicalFallback, setLexicalFallback] = useState({});
   const [regenCounts, setRegenCounts] = useState([0, 0]);
   const [activeSearchOverlays, setActiveSearchOverlays] = useState([false, false]);
   const [selectedPrimaryImageIdx, setSelectedPrimaryImageIdx] = useState(null);
@@ -636,6 +672,72 @@ const AddWord = () => {
   const stampDiscardOpacity = useTransform(translateX, [-50, -150], [0, 1]);
   const overlayTranslateGreen = useTransform(translateX, [50, 150], [0, 0.45]);
   const overlayTranslateRed = useTransform(translateX, [-50, -150], [0, 0.45]);
+
+  useEffect(() => {
+    const targetWord = richCardData?.word ? String(richCardData.word).toLowerCase().trim() : '';
+    if (!targetWord || richCardData?.validation?.isInvalid) return;
+
+    const hasBuiltInLexical =
+      getLexicalList(richCardData, null, 'synonyms').length > 0 ||
+      getLexicalList(richCardData, null, 'nearWords', 'relatedWords').length > 0 ||
+      getLexicalList(richCardData, null, 'wordFamily', 'wordFamilies', 'family').length > 0;
+    const fallbackStatus = lexicalFallback[targetWord]?.status;
+    if (hasBuiltInLexical || fallbackStatus === 'loaded' || fallbackStatus === 'loading') return;
+
+    let cancelled = false;
+    setLexicalFallback(prev => ({
+      ...prev,
+      [targetWord]: { status: 'loading', synonyms: [], nearWords: [], wordFamily: [] }
+    }));
+
+    const fetchDatamuse = async (query) => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 3200);
+      try {
+        const response = await fetch(`https://api.datamuse.com/words?${query}`, {
+          signal: controller.signal
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch {
+        return [];
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    (async () => {
+      const encoded = encodeURIComponent(targetWord);
+      const [synonymsRaw, relatedRaw, triggerRaw, meansLikeRaw, familyRaw] = await Promise.all([
+        fetchDatamuse(`rel_syn=${encoded}&max=12`),
+        fetchDatamuse(`rel_trg=${encoded}&max=12`),
+        fetchDatamuse(`ml=${encoded}&max=12`),
+        fetchDatamuse(`ml=${encoded}&topics=${encoded}&max=12`),
+        fetchDatamuse(`sp=${encoded}*&max=12`)
+      ]);
+      if (cancelled) return;
+
+      const synonyms = uniqueLexicalWords(synonymsRaw, targetWord, 5);
+      const nearWords = uniqueLexicalWords([...relatedRaw, ...triggerRaw, ...meansLikeRaw], targetWord, 6)
+        .filter(item => !synonyms.includes(item));
+      const wordFamily = targetWord.length >= 4
+        ? uniqueLexicalWords(familyRaw, targetWord, 5)
+          .filter(item => item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))))
+        : [];
+
+      setLexicalFallback(prev => ({
+        ...prev,
+        [targetWord]: { status: 'loaded', synonyms, nearWords, wordFamily }
+      }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // lexicalFallback is intentionally omitted: adding it cancels the in-flight fallback request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [richCardData]);
 
   const handleSaveWord = async () => {
     if (isSuccess || isExiting) return;
@@ -2670,6 +2772,71 @@ const AddWord = () => {
                       </div>
                     </div>
                   )}
+
+                  {(() => {
+                    const targetWord = String(richCardData.word || '').toLowerCase().trim();
+                    const fallback = lexicalFallback[targetWord] || {};
+                    const synonyms = getLexicalList(richCardData, fallback, 'synonyms').slice(0, 5);
+                    const nearWords = getLexicalList(richCardData, fallback, 'nearWords', 'relatedWords').slice(0, 6);
+                    const wordFamily = getLexicalList(richCardData, fallback, 'wordFamily', 'wordFamilies', 'family').slice(0, 5);
+                    const isLoadingLexical = fallback.status === 'loading';
+                    const hasLexical = synonyms.length > 0 || nearWords.length > 0 || wordFamily.length > 0;
+                    if (!hasLexical && !isLoadingLexical) return null;
+
+                    const renderChips = (items, color) => (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.35rem' }}>
+                        {items.map(item => (
+                          <span
+                            key={item}
+                            style={{
+                              borderRadius: '999px',
+                              border: `1px solid ${color.border}`,
+                              background: color.bg,
+                              color: color.text,
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              padding: '0.32rem 0.55rem',
+                              lineHeight: 1
+                            }}
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    );
+
+                    return (
+                      <div className="glass-panel" style={{ padding: '1.25rem', width: '100%' }}>
+                        <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', letterSpacing: '0.5px' }}>
+                          Word connections
+                        </span>
+                        {isLoadingLexical && !hasLexical && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.55rem', color: 'rgba(255,255,255,0.62)', fontSize: '0.75rem', fontWeight: 800 }}>
+                            <Loader2 size={12} className="spin" />
+                            Loading related words
+                          </div>
+                        )}
+                        {synonyms.length > 0 && (
+                          <div style={{ marginTop: '0.65rem' }}>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-secondary)', fontWeight: 900, textTransform: 'uppercase' }}>Synonyms</span>
+                            {renderChips(synonyms, { border: 'rgba(96, 165, 250, 0.26)', bg: 'rgba(96, 165, 250, 0.08)', text: '#93c5fd' })}
+                          </div>
+                        )}
+                        {nearWords.length > 0 && (
+                          <div style={{ marginTop: '0.65rem' }}>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-secondary)', fontWeight: 900, textTransform: 'uppercase' }}>Related words</span>
+                            {renderChips(nearWords, { border: 'rgba(52, 211, 153, 0.24)', bg: 'rgba(52, 211, 153, 0.07)', text: '#6ee7b7' })}
+                          </div>
+                        )}
+                        {wordFamily.length > 0 && (
+                          <div style={{ marginTop: '0.65rem' }}>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-secondary)', fontWeight: 900, textTransform: 'uppercase' }}>Word family</span>
+                            {renderChips(wordFamily, { border: 'rgba(251, 146, 60, 0.25)', bg: 'rgba(251, 146, 60, 0.08)', text: '#fdba74' })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Key Takeaway Card */}
                   {richCardData.takeaway && (

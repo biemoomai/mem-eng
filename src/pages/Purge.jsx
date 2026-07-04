@@ -1102,10 +1102,20 @@ const Purge = () => {
       return result;
     };
     const fetchDatamuse = async (query) => {
-      const response = await fetch(`https://api.datamuse.com/words?${query}`);
-      if (!response.ok) return [];
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 3200);
+      try {
+        const response = await fetch(`https://api.datamuse.com/words?${query}`, {
+          signal: controller.signal
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch {
+        return [];
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
     };
 
     let cancelled = false;
@@ -1128,8 +1138,10 @@ const Purge = () => {
         const synonyms = uniqueWords(synonymsRaw, 5);
         const nearWords = uniqueWords([...relatedRaw, ...triggerRaw, ...meansLikeRaw], 6)
           .filter(item => !synonyms.includes(item));
-        const wordFamily = uniqueWords(familyRaw, 5)
-          .filter(item => item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))));
+        const wordFamily = targetWord.length >= 4
+          ? uniqueWords(familyRaw, 5)
+            .filter(item => item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))))
+          : [];
 
         setTooltipLexicalFallback(prev => ({
           ...prev,
@@ -1147,7 +1159,9 @@ const Purge = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeTooltipWord, tooltipDetails?.rawDetails, wordObj?.word, wordObj?.meaning, tooltipLexicalFallback]);
+    // tooltipLexicalFallback is intentionally omitted: adding it cancels the in-flight fallback request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTooltipWord, tooltipDetails?.rawDetails, wordObj?.word, wordObj?.meaning]);
 
   const handleSpeak = (text) => {
     if (!text || !window.speechSynthesis) return;
