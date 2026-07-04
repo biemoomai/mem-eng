@@ -1064,8 +1064,89 @@ const Purge = () => {
   const tooltipDetails = currentTooltip?.details || null;
   const isSearchingTooltipWord = currentTooltip?.loading || false;
   const [isAddingTooltipWord, setIsAddingTooltipWord] = useState(false);
+  const [tooltipLexicalFallback, setTooltipLexicalFallback] = useState({});
   // showThai toggle removed, defaults to true/always show when revealed
   const showThai = true;
+
+  useEffect(() => {
+    const targetWord = activeTooltipWord?.toLowerCase().trim();
+    const currentWord = wordObj?.word?.toLowerCase().trim();
+    if (!targetWord || !currentWord || targetWord !== currentWord) return;
+
+    const activeRich = tooltipDetails?.rawDetails || richCardData || {};
+    const hasBuiltInLexical =
+      (Array.isArray(activeRich?.synonyms) && activeRich.synonyms.length > 0) ||
+      (Array.isArray(activeRich?.nearWords) && activeRich.nearWords.length > 0) ||
+      (Array.isArray(activeRich?.wordFamily) && activeRich.wordFamily.length > 0);
+    if (hasBuiltInLexical || tooltipLexicalFallback[targetWord]?.status === 'loaded' || tooltipLexicalFallback[targetWord]?.status === 'loading') {
+      return;
+    }
+
+    const cleanCandidate = (value) => {
+      if (!value || typeof value !== 'string') return null;
+      const cleaned = value.toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+      if (!cleaned || cleaned.length > 28 || cleaned.split(/\s+/).length > 3) return null;
+      return cleaned;
+    };
+    const uniqueWords = (items, max = 6) => {
+      const seen = new Set();
+      const result = [];
+      for (const item of items || []) {
+        const candidate = cleanCandidate(item?.word || item);
+        if (!candidate || candidate === targetWord || seen.has(candidate)) continue;
+        seen.add(candidate);
+        result.push(candidate);
+        if (result.length >= max) break;
+      }
+      return result;
+    };
+    const fetchDatamuse = async (query) => {
+      const response = await fetch(`https://api.datamuse.com/words?${query}`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    };
+
+    let cancelled = false;
+    setTooltipLexicalFallback(prev => ({
+      ...prev,
+      [targetWord]: { status: 'loading', synonyms: [], nearWords: [], wordFamily: [] }
+    }));
+
+    (async () => {
+      try {
+        const encoded = encodeURIComponent(targetWord);
+        const [synonymsRaw, relatedRaw, triggerRaw, meansLikeRaw, familyRaw] = await Promise.all([
+          fetchDatamuse(`rel_syn=${encoded}&max=12`),
+          fetchDatamuse(`rel_trg=${encoded}&max=12`),
+          fetchDatamuse(`ml=${encoded}&max=12`),
+          fetchDatamuse(`ml=${encoded}&topics=${encoded}&max=12`),
+          fetchDatamuse(`sp=${encoded}*&max=12`)
+        ]);
+        if (cancelled) return;
+        const synonyms = uniqueWords(synonymsRaw, 5);
+        const nearWords = uniqueWords([...relatedRaw, ...triggerRaw, ...meansLikeRaw], 6)
+          .filter(item => !synonyms.includes(item));
+        const wordFamily = uniqueWords(familyRaw, 5)
+          .filter(item => item.startsWith(targetWord.slice(0, Math.min(5, targetWord.length))));
+
+        setTooltipLexicalFallback(prev => ({
+          ...prev,
+          [targetWord]: { status: 'loaded', synonyms, nearWords, wordFamily }
+        }));
+      } catch (err) {
+        if (cancelled) return;
+        setTooltipLexicalFallback(prev => ({
+          ...prev,
+          [targetWord]: { status: 'error', synonyms: [], nearWords: [], wordFamily: [] }
+        }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTooltipWord, tooltipDetails?.rawDetails, wordObj?.word, tooltipLexicalFallback, richCardData]);
 
   const handleSpeak = (text) => {
     if (!text || !window.speechSynthesis) return;
@@ -2442,9 +2523,17 @@ const Purge = () => {
       .filter(Boolean)
       .filter((text, idx, arr) => arr.indexOf(text) === idx)
       .slice(0, 3);
-    const synonymWords = getWordList('synonyms', 'nearWords', 'relatedWords');
-    const familyWords = getWordList('wordFamily', 'wordFamilies', 'family');
-    const hasDeepData = isCurrentCardWord && (extraContexts.length > 0 || synonymWords.length > 0 || familyWords.length > 0);
+    const fallbackLexical = tooltipLexicalFallback[activeTooltipWord?.toLowerCase().trim()] || {};
+    const synonymWords = getWordList('synonyms').length > 0
+      ? getWordList('synonyms')
+      : (fallbackLexical.synonyms || []);
+    const nearWords = getWordList('nearWords', 'relatedWords').length > 0
+      ? getWordList('nearWords', 'relatedWords')
+      : (fallbackLexical.nearWords || []);
+    const familyWords = getWordList('wordFamily', 'wordFamilies', 'family').length > 0
+      ? getWordList('wordFamily', 'wordFamilies', 'family')
+      : (fallbackLexical.wordFamily || []);
+    const hasDeepData = isCurrentCardWord && (extraContexts.length > 0 || synonymWords.length > 0 || nearWords.length > 0 || familyWords.length > 0 || fallbackLexical.status === 'loading');
 
     const renderWordChip = (label, accent = '#f97316') => (
       <button
@@ -2611,11 +2700,27 @@ const Purge = () => {
                         </div>
                       )}
 
+                      {fallbackLexical.status === 'loading' && synonymWords.length === 0 && nearWords.length === 0 && familyWords.length === 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.42)', fontSize: '0.68rem', fontWeight: 800 }}>
+                          <Loader2 size={11} className="spin" />
+                          <span>Loading synonyms and related words</span>
+                        </div>
+                      )}
+
                       {synonymWords.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.34)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.55rem' }}>Related words</span>
+                          <span style={{ color: 'rgba(255,255,255,0.34)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.55rem' }}>Synonyms</span>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                             {synonymWords.map(word => renderWordChip(word, '#f97316'))}
+                          </div>
+                        </div>
+                      )}
+
+                      {nearWords.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.34)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.55rem' }}>Near words</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                            {nearWords.map(word => renderWordChip(word, '#a78bfa'))}
                           </div>
                         </div>
                       )}
