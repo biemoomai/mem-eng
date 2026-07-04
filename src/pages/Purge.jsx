@@ -987,7 +987,7 @@ const Purge = () => {
     const target = event.target;
     if (
       !wordObj ||
-      revealStep < 2 ||
+      revealStep < 3 ||
       tutorialStep === 10 ||
       (target && (target.closest('button') || target.closest('a') || target.closest('svg') || target.closest('[role="button"]')))
     ) {
@@ -1671,8 +1671,8 @@ const Purge = () => {
 
       // Sync reveal steps with current step in TUTORIAL_STEPS:
       // Index 5: Flashcard Deck -> revealStep = 0 (unrevealed)
-      // Index 6: Reveal Thai Translation -> revealStep = 1 (front revealed)
-      // Index 7-11: Dictionary, Speaker, Add, Swipe Demo, SRS Buttons -> revealStep = 2 (back revealed)
+      // Index 6: Reveal English word -> revealStep = 1
+      // Index 7-11: Context, dictionary, speaker, add, swipe demo, SRS Buttons -> revealStep = 3 (fully revealed)
       setTutorialStep(step);
       if (step === 5) {
         setRevealStep(0);
@@ -1681,7 +1681,7 @@ const Purge = () => {
         setRevealStep(1);
         setExitDirection(null);
       } else if (step >= 7 && step <= 11) {
-        setRevealStep(2);
+        setRevealStep(3);
         // For step 10 (Swipe Demo): force reset the card so it's visible for the wobble animation
         if (step === 10) {
           setExitDirection(null);
@@ -4692,6 +4692,8 @@ const Purge = () => {
               window.dispatchEvent(new Event('tutorial-card-revealed'));
             } else if (revealStep === 1) {
               setRevealStep(2);
+            } else if (revealStep === 2) {
+              setRevealStep(3);
               window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
             }
           }}
@@ -5066,7 +5068,7 @@ const Purge = () => {
                 style={{ 
                   flex: 1, 
                   overflowY: 'auto', 
-                  padding: `0.75rem 1rem ${revealStep >= 2 ? '150px' : '20px'} 1rem`,
+                  padding: `0.75rem 1rem ${revealStep >= 3 ? '150px' : '20px'} 1rem`,
                   zIndex: 10,
                   position: 'relative',
                   scrollbarWidth: 'none',
@@ -5218,6 +5220,7 @@ const Purge = () => {
                             </p>
                           </div>
                           {/* Thai Translation */}
+                          {revealStep >= 3 && (
                           <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.18)' }}>
                             {richCardData.thaiTranslation && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
@@ -5231,9 +5234,10 @@ const Purge = () => {
                               </p>
                             )}
                           </div>
+                          )}
 
                           {/* Collocation */}
-                          {richCardData.englishExplanation?.phrase && (
+                          {revealStep >= 3 && richCardData.englishExplanation?.phrase && (
                             <div className="glass-panel" style={{ padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.012)' }}>
                               <span style={{ fontSize: '0.56rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', letterSpacing: '0.5px', marginBottom: '0.15rem' }}>Collocation</span>
                               <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
@@ -5246,7 +5250,7 @@ const Purge = () => {
                           )}
 
                           {/* Verb Forms (V1, V2, V3) */}
-                          {(() => {
+                          {revealStep >= 3 && (() => {
                             let verbForms = undefined;
                             if (richCardData && 'verbForms' in richCardData) {
                               verbForms = richCardData.verbForms;
@@ -5358,7 +5362,7 @@ const Purge = () => {
 
         {/* Translucent Apple-style Glassmorphic Rating Dock */}
         <AnimatePresence>
-          {revealStep >= 2 && (
+          {revealStep >= 3 && (
             <motion.div
               id="tutorial-srs-buttons"
               initial={{ y: 70, opacity: 0 }}
