@@ -5041,6 +5041,7 @@ const Purge = () => {
               </div>
 
               {/* Sentence card — FIXED size, never shrinks */}
+              {revealStep >= 2 && (
               <div style={{ flexShrink: 0, zIndex: 20, padding: '0.85rem 1rem 0 1rem' }}>
                 <div className="glass-panel" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', padding: '1rem 1.1rem' }}>
                   <p style={{ 
@@ -5055,6 +5056,8 @@ const Purge = () => {
                   </p>
                 </div>
               </div>
+
+                            )}
 
               {/* Content area — swaps in-place via AnimatePresence */}
               <div
@@ -5172,6 +5175,48 @@ const Purge = () => {
                           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                           style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: '30px' }}
                         >
+                          {/* English word focus card */}
+                          <div className="glass-panel" style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            minHeight: '260px',
+                            padding: '1.6rem 1.3rem',
+                            background: 'rgba(255,255,255,0.018)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            gap: '0.75rem'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                              <span style={{ fontSize: '1.85rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em' }}>{wordObj.word}</span>
+                              <button onClick={handleSpeakWord} className="glass-button animate-scale" style={{ width: '26px', height: '26px', borderRadius: '50%', padding: 0, background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                <Volume2 size={11} color="var(--accent-hover)" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`ต้องการลบคำว่า "${wordObj.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
+                                    deleteWordFromDeck(wordObj.id);
+                                    setSessionQueue(prev => prev.filter(w => w.id !== wordObj.id));
+                                    setRevealStep(0);
+                                  }
+                                }}
+                                className="glass-button animate-scale"
+                                style={{ width: '26px', height: '26px', borderRadius: '50%', padding: 0, background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                title="Delete word from deck"
+                              >
+                                <Trash2 size={11} color="#ef4444" />
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.35rem' }}>
+                              <span className="badge-neon" style={{ fontSize: '0.62rem' }}>{wordObj.pos || 'n.'}</span>
+                              <span className="badge-cyan" style={{ fontSize: '0.62rem' }}>{wordObj.cefrLevel || 'C1'}</span>
+                            </div>
+                            <div style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.1)', borderRadius: '1px' }} />
+                            <p style={{ margin: 0, fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.55, fontWeight: 400, maxWidth: '340px' }}>
+                              {renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
+                            </p>
+                          </div>
                           {/* Thai Translation */}
                           <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.18)' }}>
                             {richCardData.thaiTranslation && (
