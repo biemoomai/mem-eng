@@ -1073,7 +1073,7 @@ const Purge = () => {
     const currentWord = wordObj?.word?.toLowerCase().trim();
     if (!targetWord || !currentWord || targetWord !== currentWord) return;
 
-    const activeRich = tooltipDetails?.rawDetails || richCardData || {};
+    const activeRich = tooltipDetails?.rawDetails || (wordObj ? parseMeaningField(wordObj.meaning) : {});
     const hasBuiltInLexical =
       (Array.isArray(activeRich?.synonyms) && activeRich.synonyms.length > 0) ||
       (Array.isArray(activeRich?.nearWords) && activeRich.nearWords.length > 0) ||
@@ -1146,7 +1146,7 @@ const Purge = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeTooltipWord, tooltipDetails?.rawDetails, wordObj?.word, tooltipLexicalFallback, richCardData]);
+  }, [activeTooltipWord, tooltipDetails?.rawDetails, wordObj?.word, wordObj?.meaning, tooltipLexicalFallback]);
 
   const handleSpeak = (text) => {
     if (!text || !window.speechSynthesis) return;
