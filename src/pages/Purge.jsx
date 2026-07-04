@@ -2425,6 +2425,15 @@ const Purge = () => {
       return [];
     };
     const extraContexts = [
+      ...(Array.isArray(activeRichData?.moreContexts) ? activeRichData.moreContexts : [])
+        .map(context => {
+          if (typeof context === 'string') return context;
+          const label = context?.label ? `${context.label}: ` : '';
+          const sentence = context?.sentence || '';
+          const note = context?.note ? ` (${context.note})` : '';
+          return sentence ? `${label}${sentence}${note}` : '';
+        })
+        .filter(Boolean),
       ...(Array.isArray(activeRichData?.scenes) ? activeRichData.scenes : [])
         .map(scene => scene?.dialogue)
         .filter(Boolean),

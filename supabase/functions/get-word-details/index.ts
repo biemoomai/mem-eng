@@ -7,6 +7,80 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const cleanWordCandidate = (value) => {
+  if (!value || typeof value !== 'string') return null;
+  const cleaned = value.toLowerCase().replace(/[^a-z\s-]/g, '').trim();
+  if (!cleaned || cleaned.length > 28 || cleaned.split(/\s+/).length > 3) return null;
+  return cleaned;
+};
+
+const uniqueWords = (items, max = 8) => {
+  const seen = new Set();
+  const result = [];
+  for (const item of items || []) {
+    const word = cleanWordCandidate(item?.word || item);
+    if (!word || seen.has(word)) continue;
+    seen.add(word);
+    result.push(word);
+    if (result.length >= max) break;
+  }
+  return result;
+};
+
+const fetchDatamuseWords = async (query) => {
+  const res = await fetch(`https://api.datamuse.com/words?${query}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+};
+
+const fetchLexicalReferences = async (word) => {
+  const normalized = cleanWordCandidate(word);
+  if (!normalized || normalized.includes(' ')) {
+    return {
+      source: 'Datamuse',
+      synonyms: [],
+      nearWords: [],
+      wordFamily: [],
+      notes: 'Skipped lexical reference lookup for non-English or multi-word input.'
+    };
+  }
+
+  try {
+    const encoded = encodeURIComponent(normalized);
+    const [synonymsRaw, relatedRaw, triggerRaw, meansLikeRaw, spelledLikeRaw] = await Promise.all([
+      fetchDatamuseWords(`rel_syn=${encoded}&max=12`),
+      fetchDatamuseWords(`rel_trg=${encoded}&max=12`),
+      fetchDatamuseWords(`ml=${encoded}&max=12`),
+      fetchDatamuseWords(`ml=${encoded}&topics=${encoded}&max=12`),
+      fetchDatamuseWords(`sp=${encoded}*&max=12`)
+    ]);
+
+    const synonyms = uniqueWords(synonymsRaw, 6).filter(item => item !== normalized);
+    const nearWords = uniqueWords([...relatedRaw, ...triggerRaw, ...meansLikeRaw], 8)
+      .filter(item => item !== normalized && !synonyms.includes(item));
+    const wordFamily = uniqueWords(spelledLikeRaw, 8)
+      .filter(item => item !== normalized && item.startsWith(normalized.slice(0, Math.min(5, normalized.length))));
+
+    return {
+      source: 'Datamuse',
+      synonyms,
+      nearWords,
+      wordFamily,
+      notes: 'Use these as candidate lexical references only. Keep only learner-safe, common, semantically correct items.'
+    };
+  } catch (err) {
+    console.warn(`Datamuse reference lookup failed for "${word}":`, err?.message || err);
+    return {
+      source: 'Datamuse',
+      synonyms: [],
+      nearWords: [],
+      wordFamily: [],
+      notes: 'Reference lookup failed; do not invent uncertain lexical relations.'
+    };
+  }
+};
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -23,9 +97,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    const lexicalReferences = await fetchLexicalReferences(word);
+
     const prompt = `
 Analyze the input "${word}". Note: If the input is in Thai, first translate it to the most appropriate, common, single English vocabulary word (semantically, NOT a phonetic transliteration or karaoke representation, e.g. for "สาม" translate to "three" NOT "sam", for "สวัสดี" translate to "hello" NOT "sawatdee", for "มือ" translate to "hand" NOT "mua"), and then analyze and return the details FOR THAT ENGLISH WORD (and make sure the "word" property in the returned JSON is this English word in lowercase). If the input is in English, analyze it directly.
-Return a JSON object containing its grammatical info, definition, collocations, exactly 2 illustrative scenes, 2 definition-based image prompts, and real English verb forms (tenses) if applicable.
+Return a JSON object containing its grammatical info, definition, collocations, exactly 2 illustrative scenes, 2 definition-based image prompts, real English verb forms (tenses), and learner-safe lexical relations if applicable.
+
+LEXICAL REFERENCE CANDIDATES FROM DATAMUSE:
+${JSON.stringify(lexicalReferences, null, 2)}
 
 CRITICAL VALIDATION RULES FOR "validation":
 - You MUST strictly validate if the input "${word}" is a real, correctly-spelled English word/phrase (or a valid Thai word if the input is in Thai).
@@ -46,6 +125,17 @@ CRITICAL INSTRUCTIONS FOR "imagePrompts":
 CRITICAL INSTRUCTIONS FOR FORMATTING AND TEXT CONTENT:
 - DO NOT include any emojis, icons, or pictorial representations in the title, situation, dialogue, meaning, takeaway, or any other output fields. Keep them strictly as clean, standard plain text.
 
+CRITICAL INSTRUCTIONS FOR LEXICAL RELATIONS:
+- The Datamuse lists are reference candidates, not guaranteed truth. You must filter them.
+- Use ONLY common, learner-safe words that are semantically correct for the main sense you are explaining.
+- If a candidate is too obscure, awkward, wrong for the sense, offensive, or uncertain, omit it.
+- If there are no reliable candidates, return [].
+- DO NOT invent synonyms, near words, or word family items that are not strongly supported by normal English usage.
+- "synonyms" means close meaning, not merely related topic.
+- "nearWords" means commonly confused, contrastive, or strongly related learner words.
+- "wordFamily" means morphological family or clearly derived forms, such as decide/decision/decisive. Do not add random words that only share spelling.
+- "moreContexts" must contain genuinely different contexts or senses from the two main scenes. Do not duplicate the same sentence.
+
 Return a JSON object with this exact structure:
 {
   "validation": {
@@ -57,6 +147,17 @@ Return a JSON object with this exact structure:
   "pos": "Part of speech (e.g. noun, verb), else null if invalid.",
   "cefrLevel": "CEFR level (A1, A2, B1, B2, C1, or C2), else null if invalid.",
   "verbForms": ["V1", "V2", "V3"], // [V1 Base, V2 Past, V3 Past Participle] only if the word is a verb. null if the word is not a verb. DO NOT invent fake regular verb forms.
+  "synonyms": ["up to 5 common close synonyms from the references, else []"],
+  "nearWords": ["up to 5 related/confusable learner words from the references, else []"],
+  "wordFamily": ["up to 5 word-family forms, else []"],
+  "moreContexts": [
+    {
+      "label": "Short label such as Daily use, Work, Academic, Idiom, Different meaning",
+      "sentence": "A short natural English sentence using the word in a genuinely different context from the main scenes.",
+      "thaiMeaning": "Brief Thai meaning of the sentence.",
+      "note": "One short learner note explaining this use."
+    }
+  ],
   "englishExplanation": {
     "definition": "Explain the English word using the simplest English vocabulary possible (e.g., instead of 'a domesticated carnivorous mammal...' use 'a common house pet that barks'). Keep the explanation extremely simple, basic, and easy for non-native learners to understand, avoiding academic or complex jargon. If absolutely necessary, harder words can be used occasionally, but prioritize simple words.",
     "phrase": "Most common collocation/phrase using the word, else null.",
@@ -211,6 +312,14 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
     // Parse the text to ensure it's valid JSON
     const parsed = JSON.parse(textResponse.trim());
     parsed._provider = usedProvider; // Add provider metadata
+    parsed._referenceSources = {
+      lexical: lexicalReferences.source,
+      lexicalReferenceUsed: Boolean(
+        lexicalReferences.synonyms.length ||
+        lexicalReferences.nearWords.length ||
+        lexicalReferences.wordFamily.length
+      )
+    };
 
     return new Response(JSON.stringify(parsed), {
       status: 200,
