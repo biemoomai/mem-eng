@@ -265,26 +265,6 @@ export default function Library() {
           <h1 style={{ color: 'white', margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>Library</h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontSize: '0.8rem' }}>{vocab.length} Words in your deck</p>
         </div>
-        <button
-          onClick={openCreateCard}
-          title="Create flashcard"
-          style={{
-            marginLeft: 'auto',
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            background: 'rgba(234, 179, 8, 0.13)',
-            border: '1px solid rgba(234, 179, 8, 0.32)',
-            color: '#facc15',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 10px 24px rgba(234, 179, 8, 0.12)'
-          }}
-        >
-          <Plus size={20} strokeWidth={3} />
-        </button>
       </div>
 
       <div style={{ position: 'relative', marginBottom: '16px' }}>
@@ -310,6 +290,31 @@ export default function Library() {
           </button>
         )}
       </div>
+
+      <button
+        onClick={openCreateCard}
+        title="Create flashcard"
+        style={{
+          width: '100%',
+          padding: '10px 14px',
+          margin: '-4px 0 14px',
+          borderRadius: '14px',
+          background: 'rgba(234, 179, 8, 0.09)',
+          border: '1px solid rgba(234, 179, 8, 0.24)',
+          color: '#facc15',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          fontSize: '0.88rem',
+          fontWeight: 800,
+          boxShadow: '0 8px 22px rgba(234, 179, 8, 0.08)'
+        }}
+      >
+        <Plus size={18} strokeWidth={3} />
+        Create flashcard
+      </button>
 
       <div style={{ 
         display: 'flex', 
@@ -599,7 +604,7 @@ export default function Library() {
                     {isGeneratingDetails && (
                       <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
                         <RefreshCw size={20} className="animate-spin" />
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Analyzing word via Gemini...</span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Creating better details...</span>
                       </div>
                     )}
                   </div>

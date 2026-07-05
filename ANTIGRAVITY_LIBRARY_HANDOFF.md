@@ -3,6 +3,51 @@
 Project path:
 `C:\Users\BoomBorriboon\.gemini\antigravity\scratch\mem-eng`
 
+## Latest Status From Codex
+
+Library is already implemented and wired into the app.
+
+Recent Codex checkpoints:
+- `c5e5a23 feat: add manual card creation in library`
+
+Current verified status:
+- `npm run build` passes.
+- `npm run lint` has warnings only, no errors.
+- `/library` exists.
+- Bottom nav has 4 items:
+  - Translate
+  - Flashcards
+  - Library
+  - My Profile
+- Library supports:
+  - Search words.
+  - Filter by stage: All / Learning / Hard / Normal / Easy / Mastered.
+  - Open card details.
+  - Edit card text.
+  - Search Photo.
+  - Upload image.
+  - Auto Generate Details.
+  - Remove from deck.
+  - Create a new manual flashcard from the `Create flashcard` button under the search box.
+
+Latest UX changes:
+- The Library create-card `+` button was moved under the search input so it does not overlap the hamburger menu on iPhone.
+- User-facing loading text no longer says `Gemini`, `Groq`, or `API`.
+- Keep provider names hidden from normal users. Use generic text like `Translating...`, `Preparing translation...`, or `Creating better details...`.
+
+Important database note:
+- `database/library_overrides_migration.sql` exists for user-specific card overrides.
+- The local `.env.local` service key previously failed live schema verification, so do not assume Supabase production schema is confirmed.
+- Before deploy, verify Supabase has:
+  - `user_decks.custom_word`
+  - `user_decks.custom_meaning`
+  - `user_decks.custom_video_url`
+  - `user_decks.custom_notes`
+  - `user_decks.updated_at`
+  - Storage bucket `user-card-images` if upload persistence is required.
+
+Do not rebuild Library from scratch. Only polish, debug, or deploy from the current implementation.
+
 Current product:
 Mem-eng is a vocabulary app with Translate, Flashcards, FSRS review, Guest mode, Supabase auth/database, and cached global word data.
 

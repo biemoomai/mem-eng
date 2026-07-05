@@ -66,7 +66,7 @@ const Sync = () => {
       {!results ? (
         <div className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, textAlign: 'center' }}>
-            Paste any English text below (like a news article, video transcript, lyrics, or a book page). Gemini will instantly extract advanced words for your deck.
+            Paste any English text below (like a news article, video transcript, lyrics, or a book page). The app will extract advanced words for your deck.
           </div>
           
           <textarea
@@ -107,7 +107,7 @@ const Sync = () => {
             {scanning ? (
               <>
                 <Loader2 className="spin" size={20} /> 
-                <span>Extracting with Gemini...</span>
+                <span>Extracting words...</span>
               </>
             ) : (
               <>

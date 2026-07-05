@@ -913,12 +913,12 @@ const AddWord = () => {
 
   // Cycling messages for loading animation
   const loadingSteps = [
-    "Consulting Gemini AI...",
-    "Analyzing CEFR level & grammar...",
-    "Drafting contextual dialogues...",
+    "Preparing translation...",
+    "Checking level and grammar...",
+    "Building useful examples...",
     "Matching Thai definitions...",
-    "Locating visual art context...",
-    "Scheduling Spaced Repetition..."
+    "Finding a visual context...",
+    "Saving your review plan..."
   ];
 
   useEffect(() => {
@@ -1498,26 +1498,26 @@ const AddWord = () => {
           const bothFailed = details.error.includes('Gemini:') && details.error.includes('Groq:');
 
           if (geminiHit429 && !groqHit429 && !bothFailed) {
-            setErrorMsg('⚡ Gemini rate limit hit — Groq fallback also unavailable. Try again shortly.');
+            setErrorMsg('Translation is busy right now. Try again shortly.');
           } else if ((geminiHit429 || groqHit429) && bothFailed) {
-            setErrorMsg('⏳ Both Gemini & Groq hit rate limits at the same time. This happens if you translated many words rapidly. Please wait ~1 minute and try again.');
+            setErrorMsg('Translation is temporarily busy. Please wait about 1 minute and try again.');
           } else if (errLower.includes('429') || errLower.includes('quota')) {
             let countdown = 60;
             const interval = setInterval(() => {
               countdown -= 1;
               if (countdown > 0) {
-                setErrorMsg(`⏳ API rate limit reached. Retrying automatically in ${countdown}s...`);
+                setErrorMsg(`Translation is busy. Retrying automatically in ${countdown}s...`);
               } else {
                 clearInterval(interval);
                 performTranslation(targetWord);
               }
             }, 1000);
-            setErrorMsg(`⏳ API rate limit reached. Retrying automatically in ${countdown}s...`);
+            setErrorMsg(`Translation is busy. Retrying automatically in ${countdown}s...`);
             return;
           } else if (details.error.includes('API_KEY_INVALID') || details.error.includes('API key not valid')) {
-            setErrorMsg('Invalid Gemini API Key. Please verify your key in .env.local.');
+            setErrorMsg('Translation setup is not ready. Please check the app settings.');
           } else {
-            setErrorMsg(`API Error: ${details.error}`);
+            setErrorMsg('Translation failed. Please try again shortly.');
           }
         } else if (details.validation?.isInvalid) {
           // If suggestion / invalid input, display suggestion card without auto-saving
@@ -2012,7 +2012,7 @@ const AddWord = () => {
               </div>
 
               <div>
-                <h4 style={{ color: 'white', fontSize: '0.95rem', fontWeight: 800, margin: '0 0 0.2rem 0' }}>AI is translating...</h4>
+                <h4 style={{ color: 'white', fontSize: '0.95rem', fontWeight: 800, margin: '0 0 0.2rem 0' }}>Translating...</h4>
                 <p style={{ 
                   margin: 0, 
                   fontSize: '0.75rem', 
