@@ -912,6 +912,13 @@ const Purge = () => {
       }
     };
   }, [isStudying]);
+
+  useEffect(() => {
+    if (regenCount >= 6) {
+      setShowCustomImageOptions(true);
+      setRegenCount(0);
+    }
+  }, [regenCount]);
   const [startHovered, setStartHovered] = useState(false);
   const [showStartMenu, setShowStartMenu] = useState(false);
   const [isLoadingNewWords, setIsLoadingNewWords] = useState(false);
@@ -1215,7 +1222,6 @@ const Purge = () => {
         } catch (syncErr) {
           console.warn('Image changed locally, but syncing the new image failed:', syncErr);
         }
-        showToast('เปลี่ยนรูปใหม่แล้ว');
       } else {
         showToast('ไม่พบรูปภาพอื่นเพิ่มเติมสำหรับคำนี้ครับ');
       }
@@ -4958,7 +4964,14 @@ const Purge = () => {
           }}
           onTap={(event, info) => {
             const target = event.target;
-            if (target && (target.closest('button') || target.closest('a') || target.closest('svg') || target.closest('[role="button"]'))) {
+            if (target && (
+              target.closest('button') || 
+              target.closest('a') || 
+              target.closest('svg') || 
+              target.closest('[role="button"]') ||
+              target.closest('label') ||
+              target.closest('input')
+            )) {
               return;
             }
             if (revealStep === 0) {
@@ -5064,17 +5077,25 @@ const Purge = () => {
                 >
                   
                   {/* Floating Action Buttons Overlay (Regenerate & Save) */}
-                  <div style={{ 
-                    position: 'absolute', 
-                    top: '10px', 
-                    left: '10px', 
-                    display: 'flex', 
-                    gap: '6px', 
-                    zIndex: 30,
-                    opacity: 1,
-                    pointerEvents: 'auto',
-                    transition: 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}>
+                  {/* Floating Action Buttons Overlay (2x2 Grid on Left) */}
+                  <div 
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ 
+                      position: 'absolute', 
+                      top: '10px', 
+                      left: '10px', 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(2, 32px)',
+                      gap: '6px', 
+                      zIndex: 30,
+                      opacity: 1,
+                      pointerEvents: 'auto',
+                      transition: 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                  >
                     {/* Regenerate Button */}
                     <motion.button
                       whileHover={{ 
@@ -5283,118 +5304,92 @@ const Purge = () => {
                     />
                   )}
 
-                  {/* Custom upload/search options if regen count >= 6 OR showCustomImageOptions is true as absolute overlay */}
-                  {(regenCount >= 6 || showCustomImageOptions) && (
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'rgba(10, 8, 20, 0.95)',
-                      backdropFilter: lowGraphics ? 'none' : 'blur(12px)',
-                      WebkitBackdropFilter: 'blur(12px)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      padding: '1.2rem 1rem 1rem',
-                      gap: '0.65rem',
-                      zIndex: 40,
-                      borderRadius: '16px'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.65rem', color: '#eab308', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Custom Image Option</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRegenCount(0);
+                  {/* Sleek bottom overlay for custom keyword search */}
+                  {showCustomImageOptions && (
+                    <div 
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        left: '10px',
+                        right: '10px',
+                        background: 'rgba(15, 18, 24, 0.85)',
+                        backdropFilter: lowGraphics ? 'none' : 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '12px',
+                        padding: '8px',
+                        display: 'flex',
+                        gap: '6px',
+                        alignItems: 'center',
+                        zIndex: 40,
+                      }}
+                    >
+                      <input 
+                        type="text" 
+                        placeholder="Search image..."
+                        id="custom-kw-purge"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleCustomKeywordSearch(e.target.value);
                             setShowCustomImageOptions(false);
-                          }}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            cursor: 'pointer',
-                            padding: '2px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <input 
-                          type="text" 
-                          placeholder="Type keyword for Pexels..."
-                          id="custom-kw-purge"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleCustomKeywordSearch(e.target.value);
-                              setShowCustomImageOptions(false);
-                            }
-                          }}
-                          style={{
-                            flex: 1,
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            padding: '0.35rem 0.65rem',
-                            color: 'white',
-                            fontSize: '0.75rem',
-                            outline: 'none'
-                          }}
-                        />
-                        <button
-                          onClick={() => {
-                            const val = document.getElementById("custom-kw-purge")?.value;
-                            if (val) {
-                              handleCustomKeywordSearch(val);
-                              setShowCustomImageOptions(false);
-                            }
-                          }}
-                          className="glass-button animate-scale"
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            borderRadius: '8px',
-                            fontSize: '0.7rem',
-                            fontWeight: 800,
-                            borderColor: 'rgba(234, 179, 8, 0.3)',
-                            background: 'rgba(234, 179, 8, 0.1)',
-                            color: '#eab308',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Search
-                        </button>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.4rem', marginTop: '0.2rem' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)' }}>Or upload your own photo:</span>
-                        <label
-                          className="glass-button animate-scale"
-                          style={{
-                            padding: '0.3rem 0.65rem',
-                            borderRadius: '8px',
-                            fontSize: '0.65rem',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            display: 'inline-block'
-                          }}
-                        >
-                          Upload File
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={(e) => {
-                              if (e.target.files?.[0]) {
-                                handleCustomImageUpload(e.target.files[0]);
-                                setShowCustomImageOptions(false);
-                              }
-                            }}
-                            style={{ display: 'none' }} 
-                          />
-                        </label>
-                      </div>
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          background: 'rgba(255,255,255,0.06)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          color: 'white',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const val = document.getElementById("custom-kw-purge")?.value;
+                          if (val) {
+                            handleCustomKeywordSearch(val);
+                            setShowCustomImageOptions(false);
+                          }
+                        }}
+                        className="glass-button animate-scale"
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          background: 'rgba(234, 179, 8, 0.2)',
+                          borderColor: 'rgba(234, 179, 8, 0.4)',
+                          color: '#eab308',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Search
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCustomImageOptions(false);
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'rgba(255,255,255,0.4)',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
                   )}
                 </div>
