@@ -816,25 +816,64 @@ export const VocabProvider = ({ children }) => {
       console.warn("Could not check global_dictionary cache:", e);
     }
 
+    const getRandomFloat = () => {
+      if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+        const values = new Uint32Array(1);
+        globalThis.crypto.getRandomValues(values);
+        return values[0] / 0x100000000;
+      }
+      return Math.random();
+    };
+
+    const shuffleWords = (words) => {
+      const shuffled = [...words];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(getRandomFloat() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    };
+
+    const diversifyWords = (words) => {
+      const buckets = new Map();
+      for (const item of shuffleWords(words)) {
+        const cefr = item.cefr_level || 'unranked';
+        const pos = String(item.pos || 'word').split(/[,/ ]+/)[0] || 'word';
+        const key = `${cefr}:${pos}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(item);
+      }
+
+      let activeBuckets = shuffleWords(Array.from(buckets.values()).map(bucket => shuffleWords(bucket)));
+      const diversified = [];
+      while (activeBuckets.length > 0) {
+        activeBuckets = shuffleWords(activeBuckets);
+        const nextBuckets = [];
+        for (const bucket of activeBuckets) {
+          const next = bucket.shift();
+          if (next) diversified.push(next);
+          if (bucket.length > 0) nextBuckets.push(bucket);
+        }
+        activeBuckets = nextBuckets;
+      }
+      return diversified;
+    };
+
     // Split unadded words into pre-cached (fully loaded) and uncached
     const cachedGroup = unadded.filter(w => cachedWithImages.has(w.word.toLowerCase().trim()));
     const uncachedGroup = unadded.filter(w => !cachedWithImages.has(w.word.toLowerCase().trim()));
 
-    // Shuffle both groups independently to prevent fatigue
-    const shuffledCached = [...cachedGroup];
-    for (let i = shuffledCached.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledCached[i], shuffledCached[j]] = [shuffledCached[j], shuffledCached[i]];
-    }
-
-    const shuffledUncached = [...uncachedGroup];
-    for (let i = shuffledUncached.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledUncached[i], shuffledUncached[j]] = [shuffledUncached[j], shuffledUncached[i]];
-    }
-
-    // Prioritize Cached Group first, then Uncached Group
-    const targetWords = [...shuffledCached, ...shuffledUncached].slice(0, count);
+    // Prefer ready cached cards, but keep one wider-pool slot when possible so new guests do not keep seeing the same tiny cached set.
+    const diverseCached = diversifyWords(cachedGroup);
+    const diverseUncached = diversifyWords(uncachedGroup);
+    const cachedQuota = diverseCached.length > 0 && diverseUncached.length > 0
+      ? Math.min(diverseCached.length, Math.max(1, count - 1))
+      : count;
+    const targetWords = [
+      ...diverseCached.slice(0, cachedQuota),
+      ...diverseUncached.slice(0, count - cachedQuota),
+      ...diverseCached.slice(cachedQuota)
+    ].slice(0, count);
     const addedCardsList = [];
     
     for (const item of targetWords) {
