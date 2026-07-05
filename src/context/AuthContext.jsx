@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
@@ -207,14 +207,6 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = async () => {
     localStorage.removeItem('memeng_logged_out');
-    if (isAnonymous) {
-      return supabase.auth.linkIdentity({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-    }
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
