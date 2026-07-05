@@ -913,12 +913,6 @@ const Purge = () => {
     };
   }, [isStudying]);
 
-  useEffect(() => {
-    if (regenCount >= 6) {
-      setShowCustomImageOptions(true);
-      setRegenCount(0);
-    }
-  }, [regenCount]);
   const [startHovered, setStartHovered] = useState(false);
   const [showStartMenu, setShowStartMenu] = useState(false);
   const [isLoadingNewWords, setIsLoadingNewWords] = useState(false);
@@ -933,6 +927,13 @@ const Purge = () => {
   const [showStats, setShowStats] = useState(false);
   const [hoveredSrs, setHoveredSrs] = useState(null);
   const [tutorialStep, setTutorialStep] = useState(null);
+
+  useEffect(() => {
+    if (regenCount >= 6) {
+      setShowCustomImageOptions(true);
+      setRegenCount(0);
+    }
+  }, [regenCount]);
 
   const pressTimerRef = useRef(null);
   const isLongPressRef = useRef(false);
