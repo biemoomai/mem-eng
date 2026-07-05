@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Sparkles, Loader2, ArrowRight, Activity, CheckSquare, Search, Trash2, RotateCw, Bookmark, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Info, Plus, Upload } from 'lucide-react';
@@ -5882,19 +5883,19 @@ const Purge = () => {
         {renderWordTooltip()}
         {renderToast()}
       </div>
-          {confirmModal.isOpen && (
+          {confirmModal.isOpen && createPortal((
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 999999, padding: '20px', boxSizing: 'border-box'
-        }} onClick={(e) => e.stopPropagation()}>
+          zIndex: 2147483647, padding: '24px', boxSizing: 'border-box'
+        }} onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}>
           <div style={{
             background: 'rgba(30, 30, 30, 0.9)', border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '320px',
+            borderRadius: '20px', padding: '24px', width: 'min(320px, calc(100vw - 48px))', maxWidth: '320px',
             boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center',
             backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)'
-          }}>
+          }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ color: 'white', margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 700 }}>
               Confirm Action
             </h3>
@@ -5928,7 +5929,7 @@ const Purge = () => {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 </div>
   );
 };

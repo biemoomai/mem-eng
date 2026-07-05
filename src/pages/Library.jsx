@@ -792,6 +792,85 @@ export default function Library() {
         </AnimatePresence>,
         document.getElementById('root') || document.body
       )}
+      {confirmModal.isOpen && createPortal(
+        <div
+          onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2147483647,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            boxSizing: 'border-box',
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(320px, calc(100vw - 48px))',
+              maxWidth: '320px',
+              padding: '24px',
+              borderRadius: '20px',
+              background: 'rgba(30, 30, 30, 0.94)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+              textAlign: 'center',
+              boxSizing: 'border-box'
+            }}
+          >
+            <h3 style={{ color: 'white', margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 800 }}>
+              Confirm Action
+            </h3>
+            <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem', margin: '0 0 24px 0', lineHeight: 1.5 }}>
+              {confirmModal.message}
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(239, 68, 68, 0.22)',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#f87171',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const confirmAction = confirmModal.onConfirm;
+                  setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+                  if (typeof confirmAction === 'function') confirmAction();
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(34, 197, 94, 0.24)',
+                  background: 'rgba(34, 197, 94, 0.16)',
+                  color: '#4ade80',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
