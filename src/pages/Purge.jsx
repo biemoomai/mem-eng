@@ -1183,8 +1183,9 @@ const Purge = () => {
     setRegenCount(prev => prev + 1);
     setIsRegenerating(true);
     try {
-      const currentUrl = wordObj.videoUrl;
-      const exclude = currentUrl ? [currentUrl] : [];
+      const parsedMeaning = parseMeaningField(wordObj.meaning) || {};
+      const savedImages = Array.isArray(parsedMeaning.savedSceneImages) ? parsedMeaning.savedSceneImages : [];
+      const exclude = [wordObj.videoUrl, activeReviewImageUrl, ...savedImages].filter(Boolean);
       
       let searchPrompt = wordObj.word;
       if (richCardData && richCardData.imagePrompts && richCardData.imagePrompts[0]) {
@@ -1193,9 +1194,23 @@ const Purge = () => {
       
       const res = await fetchVocabImage(searchPrompt, 'photo', exclude);
       if (res && res.url) {
-        setSessionQueue(prev => prev.map(w => w.id === wordObj.id ? { ...w, videoUrl: res.url } : w));
+        const updatedMeaning = {
+          ...parsedMeaning,
+          savedSceneImages: [res.url, ...savedImages.filter(url => url && url !== res.url)].slice(0, 6)
+        };
+        const updatedMeaningStr = JSON.stringify(updatedMeaning);
+
+        setActiveReviewImageUrl(res.url);
+        setSessionQueue(prev => prev.map(w => w.id === wordObj.id ? { 
+          ...w, 
+          videoUrl: res.url,
+          meaning: updatedMeaningStr
+        } : w));
         try {
-          await updateWordProperties(wordObj.id, { videoUrl: res.url });
+          await updateWordProperties(wordObj.id, { 
+            videoUrl: res.url,
+            meaning: updatedMeaningStr
+          });
         } catch (syncErr) {
           console.warn('Image changed locally, but syncing the new image failed:', syncErr);
         }
@@ -5034,9 +5049,9 @@ const Purge = () => {
                     display: 'flex', 
                     gap: '6px', 
                     zIndex: 30,
-                    opacity: (lowGraphics || isImageHovered) ? 1 : 0,
-                    pointerEvents: (lowGraphics || isImageHovered) ? 'auto' : 'none',
-                    transition: lowGraphics ? 'none' : 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
+                    opacity: 1,
+                    pointerEvents: 'auto',
+                    transition: 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}>
                     {/* Regenerate Button */}
                     <motion.button
