@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Sparkles, Loader2, ArrowRight, Activity, CheckSquare, Search, Trash2, RotateCw, Bookmark, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Info, Plus } from 'lucide-react';
+import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Sparkles, Loader2, ArrowRight, Activity, CheckSquare, Search, Trash2, RotateCw, Bookmark, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Info, Plus, Upload } from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -876,7 +876,7 @@ const ReviewOptionButton = ({ onClick, disabled, label, color, icon: Icon, isLoa
 };
 
 const Purge = () => {
-  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords } = useVocab();
+  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords, uploadUserCardImage, updateUserCardOverride } = useVocab();
   const vocab = useMemo(() => {
     return rawVocab.filter(item => {
       if (activeCurriculum === 'Self-Study only') {
@@ -919,6 +919,7 @@ const Purge = () => {
   const [totalHovered, setTotalHovered] = useState(false);
   const [dueHovered, setDueHovered] = useState(false);
   const [regenCount, setRegenCount] = useState(0);
+  const [showCustomImageOptions, setShowCustomImageOptions] = useState(false);
   const [revealedCardIds, setRevealedCardIds] = useState({});
   const [isImageHovered, setIsImageHovered] = useState(false);
   const [activeReviewImageUrl, setActiveReviewImageUrl] = useState('');
@@ -1274,31 +1275,52 @@ const Purge = () => {
     }
   };
 
-  const handleCustomImageUpload = (file) => {
+  const handleCustomImageUpload = async (file) => {
     if (!file || !wordObj) return;
-    const url = URL.createObjectURL(file);
-    
-    let parsedMeaning = parseMeaningField(wordObj.meaning);
-    if (!parsedMeaning.savedSceneImages) {
-      parsedMeaning.savedSceneImages = [];
-    }
-    parsedMeaning.savedSceneImages[0] = url;
-    const updatedMeaningStr = JSON.stringify(parsedMeaning);
+    setIsRegenerating(true);
+    try {
+      let url = URL.createObjectURL(file);
+      
+      if (uploadUserCardImage) {
+        const uploadedUrl = await uploadUserCardImage(file, wordObj.id);
+        if (uploadedUrl) {
+          url = uploadedUrl;
+        }
+      }
+      
+      let parsedMeaning = parseMeaningField(wordObj.meaning);
+      if (!parsedMeaning.savedSceneImages) {
+        parsedMeaning.savedSceneImages = [];
+      }
+      parsedMeaning.savedSceneImages[0] = url;
+      const updatedMeaningStr = JSON.stringify(parsedMeaning);
 
-    setSessionQueue(prev => prev.map(w => w.id === wordObj.id ? { 
-      ...w, 
-      videoUrl: url,
-      meaning: updatedMeaningStr,
-      isImageSaved: true
-    } : w));
-    
-    updateWordProperties(wordObj.id, { 
-      videoUrl: url,
-      meaning: updatedMeaningStr,
-      isImageSaved: true
-    });
-    
-    setRegenCount(0); 
+      setSessionQueue(prev => prev.map(w => w.id === wordObj.id ? { 
+        ...w, 
+        videoUrl: url,
+        meaning: updatedMeaningStr,
+        isImageSaved: true
+      } : w));
+      
+      updateWordProperties(wordObj.id, { 
+        videoUrl: url,
+        meaning: updatedMeaningStr,
+        isImageSaved: true
+      });
+
+      if (updateUserCardOverride) {
+        await updateUserCardOverride(wordObj.id, {
+          custom_video_url: url
+        });
+      }
+      
+      setRegenCount(0);
+    } catch (e) {
+      console.error(e);
+      showToast('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ');
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   const handleToggleSaveImage = (e) => {
@@ -5086,6 +5108,84 @@ const Purge = () => {
                       <RotateCw size={14} className={isRegenerating ? "spin" : ""} />
                     </motion.button>
 
+                    {/* Search Prompt Button */}
+                    <motion.button
+                      whileHover={{ 
+                        scale: 1.15, 
+                        background: 'rgba(255, 255, 255, 0.15)', 
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        color: 'white',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)'
+                      }}
+                      whileTap={{ scale: 0.92 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowCustomImageOptions(prev => !prev);
+                      }}
+                      title="Search by Keyword"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: 'rgba(15, 18, 24, 0.65)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                    >
+                      <Search size={14} />
+                    </motion.button>
+
+                    {/* Direct Upload Button */}
+                    <motion.label
+                      whileHover={{ 
+                        scale: 1.15, 
+                        background: 'rgba(255, 255, 255, 0.15)', 
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        color: 'white',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        backdropFilter: lowGraphics ? 'none' : 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)'
+                      }}
+                      whileTap={{ scale: 0.92 }}
+                      title="Upload Custom Image"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: 'rgba(15, 18, 24, 0.65)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative'
+                      }}
+                    >
+                      <Upload size={14} />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleCustomImageUpload(e.target.files[0]);
+                          }
+                        }}
+                        style={{ display: 'none' }} 
+                      />
+                    </motion.label>
+
                     {/* Save Button */}
                     <motion.button
                       whileHover={{ 
@@ -5183,8 +5283,8 @@ const Purge = () => {
                     />
                   )}
 
-                  {/* Custom upload/search options if regen count >= 6 as absolute overlay */}
-                  {regenCount >= 6 && (
+                  {/* Custom upload/search options if regen count >= 6 OR showCustomImageOptions is true as absolute overlay */}
+                  {(regenCount >= 6 || showCustomImageOptions) && (
                     <div style={{
                       position: 'absolute',
                       inset: 0,
@@ -5204,7 +5304,8 @@ const Purge = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setRegenCount(5); // Reset to 5 to close overlay
+                            setRegenCount(0);
+                            setShowCustomImageOptions(false);
                           }}
                           style={{
                             background: 'transparent',
@@ -5229,6 +5330,7 @@ const Purge = () => {
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               handleCustomKeywordSearch(e.target.value);
+                              setShowCustomImageOptions(false);
                             }
                           }}
                           style={{
@@ -5245,7 +5347,10 @@ const Purge = () => {
                         <button
                           onClick={() => {
                             const val = document.getElementById("custom-kw-purge")?.value;
-                            if (val) handleCustomKeywordSearch(val);
+                            if (val) {
+                              handleCustomKeywordSearch(val);
+                              setShowCustomImageOptions(false);
+                            }
                           }}
                           className="glass-button animate-scale"
                           style={{
@@ -5283,6 +5388,7 @@ const Purge = () => {
                             onChange={(e) => {
                               if (e.target.files?.[0]) {
                                 handleCustomImageUpload(e.target.files[0]);
+                                setShowCustomImageOptions(false);
                               }
                             }}
                             style={{ display: 'none' }} 
