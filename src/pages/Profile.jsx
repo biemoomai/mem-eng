@@ -1139,18 +1139,21 @@ const Profile = () => {
                 overflow: 'hidden'
               }}
             >
-              {/* Static glass highlight: keeps the premium feel without mobile animation jank */}
-              <div
+              {/* Diagonal glass shine sweep effect */}
+              <motion.div
+                animate={{ x: ['-120%', '240%'] }}
+                transition={{ repeat: Infinity, duration: 4.8, ease: 'linear', repeatDelay: 1.4 }}
                 style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  width: '46%',
+                  width: '42%',
                   height: '100%',
-                  background: 'linear-gradient(90deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.035) 62%, rgba(255,255,255,0) 100%)',
+                  background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0) 100%)',
                   transform: 'skewX(-18deg)',
                   pointerEvents: 'none',
-                  zIndex: 2
+                  zIndex: 2,
+                  willChange: 'transform'
                 }}
               />
 

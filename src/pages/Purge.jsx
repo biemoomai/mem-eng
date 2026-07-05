@@ -1326,32 +1326,37 @@ const Purge = () => {
   };
 
   const handleStartWithNewWords = async () => {
+    if (isLoadingNewWords) return;
     setIsLoadingNewWords(true);
-    setAddedProgress(lowGraphics ? null : 0);
+    setAddedProgress(0);
     
     let current = 0;
     let actualLoadedCount = 0;
     let apiResult = null;
     let apiCompleted = false;
+    let finished = false;
+    let interval = null;
 
     const onWordAdded = (count) => {
       actualLoadedCount = count;
     };
 
     // Start count-up animation check interval
-    const interval = lowGraphics ? null : setInterval(() => {
+    interval = setInterval(() => {
       if (current < actualLoadedCount) {
         current += 1;
         setAddedProgress(current);
       }
       
       if (apiCompleted && current >= actualLoadedCount) {
-        clearInterval(interval);
         completeProcess();
       }
-    }, 220); // Keep the counter responsive without creating a long staged wait.
+    }, 180); // Keep the counter responsive without creating a long staged wait.
 
     const completeProcess = () => {
+      if (finished) return;
+      finished = true;
+      if (interval) clearInterval(interval);
       setAddedProgress(null);
       if (apiResult && apiResult.success) {
         if (isStudying) {
@@ -1376,12 +1381,12 @@ const Purge = () => {
       apiResult = res;
       apiCompleted = true;
       actualLoadedCount = res.success ? (res.addedWords?.length || 0) : 0;
-      if (lowGraphics) completeProcess();
+      if (actualLoadedCount === 0) completeProcess();
     } catch (err) {
       console.error(err);
       apiResult = { success: false, error: 'เกิดข้อผิดพลาดในการโหลดคำใหม่' };
       apiCompleted = true;
-      if (lowGraphics) completeProcess();
+      completeProcess();
     }
   };
 
