@@ -692,6 +692,85 @@ export const VocabProvider = ({ children }) => {
     });
   };
 
+  // Update custom word override (custom word, custom meaning, custom image)
+  const updateUserCardOverride = async (cardId, overrides) => {
+    // 1. Update local state
+    setVocab(prevVocab => {
+      const updated = prevVocab.map(item => {
+        if (item.id === cardId) {
+          const updatedItem = { ...item };
+          if (overrides.customWord !== undefined) {
+            updatedItem.word = overrides.customWord;
+            updatedItem.customWord = overrides.customWord;
+          }
+          if (overrides.customMeaning !== undefined) {
+            updatedItem.customMeaning = overrides.customMeaning;
+            updatedItem.meaning = overrides.customMeaning;
+            updatedItem.richCardData = overrides.customMeaning;
+          }
+          if (overrides.customVideoUrl !== undefined) {
+            updatedItem.videoUrl = overrides.customVideoUrl;
+            updatedItem.customVideoUrl = overrides.customVideoUrl;
+          }
+          return updatedItem;
+        }
+        return item;
+      });
+      localStorage.setItem('chatgpt_anki_deck', JSON.stringify(updated));
+      return updated;
+    });
+
+    // 2. Update remote Supabase if user is logged in
+    if (user) {
+      const isLocalId = typeof cardId === 'string' && cardId.startsWith('local-');
+      if (!isLocalId) {
+        const payload = {};
+        if (overrides.customWord !== undefined) payload.custom_word = overrides.customWord;
+        if (overrides.customMeaning !== undefined) payload.custom_meaning = overrides.customMeaning;
+        if (overrides.customVideoUrl !== undefined) payload.custom_video_url = overrides.customVideoUrl;
+
+        const { error } = await supabase
+          .from('user_decks')
+          .update(payload)
+          .eq('id', cardId);
+
+        if (error) {
+          console.error("Error updating user card override:", error);
+        }
+      }
+    }
+  };
+
+  // Upload an image file to Supabase storage bucket user-card-images
+  const uploadUserCardImage = async (file, cardId) => {
+    if (!user || !file) return null;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${cardId}/${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('user-card-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) {
+        console.error("Supabase storage upload error:", error);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('user-card-images')
+        .getPublicUrl(fileName);
+
+      return publicUrlData?.publicUrl || null;
+    } catch (err) {
+      console.error("Error in uploadUserCardImage:", err);
+      return null;
+    }
+  };
+
   // Add new words from selected curriculum to the user's local deck
   const addNewCurriculumWords = async (curriculumName, count = 5, onWordAdded) => {
     // Fallback Self-Study to Oxford 5000 so the checkmark always works in every mode
@@ -1208,6 +1287,8 @@ export const VocabProvider = ({ children }) => {
       deleteWordFromDeck,
       updateCardImages,
       updateWordProperties,
+      updateUserCardOverride,
+      uploadUserCardImage,
       addNewCurriculumWords,
       getAiWordRichDetails,
       providerStatus,

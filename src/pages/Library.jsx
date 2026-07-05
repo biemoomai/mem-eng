@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -56,7 +57,7 @@ export default function Library() {
     setSelectedCard(card);
     setEditWord(card.word || '');
     setEditDef(parsed?.englishExplanation?.definition || '');
-    setEditThai(parsed?.thaiTranslation?.word || typeof card.meaning === 'string' ? card.meaning : '');
+    setEditThai(parsed?.thaiTranslation?.word || (typeof card.meaning === 'string' ? card.meaning : ''));
     setEditImg(card.videoUrl || '');
     setIsEditing(false);
   };
@@ -231,13 +232,24 @@ export default function Library() {
             const parsed = parseMeaning(card);
             const thaiWord = parsed?.thaiTranslation?.word || 'Unknown';
             return (
-              <div 
+              <motion.div 
                 key={card.id}
                 onClick={() => openCard(card)}
+                whileHover={{ scale: 1.015, backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)' }}
+                whileTap={{ scale: 0.99 }}
                 style={{
-                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '16px', padding: '12px', display: 'flex', gap: '16px',
-                  alignItems: 'center', cursor: 'pointer', transition: 'background 0.2s'
+                  background: 'rgba(15, 18, 24, 0.45)', 
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: '16px', 
+                  padding: '12px', 
+                  display: 'flex', 
+                  gap: '16px',
+                  alignItems: 'center', 
+                  cursor: 'pointer', 
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  transition: 'border-color 0.2s, background-color 0.2s',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.15)'
                 }}
               >
                 <div style={{ 
@@ -245,11 +257,9 @@ export default function Library() {
                   background: 'rgba(0,0,0,0.5)', flexShrink: 0
                 }}>
                   {card.videoUrl ? (
-                    <SafeImage src={card.videoUrl} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={card.videoUrl} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <BookOpen size={20} color="rgba(255,255,255,0.2)" />
-                    </div>
+                    <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )}
                 </div>
                 
@@ -271,155 +281,173 @@ export default function Library() {
                     <Activity size={10} /> {card.srsLevel}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             );
           })
         )}
       </div>
 
-      {selectedCard && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
-          zIndex: 100000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          animation: 'fadeIn 0.2s ease-out'
-        }}>
-          <div style={{
-            width: '100%', maxWidth: '500px', background: '#11141c',
-            borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-            border: '1px solid rgba(255,255,255,0.1)',
-            padding: '24px', boxSizing: 'border-box',
-            maxHeight: '90vh', overflowY: 'auto',
-            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ margin: 0, color: 'white', fontSize: '1.2rem', fontWeight: 800 }}>
-                {isEditing ? 'Edit Card' : 'Card Details'}
-              </h2>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {!isEditing && (
-                  <button onClick={() => setIsEditing(true)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '8px', borderRadius: '50%', cursor: 'pointer' }}>
-                    <Edit2 size={16} />
+      <AnimatePresence>
+        {selectedCard && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeCard}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(5, 5, 8, 0.82)', backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              zIndex: 100000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
+            }}
+          >
+            <motion.div 
+              initial={{ translateY: '100%' }}
+              animate={{ translateY: 0 }}
+              exit={{ translateY: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: '500px', 
+                background: 'rgba(18, 20, 26, 0.95)',
+                borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+                border: '1px solid rgba(255,255,255,0.08)',
+                padding: '24px 20px 32px 20px', boxSizing: 'border-box',
+                maxHeight: '90vh', overflowY: 'auto',
+                boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h2 style={{ margin: 0, color: 'white', fontSize: '1.2rem', fontWeight: 800 }}>
+                  {isEditing ? 'Edit Card' : 'Card Details'}
+                </h2>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {!isEditing && (
+                    <button onClick={() => setIsEditing(true)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Edit2 size={16} />
+                    </button>
+                  )}
+                  <button onClick={closeCard} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={16} />
                   </button>
-                )}
-                <button onClick={closeCard} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '8px', borderRadius: '50%', cursor: 'pointer' }}>
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ 
-                width: '100%', height: '200px', borderRadius: '16px', overflow: 'hidden',
-                background: 'rgba(0,0,0,0.5)', position: 'relative', marginBottom: isEditing ? '12px' : '0'
-              }}>
-                {editImg ? (
-                  <SafeImage src={editImg} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)' }}>
-                    No Image
-                  </div>
-                )}
-                
-                {isGeneratingImg && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px' }}>
-                    <RefreshCw size={20} className="animate-spin" /> Generating...
-                  </div>
-                )}
-                {isUploadingImg && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px' }}>
-                    <RefreshCw size={20} className="animate-spin" /> Uploading...
-                  </div>
-                )}
-              </div>
-
-              {isEditing && (
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={handleRegenerateImage} disabled={isGeneratingImg || isUploadingImg} style={{
-                    flex: 1, padding: '10px', background: 'rgba(167, 139, 250, 0.15)',
-                    border: '1px solid rgba(167, 139, 250, 0.3)', borderRadius: '12px',
-                    color: '#a78bfa', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                  }}>
-                    <RefreshCw size={14} /> AI Search
-                  </button>
-                  <button onClick={() => fileInputRef.current?.click()} disabled={isGeneratingImg || isUploadingImg} style={{
-                    flex: 1, padding: '10px', background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px',
-                    color: 'white', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                  }}>
-                    <Upload size={14} /> Upload
-                  </button>
-                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
                 </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
-              <div>
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', marginBottom: '6px' }}>English Word</label>
-                {isEditing ? (
-                  <input value={editWord} onChange={e => setEditWord(e.target.value)} style={{
-                    width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px', color: 'white', fontSize: '1rem', boxSizing: 'border-box'
-                  }} />
-                ) : (
-                  <p style={{ margin: 0, color: 'white', fontSize: '1.2rem', fontWeight: 700 }}>{editWord}</p>
-                )}
-              </div>
-              
-              <div>
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', marginBottom: '6px' }}>Thai Translation</label>
-                {isEditing ? (
-                  <input value={editThai} onChange={e => setEditThai(e.target.value)} style={{
-                    width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px', color: 'white', fontSize: '1rem', boxSizing: 'border-box'
-                  }} />
-                ) : (
-                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', fontSize: '1rem' }}>{editThai}</p>
-                )}
               </div>
 
-              <div>
-                <label style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', marginBottom: '6px' }}>English Definition</label>
-                {isEditing ? (
-                  <textarea value={editDef} onChange={e => setEditDef(e.target.value)} rows={3} style={{
-                    width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px', color: 'white', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical'
-                  }} />
-                ) : (
-                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', lineHeight: 1.5 }}>{editDef}</p>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ 
+                  width: '100%', height: '220px', borderRadius: '16px', overflow: 'hidden',
+                  background: 'rgba(0,0,0,0.5)', position: 'relative', marginBottom: isEditing ? '12px' : '0',
+                  border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  {editImg ? (
+                    <img src={editImg} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <SafeImage keyword={editWord} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )}
+                  
+                  {isGeneratingImg && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)' }}>
+                      <RefreshCw size={20} className="animate-spin" /> Generating...
+                    </div>
+                  )}
+                  {isUploadingImg && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)' }}>
+                      <RefreshCw size={20} className="animate-spin" /> Uploading...
+                    </div>
+                  )}
+                </div>
+
+                {isEditing && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={handleRegenerateImage} disabled={isGeneratingImg || isUploadingImg} style={{
+                      flex: 1, padding: '10px', background: 'rgba(167, 139, 250, 0.12)',
+                      border: '1px solid rgba(167, 139, 250, 0.25)', borderRadius: '12px',
+                      color: '#c084fc', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      transition: 'all 0.2s'
+                    }}>
+                      <RefreshCw size={14} /> AI Search
+                    </button>
+                    <button onClick={() => fileInputRef.current?.click()} disabled={isGeneratingImg || isUploadingImg} style={{
+                      flex: 1, padding: '10px', background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
+                      color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      transition: 'all 0.2s'
+                    }}>
+                      <Upload size={14} /> Upload
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
+                  </div>
                 )}
               </div>
-            </div>
 
-            {isEditing ? (
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setIsEditing(false)} style={{
-                  flex: 1, padding: '14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '14px', color: 'white', fontWeight: 700, cursor: 'pointer'
-                }}>Cancel</button>
-                <button onClick={handleSave} style={{
-                  flex: 2, padding: '14px', background: '#eab308', border: 'none',
-                  borderRadius: '14px', color: 'black', fontWeight: 800, cursor: 'pointer',
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+                <div>
+                  <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>English Word</label>
+                  {isEditing ? (
+                    <input value={editWord} onChange={e => setEditWord(e.target.value)} style={{
+                      width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '12px', color: 'white', fontSize: '1rem', boxSizing: 'border-box', outline: 'none'
+                    }} />
+                  ) : (
+                    <p style={{ margin: 0, color: 'white', fontSize: '1.3rem', fontWeight: 800 }}>{editWord}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Thai Translation</label>
+                  {isEditing ? (
+                    <input value={editThai} onChange={e => setEditThai(e.target.value)} style={{
+                      width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '12px', color: 'white', fontSize: '1rem', boxSizing: 'border-box', outline: 'none'
+                    }} />
+                  ) : (
+                    <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', fontSize: '1rem', fontWeight: 500 }}>{editThai}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>English Definition</label>
+                  {isEditing ? (
+                    <textarea value={editDef} onChange={e => setEditDef(e.target.value)} rows={3} style={{
+                      width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '12px', color: 'white', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical', outline: 'none'
+                    }} />
+                  ) : (
+                    <p style={{ margin: 0, color: 'rgba(255,255,255,0.65)', fontSize: '0.9rem', lineHeight: 1.6 }}>{editDef}</p>
+                  )}
+                </div>
+              </div>
+
+              {isEditing ? (
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => setIsEditing(false)} style={{
+                    flex: 1, padding: '14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '14px', color: 'white', fontWeight: 700, cursor: 'pointer'
+                  }}>Cancel</button>
+                  <button onClick={handleSave} style={{
+                    flex: 2, padding: '14px', background: '#eab308', border: 'none',
+                    borderRadius: '14px', color: 'black', fontWeight: 800, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                  }}>
+                    <Save size={18} /> Save Changes
+                  </button>
+                </div>
+              ) : (
+                <button onClick={handleDelete} style={{
+                  width: '100%', padding: '14px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '14px', color: '#f87171', fontWeight: 700, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                 }}>
-                  <Save size={18} /> Save Changes
+                  <Trash2 size={18} /> Remove from Deck
                 </button>
-              </div>
-            ) : (
-              <button onClick={handleDelete} style={{
-                width: '100%', padding: '14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: '14px', color: '#ef4444', fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-              }}>
-                <Trash2 size={18} /> Remove from Deck
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
