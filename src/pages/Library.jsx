@@ -27,6 +27,7 @@ export default function Library() {
   const [isUploadingImg, setIsUploadingImg] = useState(false);
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
   const fileInputRef = useRef(null);
 
   const lowGraphics = false;
@@ -224,11 +225,15 @@ export default function Library() {
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to remove "${selectedCard.word}" from your deck?`)) {
-      playSwipeSound();
-      deleteWordFromDeck(selectedCard.id);
-      closeCard();
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: `Are you sure you want to remove "${selectedCard.word}" from your deck?`,
+      onConfirm: () => {
+        playSwipeSound();
+        deleteWordFromDeck(selectedCard.id);
+        closeCard();
+      }
+    });
   };
 
   const getSrsColor = (level) => {

@@ -73,6 +73,7 @@ const Profile = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
   const [previewWord, setPreviewWord] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
   const [revealedCardIds, setRevealedCardIds] = useState({});
   const [revealedThaiIds, setRevealedThaiIds] = useState({});
   const [previewShowThai, setPreviewShowThai] = useState(false);
@@ -2226,9 +2227,13 @@ const Profile = () => {
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if (window.confirm(`ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
-                                              deleteWordFromDeck(item.id);
-                                            }
+                                            setConfirmModal({
+                                              isOpen: true,
+                                              message: `ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                              onConfirm: () => {
+                                                deleteWordFromDeck(item.id);
+                                              }
+                                            });
                                           }}
                                           style={{
                                             background: 'transparent',
@@ -2394,9 +2399,13 @@ const Profile = () => {
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if (window.confirm(`ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
-                                              deleteWordFromDeck(item.id);
-                                            }
+                                            setConfirmModal({
+                                              isOpen: true,
+                                              message: `ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                              onConfirm: () => {
+                                                deleteWordFromDeck(item.id);
+                                              }
+                                            });
                                           }}
                                           style={{
                                             background: 'transparent',
@@ -2544,10 +2553,14 @@ const Profile = () => {
                       <span style={{ fontSize: '0.75rem', background: `${getModalColor()}15`, color: getModalColor(), padding: '0.15rem 0.5rem', borderRadius: '6px', fontWeight: 800 }}>{currentItem.pos}</span>
                       <button
                         onClick={() => {
-                          if (window.confirm(`ต้องการลบคำว่า "${currentItem.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
-                            deleteWordFromDeck(currentItem.id);
-                            setPreviewWord(null);
-                          }
+                          setConfirmModal({
+                            isOpen: true,
+                            message: `ต้องการลบคำว่า "${currentItem.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                            onConfirm: () => {
+                              deleteWordFromDeck(currentItem.id);
+                              setPreviewWord(null);
+                            }
+                          });
                         }}
                         style={{
                           background: 'transparent',

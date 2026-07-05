@@ -128,6 +128,7 @@ const getVerbForms = (word, pos) => {
 const Home = () => {
   const { vocab, streak, deleteWordFromDeck } = useVocab();
   const [selectedCard, setSelectedCard] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
   const navigate = useNavigate();
 
   // Filter due cards
@@ -635,10 +636,14 @@ const Home = () => {
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem', marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => {
-                    if (window.confirm(`Are you sure you want to delete "${selectedCard.word}"?`)) {
-                      deleteWordFromDeck(selectedCard.id);
-                      setSelectedCard(null);
-                    }
+                    setConfirmModal({
+                      isOpen: true,
+                      message: `Are you sure you want to delete "${selectedCard.word}"?`,
+                      onConfirm: () => {
+                        deleteWordFromDeck(selectedCard.id);
+                        setSelectedCard(null);
+                      }
+                    });
                   }}
                   className="glass-button animate-scale"
                   style={{

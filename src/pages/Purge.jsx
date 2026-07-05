@@ -895,6 +895,7 @@ const Purge = () => {
 
   // local active queue for this study session
   const [sessionQueue, setSessionQueue] = useState([]);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
   const [isInitialized, setIsInitialized] = useState(false);
   const [isStudying, setIsStudying] = useState(false);
   const [isCustomSession, setIsCustomSession] = useState(false);
@@ -2298,9 +2299,13 @@ const Purge = () => {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (window.confirm(`ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
+                                        setConfirmModal({
+                                        isOpen: true,
+                                        message: `ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                        onConfirm: () => {
                                           deleteWordFromDeck(item.id);
                                         }
+                                      });
                                       }}
                                       style={{
                                         background: 'transparent',
@@ -2400,9 +2405,13 @@ const Purge = () => {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (window.confirm(`ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
+                                        setConfirmModal({
+                                        isOpen: true,
+                                        message: `ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                        onConfirm: () => {
                                           deleteWordFromDeck(item.id);
                                         }
+                                      });
                                       }}
                                       style={{
                                         background: 'transparent',
@@ -5483,11 +5492,15 @@ const Purge = () => {
                               </button>
                               <button 
                                 onClick={() => {
-                                  if (window.confirm(`ต้องการลบคำว่า "${wordObj.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
-                                    deleteWordFromDeck(wordObj.id);
-                                    setSessionQueue(prev => prev.filter(w => w.id !== wordObj.id));
-                                    setRevealStep(0);
-                                  }
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    message: `ต้องการลบคำว่า "${wordObj.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                    onConfirm: () => {
+                                      deleteWordFromDeck(wordObj.id);
+                                      setSessionQueue(prev => prev.filter(w => w.id !== wordObj.id));
+                                      setRevealStep(0);
+                                    }
+                                  });
                                 }}
                                 className="glass-button animate-scale"
                                 style={{ 
@@ -5556,11 +5569,15 @@ const Purge = () => {
                               </button>
                               <button
                                 onClick={() => {
-                                  if (window.confirm(`ต้องการลบคำว่า "${wordObj.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
-                                    deleteWordFromDeck(wordObj.id);
-                                    setSessionQueue(prev => prev.filter(w => w.id !== wordObj.id));
-                                    setRevealStep(0);
-                                  }
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    message: `ต้องการลบคำว่า "${wordObj.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                    onConfirm: () => {
+                                      deleteWordFromDeck(wordObj.id);
+                                      setSessionQueue(prev => prev.filter(w => w.id !== wordObj.id));
+                                      setRevealStep(0);
+                                    }
+                                  });
                                 }}
                                 className="glass-button animate-scale"
                                 style={{ width: '26px', height: '26px', borderRadius: '50%', padding: 0, background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
@@ -5661,11 +5678,15 @@ const Purge = () => {
                   {revealStep >= 1 && (
                     <button 
                       onClick={() => {
-                        if (window.confirm(`ต้องการลบคำว่า "${wordObj.word}" ออกจาก Deck จริงๆ หรือไม่?`)) {
-                          deleteWordFromDeck(wordObj.id);
-                          setSessionQueue(prev => prev.filter(w => w.id !== wordObj.id));
-                          setRevealStep(0);
-                        }
+                        setConfirmModal({
+                                    isOpen: true,
+                                    message: `ต้องการลบคำว่า "${wordObj.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                    onConfirm: () => {
+                                      deleteWordFromDeck(wordObj.id);
+                                      setSessionQueue(prev => prev.filter(w => w.id !== wordObj.id));
+                                      setRevealStep(0);
+                                    }
+                                  });
                       }}
                       className="glass-button animate-scale"
                       style={{ 
@@ -5861,7 +5882,54 @@ const Purge = () => {
         {renderWordTooltip()}
         {renderToast()}
       </div>
-    </div>
+          {confirmModal.isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 999999, padding: '20px', boxSizing: 'border-box'
+        }} onClick={(e) => e.stopPropagation()}>
+          <div style={{
+            background: 'rgba(30, 30, 30, 0.9)', border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '320px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center',
+            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)'
+          }}>
+            <h3 style={{ color: 'white', margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 700 }}>
+              Confirm Action
+            </h3>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', margin: '0 0 24px 0', lineHeight: 1.5 }}>
+              {confirmModal.message}
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)',
+                  background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 700,
+                  cursor: 'pointer', fontSize: '0.9rem'
+                }}
+              >
+                No / ยกเลิก
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+                }}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid rgba(34, 197, 94, 0.2)',
+                  background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', fontWeight: 700,
+                  cursor: 'pointer', fontSize: '0.9rem'
+                }}
+              >
+                Yes / ตกลง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 };
 
