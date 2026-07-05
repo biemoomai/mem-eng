@@ -1,24 +1,20 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#07090D"/>
-  <rect x="54" y="58" width="404" height="396" rx="92" fill="url(#bg)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
-  <g opacity="0.42">
-    <rect x="126" y="170" width="260" height="176" rx="42" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="8"/>
-    <rect x="150" y="145" width="212" height="142" rx="34" fill="rgba(255,255,255,0.045)" stroke="rgba(255,255,255,0.13)" stroke-width="6"/>
-  </g>
-  <path d="M129 353V159H184L256 260L328 159H383V353H323V257L271 329H241L189 257V353H129Z" fill="url(#mGrad)"/>
-  <path d="M129 353V159H184L256 260L328 159H383V353H323V257L271 329H241L189 257V353H129Z" stroke="rgba(255,255,255,0.22)" stroke-width="3"/>
-  <circle cx="390" cy="146" r="20" fill="#60A5FA"/>
-  <path d="M389.5 102C394.5 126 408 140 432 145C408 150 394.5 164 389.5 188C384.5 164 371 150 347 145C371 140 384.5 126 389.5 102Z" fill="#A78BFA"/>
+  <rect width="512" height="512" rx="112" fill="#06080D"/>
+  <rect x="34" y="34" width="444" height="444" rx="96" fill="url(#bg)" stroke="rgba(255,255,255,0.14)" stroke-width="3"/>
+  <path opacity="0.3" d="M119 352V160H178L256 269L334 160H393V352H328V265L274 340H238L184 265V352H119Z" fill="#0B1020"/>
+  <path d="M104 362V138H174L256 254L338 138H408V362H335V254L276 339H236L177 254V362H104Z" fill="url(#mGrad)"/>
+  <path d="M104 362V138H174L256 254L338 138H408V362H335V254L276 339H236L177 254V362H104Z" stroke="rgba(255,255,255,0.24)" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="126" y="388" width="260" height="18" rx="9" fill="rgba(255,255,255,0.12)"/>
   <defs>
-    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(156 116) rotate(53.4) scale(438)">
-      <stop stop-color="#1C2440"/>
-      <stop offset="0.45" stop-color="#10131C"/>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(154 94) rotate(52) scale(472)">
+      <stop stop-color="#202A52"/>
+      <stop offset="0.48" stop-color="#101525"/>
       <stop offset="1" stop-color="#050609"/>
     </radialGradient>
-    <linearGradient id="mGrad" x1="132" y1="156" x2="387" y2="355" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#A78BFA"/>
-      <stop offset="0.5" stop-color="#7EA7FF"/>
-      <stop offset="1" stop-color="#60A5FA"/>
+    <linearGradient id="mGrad" x1="105" y1="136" x2="409" y2="364" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B49BFF"/>
+      <stop offset="0.5" stop-color="#86A8FF"/>
+      <stop offset="1" stop-color="#5EA8FF"/>
     </linearGradient>
   </defs>
 </svg>

@@ -15,7 +15,6 @@ import Terms from './pages/Terms';
 import { playClickSound, playSwipeSound } from './utils/soundHelper';
 import { speakEnglish } from './utils/speechHelper';
 import { Tutorial } from './components/Tutorial';
-import NongMem from './components/NongMem';
 
 
 function AppContent() {
@@ -171,32 +170,8 @@ function AppContent() {
       return '20:00';
     }
   });
-  const [showNongMem, setShowNongMem] = useState(() => {
-    try {
-      return localStorage.getItem('memeng_show_nong_mem') === 'true';
-    } catch (e) {
-      return false;
-    }
-  });
-  const [nongMemMuted, setNongMemMuted] = useState(() => {
-    try {
-      const val = localStorage.getItem('memeng_nong_mem_muted');
-      return val !== 'false'; // Default to true (Muted) if null/not set
-    } catch (e) {
-      return true;
-    }
-  });
-
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const pageSwipeEnabled = !isTutorialActive && !menuOpen;
-
-  useEffect(() => {
-    const handleMuteChange = (e) => {
-      setNongMemMuted(e.detail);
-    };
-    window.addEventListener('nongmem-mute-change', handleMuteChange);
-    return () => window.removeEventListener('nongmem-mute-change', handleMuteChange);
-  }, []);
 
   useEffect(() => {
     const handleActiveChange = (e) => {
@@ -1450,7 +1425,6 @@ function AppContent() {
         )}
       </AnimatePresence>
       
-      <NongMem />
       <Tutorial />
     </div>
   );

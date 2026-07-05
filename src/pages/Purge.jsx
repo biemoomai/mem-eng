@@ -1194,7 +1194,12 @@ const Purge = () => {
       const res = await fetchVocabImage(searchPrompt, 'photo', exclude);
       if (res && res.url) {
         setSessionQueue(prev => prev.map(w => w.id === wordObj.id ? { ...w, videoUrl: res.url } : w));
-        updateWordProperties(wordObj.id, { videoUrl: res.url });
+        try {
+          await updateWordProperties(wordObj.id, { videoUrl: res.url });
+        } catch (syncErr) {
+          console.warn('Image changed locally, but syncing the new image failed:', syncErr);
+        }
+        showToast('เปลี่ยนรูปใหม่แล้ว');
       } else {
         showToast('ไม่พบรูปภาพอื่นเพิ่มเติมสำหรับคำนี้ครับ');
       }
@@ -4282,17 +4287,20 @@ const Purge = () => {
                   >
                     {/* Diagonal Glass Shine Sweep Effect */}
                     {theme !== 'theme-3' && !startHovered && (
-                      <div
+                      <motion.div
+                        animate={{ x: ['-120%', '240%'] }}
+                        transition={{ repeat: Infinity, duration: 4.8, ease: 'linear', repeatDelay: 1.4 }}
                         style={{
                           position: 'absolute',
                           top: 0,
                           left: 0,
-                          width: '46%',
+                          width: '42%',
                           height: '100%',
-                          background: 'linear-gradient(90deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.035) 62%, rgba(255,255,255,0) 100%)',
+                          background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0) 100%)',
                           transform: 'skewX(-18deg)',
                           pointerEvents: 'none',
-                          zIndex: 2
+                          zIndex: 2,
+                          willChange: 'transform'
                         }}
                       />
                     )}
