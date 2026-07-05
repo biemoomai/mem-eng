@@ -378,7 +378,7 @@ export default function Library() {
               >
                 <div style={{ 
                   width: '60px', height: '60px', borderRadius: '10px', overflow: 'hidden',
-                  background: 'rgba(0,0,0,0.5)', flexShrink: 0
+                  background: 'rgba(0,0,0,0.5)', flexShrink: 0, position: 'relative'
                 }}>
                   {card.videoUrl ? (
                     <img
@@ -386,7 +386,7 @@ export default function Library() {
                       alt={card.word}
                       draggable={false}
                       onContextMenu={(e) => e.preventDefault()}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none', pointerEvents: 'none' }}
                     />
                   ) : (
                     <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -500,7 +500,7 @@ export default function Library() {
                         alt={editWord}
                         draggable={false}
                         onContextMenu={(e) => e.preventDefault()}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none', pointerEvents: 'none' }}
                       />
                     ) : isCreating && !editWord.trim() ? (
                       <div style={{
