@@ -3,25 +3,29 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
-import { Search, Edit2, Trash2, X, RefreshCw, Upload, Save, BookOpen, Clock, Activity, SearchX, CheckCircle } from 'lucide-react';
+import { Search, Edit2, Trash2, X, RefreshCw, Upload, Save, BookOpen, SearchX, Plus } from 'lucide-react';
 import { playClickSound, playSwipeSound, playSuccessSound } from '../utils/soundHelper';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { SafeImage } from '../components/SafeImage';
 
 export default function Library() {
-  const { vocab, deleteWordFromDeck, updateUserCardOverride, uploadUserCardImage, getAiWordRichDetails } = useVocab();
+  const { vocab, deleteWordFromDeck, updateUserCardOverride, uploadUserCardImage, getAiWordRichDetails, addWordToDeck } = useVocab();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState('All');
   const [selectedCard, setSelectedCard] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   
   // Edit State
   const [editWord, setEditWord] = useState('');
   const [editDef, setEditDef] = useState('');
   const [editThai, setEditThai] = useState('');
   const [editImg, setEditImg] = useState('');
+  const [pendingUploadFile, setPendingUploadFile] = useState(null);
+  const [isGeneratingImg, setIsGeneratingImg] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+  const [showSearchInput, setShowSearchInput] = useState(false);
   const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -64,25 +68,72 @@ export default function Library() {
     playSwipeSound();
     setSelectedCard(null);
     setIsEditing(false);
+    setIsCreating(false);
+    setShowSearchInput(false);
+    setPendingUploadFile(null);
+  };
+
+  const openCreateCard = () => {
+    playClickSound();
+    setSelectedCard(null);
+    setEditWord('');
+    setEditDef('');
+    setEditThai('');
+    setEditImg('');
+    setPendingUploadFile(null);
+    setIsCreating(true);
+    setIsEditing(true);
   };
 
   const handleSave = async () => {
     playClickSound();
-    if (!selectedCard) return;
+    if (!editWord.trim()) return;
 
-    const parsed = parseMeaning(selectedCard);
+    const parsed = selectedCard ? parseMeaning(selectedCard) : {};
     
     // Deep clone and update parsed meaning safely
     const updatedMeaning = { ...parsed };
     if (!updatedMeaning.englishExplanation) updatedMeaning.englishExplanation = {};
     if (!updatedMeaning.thaiTranslation) updatedMeaning.thaiTranslation = {};
     
+    updatedMeaning.pos = updatedMeaning.pos || 'custom';
+    updatedMeaning.cefrLevel = updatedMeaning.cefrLevel || 'Self';
+    updatedMeaning.curriculum = updatedMeaning.curriculum || 'Self-Study only';
+    updatedMeaning.imagePrompts = updatedMeaning.imagePrompts || [editWord.trim()];
+    const canPersistImageUrl = editImg && !editImg.startsWith('blob:');
+    updatedMeaning.savedSceneImages = canPersistImageUrl ? [editImg] : (updatedMeaning.savedSceneImages || []);
     updatedMeaning.englishExplanation.definition = editDef;
     updatedMeaning.thaiTranslation.word = editThai;
-    updatedMeaning.word = editWord;
+    updatedMeaning.word = editWord.trim();
+
+    if (isCreating) {
+      const result = await addWordToDeck(editWord.trim(), updatedMeaning);
+      if (!result.success) {
+        console.error(result.error || 'Failed to create card');
+        return;
+      }
+      if (pendingUploadFile && user && result.card?.id && !String(result.card.id).startsWith('local-')) {
+        const uploadedUrl = await uploadUserCardImage(pendingUploadFile, result.card.id);
+        if (uploadedUrl) {
+          await updateUserCardOverride(result.card.id, {
+            customWord: editWord.trim(),
+            customMeaning: {
+              ...updatedMeaning,
+              savedSceneImages: [uploadedUrl]
+            },
+            customVideoUrl: uploadedUrl
+          });
+        }
+      }
+      playSuccessSound();
+      closeCard();
+      return;
+    }
+
+    if (!selectedCard) return;
 
     await updateUserCardOverride(selectedCard.id, {
-      customWord: editWord,
+      customWord: editWord.trim(),
       customMeaning: updatedMeaning,
       customVideoUrl: editImg
     });
@@ -91,10 +142,27 @@ export default function Library() {
     setIsEditing(false);
     setSelectedCard({
       ...selectedCard,
-      word: editWord,
+      word: editWord.trim(),
       meaning: updatedMeaning,
       videoUrl: editImg
     });
+  };
+
+  const handleSearchImageByKeyword = async (keyword) => {
+    playClickSound();
+    const cleanKeyword = (keyword || editWord || '').trim();
+    if (!cleanKeyword) return;
+    setIsGeneratingImg(true);
+    try {
+      const res = await fetchVocabImage(cleanKeyword, 'photo');
+      if (res && res.url) {
+        setEditImg(res.url);
+      }
+    } catch (error) {
+      console.error("Failed to fetch image by keyword:", error);
+    } finally {
+      setIsGeneratingImg(false);
+    }
   };
 
   const handleRegenerateAIDetails = async () => {
@@ -135,11 +203,14 @@ export default function Library() {
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedCard) return;
+    if (!file) return;
     
     setIsUploadingImg(true);
     
-    if (user) {
+    if (isCreating) {
+      setPendingUploadFile(file);
+      setEditImg(URL.createObjectURL(file));
+    } else if (user && selectedCard) {
       const url = await uploadUserCardImage(file, selectedCard.id);
       if (url) {
         setEditImg(url);
@@ -194,6 +265,26 @@ export default function Library() {
           <h1 style={{ color: 'white', margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>Library</h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontSize: '0.8rem' }}>{vocab.length} Words in your deck</p>
         </div>
+        <button
+          onClick={openCreateCard}
+          title="Create flashcard"
+          style={{
+            marginLeft: 'auto',
+            width: '40px',
+            height: '40px',
+            borderRadius: '12px',
+            background: 'rgba(234, 179, 8, 0.13)',
+            border: '1px solid rgba(234, 179, 8, 0.32)',
+            color: '#facc15',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 10px 24px rgba(234, 179, 8, 0.12)'
+          }}
+        >
+          <Plus size={20} strokeWidth={3} />
+        </button>
       </div>
 
       <div style={{ position: 'relative', marginBottom: '16px' }}>
@@ -329,9 +420,9 @@ export default function Library() {
 
       {createPortal(
         <AnimatePresence>
-          {selectedCard && (() => {
-            const parsed = parseMeaning(selectedCard);
-            const pos = selectedCard.pos || parsed?.pos || '';
+          {(selectedCard || isCreating) && (() => {
+            const parsed = selectedCard ? parseMeaning(selectedCard) : {};
+            const pos = selectedCard?.pos || parsed?.pos || '';
             const cefrLevel = parsed?.cefrLevel || '';
             const synonyms = parsed?.synonyms || [];
             const nearWords = parsed?.nearWords || [];
@@ -375,10 +466,10 @@ export default function Library() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isEditing ? '12px' : '24px' }}>
                   <h2 style={{ margin: 0, color: 'white', fontSize: isEditing ? '1.05rem' : '1.2rem', fontWeight: 800 }}>
-                    {isEditing ? 'Edit Card' : 'Card Details'}
+                    {isCreating ? 'Create Card' : (isEditing ? 'Edit Card' : 'Card Details')}
                   </h2>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    {!isEditing && (
+                    {!isEditing && !isCreating && (
                       <button onClick={() => setIsEditing(true)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Edit2 size={16} />
                       </button>
@@ -406,10 +497,100 @@ export default function Library() {
                         onContextMenu={(e) => e.preventDefault()}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
                       />
+                    ) : isCreating && !editWord.trim() ? (
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255,255,255,0.35)',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))'
+                      }}>
+                        Add a word, photo, or auto details
+                      </div>
                     ) : (
                       <SafeImage keyword={editWord} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }} />
                     )}
-                    
+
+                    {showSearchInput && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        left: '10px',
+                        right: '10px',
+                        background: 'rgba(15, 18, 24, 0.92)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: '12px',
+                        padding: '8px',
+                        display: 'flex',
+                        gap: '6px',
+                        alignItems: 'center',
+                        zIndex: 15
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Image keyword..."
+                          id="library-image-search-kw"
+                          defaultValue={editWord}
+                          autoFocus
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              await handleSearchImageByKeyword(e.target.value);
+                              setShowSearchInput(false);
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            background: 'rgba(255,255,255,0.06)',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '8px 10px',
+                            color: 'white',
+                            fontSize: '0.8rem',
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            const val = document.getElementById('library-image-search-kw')?.value;
+                            await handleSearchImageByKeyword(val);
+                            setShowSearchInput(false);
+                          }}
+                          style={{
+                            padding: '7px 10px',
+                            borderRadius: '8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            background: 'rgba(167, 139, 250, 0.18)',
+                            border: '1px solid rgba(167, 139, 250, 0.34)',
+                            color: '#c084fc',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Search
+                        </button>
+                        <button
+                          onClick={(e) => { e.preventDefault(); setShowSearchInput(false); }}
+                          style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    )}
+
+                    {isGeneratingImg && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
+                        <RefreshCw size={20} className="animate-spin" /> Searching image...
+                      </div>
+                    )}
                     {isUploadingImg && (
                       <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
                         <RefreshCw size={20} className="animate-spin" /> Uploading...
@@ -426,7 +607,16 @@ export default function Library() {
                   {isEditing && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingImg || isGeneratingDetails} style={{
+                        <button onClick={(e) => { e.preventDefault(); setShowSearchInput(true); }} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
+                          flex: 1, padding: '9px', background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
+                          color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          transition: 'all 0.2s'
+                        }}>
+                          <Search size={14} /> Search Photo
+                        </button>
+                        <button onClick={() => fileInputRef.current?.click()} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
                           flex: 1, padding: '9px', background: 'rgba(255, 255, 255, 0.05)',
                           border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
                           color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
@@ -437,7 +627,7 @@ export default function Library() {
                         </button>
                       </div>
                       
-                      <button onClick={handleRegenerateAIDetails} disabled={isUploadingImg || isGeneratingDetails} style={{
+                      <button onClick={handleRegenerateAIDetails} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
                         width: '100%', padding: '9px', background: 'rgba(167, 139, 250, 0.12)',
                         border: '1px solid rgba(167, 139, 250, 0.25)', borderRadius: '12px',
                         color: '#c084fc', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
@@ -564,7 +754,7 @@ export default function Library() {
 
                 {isEditing ? (
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setIsEditing(false)} style={{
+                    <button onClick={() => isCreating ? closeCard() : setIsEditing(false)} style={{
                       flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '14px', color: 'white', fontWeight: 700, cursor: 'pointer'
                     }}>Cancel</button>
@@ -573,7 +763,7 @@ export default function Library() {
                       borderRadius: '14px', color: 'black', fontWeight: 800, cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                     }}>
-                      <Save size={18} /> Save Changes
+                      <Save size={18} /> {isCreating ? 'Create Card' : 'Save Changes'}
                     </button>
                   </div>
                 ) : (

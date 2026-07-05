@@ -657,7 +657,7 @@ export const VocabProvider = ({ children }) => {
     const updated = [newCard, ...vocab];
     setVocab(updated);
     saveDeckToLocal(updated);
-    return { success: true };
+    return { success: true, card: newCard };
   };
 
   // Delete a word card from the local deck
