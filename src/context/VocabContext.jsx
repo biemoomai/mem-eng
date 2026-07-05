@@ -293,16 +293,19 @@ export const VocabProvider = ({ children }) => {
             if (typeof parsedRichData === 'string') parsedRichData = JSON.parse(parsedRichData);
           } catch (e) {}
 
+          const customMeaning = ud.custom_meaning || null;
+          const effectiveMeaning = customMeaning || parsedRichData || parsedMeaning;
+
           return {
             id: ud.id,
             word: ud.custom_word || ud.global_dictionary.word,
             originalWord: ud.global_dictionary.word,
             pos: ud.global_dictionary.pos,
-            meaning: parsedMeaning,
-            richCardData: parsedRichData || parsedMeaning,
-            customMeaning: ud.custom_meaning,
+            meaning: effectiveMeaning,
+            richCardData: effectiveMeaning,
+            customMeaning,
             customVideoUrl: ud.custom_video_url,
-            videoUrl: ud.custom_video_url || parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
+            videoUrl: ud.custom_video_url || effectiveMeaning?.savedSceneImages?.[0] || parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
             curriculum: parsedRichData?.curriculum || parsedMeaning?.curriculum || 'Self-Study only',
             srsLevel: ud.srs_level,
             repetition: ud.repetition,

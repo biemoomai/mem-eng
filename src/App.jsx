@@ -472,7 +472,7 @@ function AppContent() {
     if (currentIdx === 0 && swipeOffset > 0) {
       return swipeOffset * 0.25;
     }
-    if (currentIdx === 2 && swipeOffset < 0) {
+    if (currentIdx === 3 && swipeOffset < 0) {
       return swipeOffset * 0.25;
     }
     return swipeOffset * 0.85;
@@ -596,7 +596,7 @@ function AppContent() {
                 display: 'flex',
                 width: '400%',
                 height: '100%',
-                transform: `translate3d(calc(-${(currentIdx * 100) / 4}% + ${effectiveSwipeOffset}px), 0, 0)`,
+                transform: `translate3d(-${currentIdx * 25}%, 0, 0) translate3d(${effectiveSwipeOffset}px, 0, 0)`,
                 transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
             >
@@ -1093,7 +1093,7 @@ function AppContent() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 700, color: theme === 'theme-3' ? '#000000' : '#e2e8f0' }}>Bottom Navigation Bar</span>
-                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Show Translate / Flashcards / My Profile at the bottom</span>
+                    <span style={{ fontSize: '0.68rem', color: theme === 'theme-3' ? '#666666' : '#94a3b8', marginTop: '1px' }}>Show Translate / Flashcards / Library / My Profile at the bottom</span>
                   </div>
                 </div>
                 <div

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { Search, Edit2, Trash2, X, RefreshCw, Upload, Save, BookOpen, Clock, Activity, SearchX, CheckCircle } from 'lucide-react';
 import { playClickSound, playSwipeSound, playSuccessSound } from '../utils/soundHelper';
 import { fetchVocabImage } from '../utils/imageHelper';
@@ -12,8 +11,6 @@ import { SafeImage } from '../components/SafeImage';
 export default function Library() {
   const { vocab, deleteWordFromDeck, updateUserCardOverride, uploadUserCardImage, getAiWordRichDetails } = useVocab();
   const { user } = useAuth();
-  const { theme } = useTheme();
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState('All');
   const [selectedCard, setSelectedCard] = useState(null);
@@ -198,11 +195,10 @@ export default function Library() {
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      paddingBottom: '80px',
       overflowY: 'auto',
       WebkitOverflowScrolling: 'touch',
       boxSizing: 'border-box',
-      padding: '20px 16px'
+      padding: '20px 16px 104px'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
         <div style={{
@@ -249,7 +245,10 @@ export default function Library() {
         padding: '6px 16px 12px 16px', 
         margin: '0 -16px 4px -16px', 
         WebkitOverflowScrolling: 'touch', 
-        scrollbarWidth: 'none' 
+        scrollbarWidth: 'none',
+        flexShrink: 0,
+        position: 'relative',
+        zIndex: 2
       }}>
         {levels.map(level => (
           <button
@@ -268,7 +267,7 @@ export default function Library() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '4px', paddingBottom: '24px' }}>
         {filteredVocab.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.3)' }}>
             <SearchX size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
@@ -359,22 +358,27 @@ export default function Library() {
                 position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                 background: 'rgba(5, 5, 8, 0.82)', backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                zIndex: 100000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
+                zIndex: 100000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+                boxSizing: 'border-box'
               }}
             >
               <motion.div 
-                initial={{ translateY: '100%' }}
-                animate={{ translateY: 0 }}
-                exit={{ translateY: '100%' }}
+                initial={{ opacity: 0, scale: 0.96, y: 18 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 18 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
                 onClick={(e) => e.stopPropagation()}
                 style={{
                   width: '100%', maxWidth: '500px', 
                   background: 'rgba(18, 20, 26, 0.95)',
-                  borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+                  borderRadius: '24px',
                   border: '1px solid rgba(255,255,255,0.08)',
-                  padding: '24px 20px 32px 20px', boxSizing: 'border-box',
-                  maxHeight: '82vh', overflowY: 'auto',
+                  padding: '24px 20px 28px 20px', boxSizing: 'border-box',
+                  maxHeight: 'min(82vh, 760px)', overflowY: 'auto',
                   boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
                   WebkitOverflowScrolling: 'touch'
                 }}
@@ -517,7 +521,7 @@ export default function Library() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                         transition: 'all 0.2s'
                       }}>
-                        <RefreshCw size={14} /> 🔄 Regenerate AI Details
+                        <RefreshCw size={14} /> Auto Generate Details
                       </button>
                       
                       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
