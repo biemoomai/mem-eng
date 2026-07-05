@@ -57,7 +57,10 @@ export const SafeImage = ({ keyword, alt, style, mode = 'photo' }) => {
 
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', borderRadius: '10px' }}>
+    <div
+      onContextMenu={(e) => e.preventDefault()}
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', borderRadius: '10px', WebkitTouchCallout: 'none', userSelect: 'none' }}
+    >
       {isLoading && (
         <div style={{ 
           position: 'absolute', 
@@ -75,11 +78,14 @@ export const SafeImage = ({ keyword, alt, style, mode = 'photo' }) => {
         src={imgSrc} 
         alt={alt} 
         draggable="false"
+        onContextMenu={(e) => e.preventDefault()}
         style={{ 
           width: '100%',
           height: '100%',
           objectFit: 'cover',
           userSelect: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitUserDrag: 'none',
           pointerEvents: 'none',
           ...style,
           display: isLoading ? 'none' : 'block' 

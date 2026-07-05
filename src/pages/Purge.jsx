@@ -5074,7 +5074,8 @@ const Purge = () => {
                   onMouseEnter={() => setIsImageHovered(true)}
                   onMouseLeave={() => setIsImageHovered(false)}
                   onClick={() => setIsImageHovered(prev => !prev)}
-                  style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', height: '100%', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255, 255, 255, 0.05)', cursor: 'pointer' }}
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', height: '100%', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255, 255, 255, 0.05)', cursor: 'pointer', WebkitTouchCallout: 'none', userSelect: 'none' }}
                 >
                   
                   {/* Floating Action Buttons Overlay (Regenerate & Save) */}
@@ -5280,12 +5281,14 @@ const Purge = () => {
                       src={cleanMediaUrl(activeReviewImageUrl)} 
                       alt="visual context" 
                       draggable="false"
+                      onContextMenu={(e) => e.preventDefault()}
                       onDragStart={(e) => e.preventDefault()}
                       style={{ 
                         width: '100%', 
                         height: '100%', 
                         objectFit: 'cover',
                         userSelect: 'none',
+                        WebkitTouchCallout: 'none',
                         pointerEvents: 'none',
                         WebkitUserDrag: 'none'
                       }} 

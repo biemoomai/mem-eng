@@ -21,9 +21,7 @@ export default function Library() {
   const [editDef, setEditDef] = useState('');
   const [editThai, setEditThai] = useState('');
   const [editImg, setEditImg] = useState('');
-  const [isGeneratingImg, setIsGeneratingImg] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
-  const [showSearchInput, setShowSearchInput] = useState(false);
   const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -97,22 +95,6 @@ export default function Library() {
       meaning: updatedMeaning,
       videoUrl: editImg
     });
-  };
-
-  const handleSearchImageByKeyword = async (keyword) => {
-    playClickSound();
-    if (!keyword) return;
-    setIsGeneratingImg(true);
-    try {
-      const res = await fetchVocabImage(keyword, 'photo');
-      if (res && res.url) {
-        setEditImg(res.url);
-      }
-    } catch (error) {
-      console.error("Failed to fetch image by keyword:", error);
-    } finally {
-      setIsGeneratingImg(false);
-    }
   };
 
   const handleRegenerateAIDetails = async () => {
@@ -303,7 +285,13 @@ export default function Library() {
                   background: 'rgba(0,0,0,0.5)', flexShrink: 0
                 }}>
                   {card.videoUrl ? (
-                    <img src={card.videoUrl} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img
+                      src={card.videoUrl}
+                      alt={card.word}
+                      draggable={false}
+                      onContextMenu={(e) => e.preventDefault()}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
+                    />
                   ) : (
                     <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )}
@@ -377,14 +365,16 @@ export default function Library() {
                   background: 'rgba(18, 20, 26, 0.95)',
                   borderRadius: '24px',
                   border: '1px solid rgba(255,255,255,0.08)',
-                  padding: '24px 20px 28px 20px', boxSizing: 'border-box',
-                  maxHeight: 'min(82vh, 760px)', overflowY: 'auto',
+                  padding: isEditing ? '18px 18px 22px 18px' : '24px 20px 28px 20px',
+                  boxSizing: 'border-box',
+                  maxHeight: isEditing ? 'calc(100dvh - 116px)' : 'min(82vh, 760px)',
+                  overflowY: 'auto',
                   boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
                   WebkitOverflowScrolling: 'touch'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                  <h2 style={{ margin: 0, color: 'white', fontSize: '1.2rem', fontWeight: 800 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isEditing ? '12px' : '24px' }}>
+                  <h2 style={{ margin: 0, color: 'white', fontSize: isEditing ? '1.05rem' : '1.2rem', fontWeight: 800 }}>
                     {isEditing ? 'Edit Card' : 'Card Details'}
                   </h2>
                   <div style={{ display: 'flex', gap: '12px' }}>
@@ -399,85 +389,27 @@ export default function Library() {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '24px' }}>
+                <div style={{ marginBottom: isEditing ? '12px' : '24px' }}>
                   <div style={{ 
-                    width: '100%', height: '220px', borderRadius: '16px', overflow: 'hidden',
-                    background: 'rgba(0,0,0,0.5)', position: 'relative', marginBottom: isEditing ? '12px' : '0',
+                    width: '100%',
+                    height: isEditing ? '148px' : '220px',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    background: 'rgba(0,0,0,0.5)', position: 'relative', marginBottom: isEditing ? '10px' : '0',
                     border: '1px solid rgba(255,255,255,0.05)'
                   }}>
                     {editImg ? (
-                      <img src={editImg} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img
+                        src={editImg}
+                        alt={editWord}
+                        draggable={false}
+                        onContextMenu={(e) => e.preventDefault()}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
+                      />
                     ) : (
-                      <SafeImage keyword={editWord} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <SafeImage keyword={editWord} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover', WebkitUserDrag: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }} />
                     )}
                     
-                    {showSearchInput && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '10px', left: '10px', right: '10px',
-                        background: 'rgba(15, 18, 24, 0.9)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: '12px',
-                        padding: '8px',
-                        display: 'flex', gap: '6px', alignItems: 'center',
-                        zIndex: 15
-                      }}>
-                        <input 
-                          type="text" 
-                          placeholder="Type image keyword..."
-                          id="library-image-search-kw"
-                          defaultValue={editWord}
-                          autoFocus
-                          onKeyDown={async (e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              await handleSearchImageByKeyword(e.target.value);
-                              setShowSearchInput(false);
-                            }
-                          }}
-                          style={{
-                            flex: 1,
-                            background: 'rgba(255,255,255,0.06)',
-                            border: 'none', borderRadius: '8px',
-                            padding: '8px 10px', color: 'white',
-                            fontSize: '0.8rem', outline: 'none'
-                          }}
-                        />
-                        <button
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            const val = document.getElementById("library-image-search-kw")?.value;
-                            if (val) {
-                              await handleSearchImageByKeyword(val);
-                            }
-                            setShowSearchInput(false);
-                          }}
-                          style={{
-                            padding: '6px 12px', borderRadius: '8px',
-                            fontSize: '0.75rem', fontWeight: 700,
-                            background: 'rgba(167, 139, 250, 0.2)',
-                            border: '1px solid rgba(167, 139, 250, 0.4)',
-                            color: '#c084fc', cursor: 'pointer'
-                          }}
-                        >
-                          Search
-                        </button>
-                        <button
-                          onClick={(e) => { e.preventDefault(); setShowSearchInput(false); }}
-                          style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )}
-                    
-                    {isGeneratingImg && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
-                        <RefreshCw size={20} className="animate-spin" /> Searching image...
-                      </div>
-                    )}
                     {isUploadingImg && (
                       <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
                         <RefreshCw size={20} className="animate-spin" /> Uploading...
@@ -494,17 +426,8 @@ export default function Library() {
                   {isEditing && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={(e) => { e.preventDefault(); setShowSearchInput(true); }} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
-                          flex: 1, padding: '10px', background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
-                          color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                          transition: 'all 0.2s'
-                        }}>
-                          <Search size={14} /> Search Photo
-                        </button>
-                        <button onClick={() => fileInputRef.current?.click()} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
-                          flex: 1, padding: '10px', background: 'rgba(255, 255, 255, 0.05)',
+                        <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingImg || isGeneratingDetails} style={{
+                          flex: 1, padding: '9px', background: 'rgba(255, 255, 255, 0.05)',
                           border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
                           color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -514,8 +437,8 @@ export default function Library() {
                         </button>
                       </div>
                       
-                      <button onClick={handleRegenerateAIDetails} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
-                        width: '100%', padding: '10px', background: 'rgba(167, 139, 250, 0.12)',
+                      <button onClick={handleRegenerateAIDetails} disabled={isUploadingImg || isGeneratingDetails} style={{
+                        width: '100%', padding: '9px', background: 'rgba(167, 139, 250, 0.12)',
                         border: '1px solid rgba(167, 139, 250, 0.25)', borderRadius: '12px',
                         color: '#c084fc', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -529,7 +452,7 @@ export default function Library() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isEditing ? '10px' : '16px', marginBottom: isEditing ? '14px' : '24px' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                       <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>English Word</label>
@@ -550,7 +473,7 @@ export default function Library() {
                     </div>
                     {isEditing ? (
                       <input value={editWord} onChange={e => setEditWord(e.target.value)} style={{
-                        width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+                        width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: '12px', color: 'white', fontSize: '1rem', boxSizing: 'border-box', outline: 'none'
                       }} />
                     ) : (
@@ -562,7 +485,7 @@ export default function Library() {
                     <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Thai Translation</label>
                     {isEditing ? (
                       <input value={editThai} onChange={e => setEditThai(e.target.value)} style={{
-                        width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+                        width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: '12px', color: 'white', fontSize: '1rem', boxSizing: 'border-box', outline: 'none'
                       }} />
                     ) : (
@@ -573,8 +496,8 @@ export default function Library() {
                   <div>
                     <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>English Definition</label>
                     {isEditing ? (
-                      <textarea value={editDef} onChange={e => setEditDef(e.target.value)} rows={3} style={{
-                        width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+                      <textarea value={editDef} onChange={e => setEditDef(e.target.value)} rows={2} style={{
+                        width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: '12px', color: 'white', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical', outline: 'none'
                       }} />
                     ) : (
@@ -642,11 +565,11 @@ export default function Library() {
                 {isEditing ? (
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={() => setIsEditing(false)} style={{
-                      flex: 1, padding: '14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                      flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '14px', color: 'white', fontWeight: 700, cursor: 'pointer'
                     }}>Cancel</button>
                     <button onClick={handleSave} style={{
-                      flex: 2, padding: '14px', background: '#eab308', border: 'none',
+                      flex: 2, padding: '12px', background: '#eab308', border: 'none',
                       borderRadius: '14px', color: 'black', fontWeight: 800, cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                     }}>
