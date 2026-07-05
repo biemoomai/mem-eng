@@ -145,12 +145,12 @@ export default function Library() {
 
   const getSrsColor = (level) => {
     switch(level) {
-      case 'Learning': return '#ef4444';
-      case 'Hard': return '#f97316';
-      case 'Normal': return '#eab308';
-      case 'Easy': return '#22c55e';
-      case 'Mastered': return '#0ea5e9';
-      default: return '#94a3b8';
+      case 'Learning': return '#cbd5e1';
+      case 'Hard': return '#ef4444';
+      case 'Normal': return '#10b981';
+      case 'Easy': return '#3b82f6';
+      case 'Mastered': return '#eab308';
+      default: return '#cbd5e1';
     }
   };
 
@@ -204,7 +204,15 @@ export default function Library() {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '8px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+      <div style={{ 
+        display: 'flex', 
+        gap: '8px', 
+        overflowX: 'auto', 
+        padding: '6px 16px 12px 16px', 
+        margin: '0 -16px 4px -16px', 
+        WebkitOverflowScrolling: 'touch', 
+        scrollbarWidth: 'none' 
+      }}>
         {levels.map(level => (
           <button
             key={level}
@@ -270,16 +278,22 @@ export default function Library() {
                       {card.word}
                     </h3>
                     <div style={{ 
-                      width: '8px', height: '8px', borderRadius: '50%',
-                      background: getSrsColor(card.srsLevel),
-                      boxShadow: `0 0 6px ${getSrsColor(card.srsLevel)}`
-                    }} />
+                      padding: '3px 8px',
+                      borderRadius: '8px',
+                      fontSize: '0.62rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      background: `${getSrsColor(card.srsLevel)}16`,
+                      border: `1px solid ${getSrsColor(card.srsLevel)}35`,
+                      color: getSrsColor(card.srsLevel),
+                      flexShrink: 0
+                    }}>
+                      {card.srsLevel}
+                    </div>
                   </div>
-                  <p style={{ color: 'rgba(255,255,255,0.7)', margin: '4px 0 0', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.7)', margin: '6px 0 0', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {thaiWord}
-                  </p>
-                  <p style={{ color: 'rgba(255,255,255,0.4)', margin: '4px 0 0', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Activity size={10} /> {card.srsLevel}
                   </p>
                 </div>
               </motion.div>
