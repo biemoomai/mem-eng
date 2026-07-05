@@ -10,7 +10,7 @@ import { fetchVocabImage } from '../utils/imageHelper';
 import { SafeImage } from '../components/SafeImage';
 
 export default function Library() {
-  const { vocab, deleteWordFromDeck, updateUserCardOverride, uploadUserCardImage } = useVocab();
+  const { vocab, deleteWordFromDeck, updateUserCardOverride, uploadUserCardImage, getAiWordRichDetails } = useVocab();
   const { user } = useAuth();
   const { theme } = useTheme();
   
@@ -26,6 +26,8 @@ export default function Library() {
   const [editImg, setEditImg] = useState('');
   const [isGeneratingImg, setIsGeneratingImg] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+  const [showSearchInput, setShowSearchInput] = useState(false);
+  const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
   const fileInputRef = useRef(null);
 
   const lowGraphics = false;
@@ -100,19 +102,55 @@ export default function Library() {
     });
   };
 
-  const handleRegenerateImage = async () => {
+  const handleSearchImageByKeyword = async (keyword) => {
     playClickSound();
-    if (!editWord) return;
+    if (!keyword) return;
     setIsGeneratingImg(true);
     try {
-      const res = await fetchVocabImage(editWord, 'photo');
+      const res = await fetchVocabImage(keyword, 'photo');
       if (res && res.url) {
         setEditImg(res.url);
       }
     } catch (error) {
-      console.error("Failed to generate image:", error);
+      console.error("Failed to fetch image by keyword:", error);
     } finally {
       setIsGeneratingImg(false);
+    }
+  };
+
+  const handleRegenerateAIDetails = async () => {
+    playClickSound();
+    if (!editWord) return;
+    setIsGeneratingDetails(true);
+    try {
+      // Force AI validation and generation bypass cache
+      const newDetails = await getAiWordRichDetails(editWord, true);
+      if (newDetails && !newDetails.error) {
+        setEditDef(newDetails.englishExplanation?.definition || '');
+        setEditThai(newDetails.thaiTranslation?.word || '');
+        
+        // Find if there is an image in the new details
+        const firstImagePrompt = newDetails.imagePrompts?.[0] || editWord;
+        const res = await fetchVocabImage(firstImagePrompt, 'photo');
+        if (res && res.url) {
+          setEditImg(res.url);
+        }
+
+        // Update selectedCard preview details on the fly so the lexical connections update instantly
+        setSelectedCard(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            word: editWord,
+            meaning: newDetails,
+            videoUrl: res?.url || prev.videoUrl
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Failed to regenerate AI details:", error);
+    } finally {
+      setIsGeneratingDetails(false);
     }
   };
 
@@ -304,8 +342,15 @@ export default function Library() {
 
       {createPortal(
         <AnimatePresence>
-          {selectedCard && (
-            <motion.div 
+          {selectedCard && (() => {
+            const parsed = parseMeaning(selectedCard);
+            const pos = selectedCard.pos || parsed?.pos || '';
+            const cefrLevel = parsed?.cefrLevel || '';
+            const synonyms = parsed?.synonyms || [];
+            const nearWords = parsed?.nearWords || [];
+            const wordFamily = parsed?.wordFamily || [];
+            return (
+              <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -362,46 +407,143 @@ export default function Library() {
                       <SafeImage keyword={editWord} alt={editWord} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     )}
                     
+                    {showSearchInput && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '10px', left: '10px', right: '10px',
+                        background: 'rgba(15, 18, 24, 0.9)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: '12px',
+                        padding: '8px',
+                        display: 'flex', gap: '6px', alignItems: 'center',
+                        zIndex: 15
+                      }}>
+                        <input 
+                          type="text" 
+                          placeholder="Type image keyword..."
+                          id="library-image-search-kw"
+                          defaultValue={editWord}
+                          autoFocus
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              await handleSearchImageByKeyword(e.target.value);
+                              setShowSearchInput(false);
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            background: 'rgba(255,255,255,0.06)',
+                            border: 'none', borderRadius: '8px',
+                            padding: '8px 10px', color: 'white',
+                            fontSize: '0.8rem', outline: 'none'
+                          }}
+                        />
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            const val = document.getElementById("library-image-search-kw")?.value;
+                            if (val) {
+                              await handleSearchImageByKeyword(val);
+                            }
+                            setShowSearchInput(false);
+                          }}
+                          style={{
+                            padding: '6px 12px', borderRadius: '8px',
+                            fontSize: '0.75rem', fontWeight: 700,
+                            background: 'rgba(167, 139, 250, 0.2)',
+                            border: '1px solid rgba(167, 139, 250, 0.4)',
+                            color: '#c084fc', cursor: 'pointer'
+                          }}
+                        >
+                          Search
+                        </button>
+                        <button
+                          onClick={(e) => { e.preventDefault(); setShowSearchInput(false); }}
+                          style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                    
                     {isGeneratingImg && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)' }}>
-                        <RefreshCw size={20} className="animate-spin" /> Generating...
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
+                        <RefreshCw size={20} className="animate-spin" /> Searching image...
                       </div>
                     )}
                     {isUploadingImg && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)' }}>
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
                         <RefreshCw size={20} className="animate-spin" /> Uploading...
+                      </div>
+                    )}
+                    {isGeneratingDetails && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(5,5,8,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', gap: '8px', backdropFilter: 'blur(4px)', zIndex: 12 }}>
+                        <RefreshCw size={20} className="animate-spin" />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Analyzing word via Gemini...</span>
                       </div>
                     )}
                   </div>
 
                   {isEditing && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={handleRegenerateImage} disabled={isGeneratingImg || isUploadingImg} style={{
-                        flex: 1, padding: '10px', background: 'rgba(167, 139, 250, 0.12)',
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={(e) => { e.preventDefault(); setShowSearchInput(true); }} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
+                          flex: 1, padding: '10px', background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
+                          color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          transition: 'all 0.2s'
+                        }}>
+                          <Search size={14} /> Search Photo
+                        </button>
+                        <button onClick={() => fileInputRef.current?.click()} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
+                          flex: 1, padding: '10px', background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
+                          color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          transition: 'all 0.2s'
+                        }}>
+                          <Upload size={14} /> Upload
+                        </button>
+                      </div>
+                      
+                      <button onClick={handleRegenerateAIDetails} disabled={isGeneratingImg || isUploadingImg || isGeneratingDetails} style={{
+                        width: '100%', padding: '10px', background: 'rgba(167, 139, 250, 0.12)',
                         border: '1px solid rgba(167, 139, 250, 0.25)', borderRadius: '12px',
                         color: '#c084fc', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                         transition: 'all 0.2s'
                       }}>
-                        <RefreshCw size={14} /> AI Search
+                        <RefreshCw size={14} /> 🔄 Regenerate AI Details
                       </button>
-                      <button onClick={() => fileInputRef.current?.click()} disabled={isGeneratingImg || isUploadingImg} style={{
-                        flex: 1, padding: '10px', background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px',
-                        color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                        transition: 'all 0.2s'
-                      }}>
-                        <Upload size={14} /> Upload
-                      </button>
+                      
                       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
                   <div>
-                    <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>English Word</label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>English Word</label>
+                      {!isEditing && (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {pos && (
+                            <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                              {pos}
+                            </span>
+                          )}
+                          {cefrLevel && (
+                            <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', background: 'rgba(234, 179, 8, 0.15)', color: '#facc15', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+                              {cefrLevel}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {isEditing ? (
                       <input value={editWord} onChange={e => setEditWord(e.target.value)} style={{
                         width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
@@ -437,6 +579,62 @@ export default function Library() {
                   </div>
                 </div>
 
+                {!isEditing && (synonyms.length > 0 || nearWords.length > 0 || wordFamily.length > 0) && (
+                  <div style={{
+                    marginBottom: '32px',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px'
+                  }}>
+                    <h4 style={{ margin: 0, color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                      Word Connections
+                    </h4>
+                    
+                    {synonyms.length > 0 && (
+                      <div>
+                        <span style={{ display: 'block', color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>Synonyms</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {synonyms.map((s, idx) => (
+                            <span key={idx} style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', color: '#818cf8', background: 'rgba(129, 140, 248, 0.1)', border: '1px solid rgba(129, 140, 248, 0.25)' }}>
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {nearWords.length > 0 && (
+                      <div>
+                        <span style={{ display: 'block', color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>Related Words</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {nearWords.map((nw, idx) => (
+                            <span key={idx} style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', color: '#34d399', background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
+                              {nw}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {wordFamily.length > 0 && (
+                      <div>
+                        <span style={{ display: 'block', color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>Word Family</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {wordFamily.map((wf, idx) => (
+                            <span key={idx} style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+                              {wf}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {isEditing ? (
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={() => setIsEditing(false)} style={{
@@ -462,8 +660,9 @@ export default function Library() {
                 )}
               </motion.div>
             </motion.div>
-          )}
-        </ AnimatePresence>,
+            );
+          })()}
+        </AnimatePresence>,
         document.getElementById('root') || document.body
       )}
       <style dangerouslySetInnerHTML={{__html: `

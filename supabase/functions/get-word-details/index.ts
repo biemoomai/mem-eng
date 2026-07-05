@@ -124,6 +124,7 @@ CRITICAL INSTRUCTIONS FOR "imagePrompts":
 
 CRITICAL INSTRUCTIONS FOR FORMATTING AND TEXT CONTENT:
 - DO NOT include any emojis, icons, or pictorial representations in the title, situation, dialogue, meaning, takeaway, or any other output fields. Keep them strictly as clean, standard plain text.
+- All Thai text (such as "thaiTranslationShort", "meaning", "thaiMeaning", and collocations) MUST be written in 100% natural, correct Thai language. Under no circumstances should you mix Chinese characters (e.g. 完成), Japanese characters, or other non-Thai alphabets into the Thai translations or explanations.
 - englishExplanation.definition MUST be concise: maximum 12 words, simple English, no semicolons, no long explanation.
 
 CRITICAL INSTRUCTIONS FOR LEXICAL RELATIONS:
