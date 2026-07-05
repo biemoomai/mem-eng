@@ -211,9 +211,9 @@ export default function Library() {
             onClick={() => setFilterLevel(level)}
             style={{
               padding: '6px 14px', borderRadius: '20px', whiteSpace: 'nowrap',
-              background: filterLevel === level ? (level === 'All' ? 'rgba(255,255,255,0.2)' : `${getSrsColor(level)}30`) : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${filterLevel === level ? (level === 'All' ? 'rgba(255,255,255,0.4)' : getSrsColor(level)) : 'rgba(255,255,255,0.1)'}`,
-              color: filterLevel === level ? (level === 'All' ? 'white' : getSrsColor(level)) : 'rgba(255,255,255,0.6)',
+              background: filterLevel === level ? (level === 'All' ? 'rgba(167, 139, 250, 0.18)' : `${getSrsColor(level)}30`) : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${filterLevel === level ? (level === 'All' ? 'rgba(167, 139, 250, 0.5)' : getSrsColor(level)) : 'rgba(255,255,255,0.1)'}`,
+              color: filterLevel === level ? (level === 'All' ? '#c084fc' : getSrsColor(level)) : 'rgba(255,255,255,0.6)',
               fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
             }}
           >
