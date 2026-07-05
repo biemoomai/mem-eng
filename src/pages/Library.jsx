@@ -844,7 +844,7 @@ export default function Library() {
                   fontSize: '0.9rem'
                 }}
               >
-                Cancel
+                No
               </button>
               <button
                 onClick={() => {

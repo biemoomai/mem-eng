@@ -1404,16 +1404,15 @@ function AppContent() {
                     width: '100%',
                     padding: '12px',
                     borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-                    color: '#ffffff',
+                    border: '1px solid rgba(34, 197, 94, 0.24)',
+                    background: 'rgba(34, 197, 94, 0.16)',
+                    color: '#4ade80',
                     fontWeight: 800,
                     fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                    cursor: 'pointer'
                   }}
                 >
-                  Reset Everything
+                  Yes
                 </motion.button>
 
                 <motion.button
@@ -1424,15 +1423,15 @@ function AppContent() {
                     width: '100%',
                     padding: '12px',
                     borderRadius: theme === 'theme-3' ? '0px' : '12px',
-                    border: theme === 'theme-3' ? '2px solid #000000' : '1px solid rgba(255, 255, 255, 0.1)',
-                    background: 'transparent',
-                    color: theme === 'theme-3' ? '#000000' : '#94a3b8',
-                    fontWeight: 700,
+                    border: '1px solid rgba(239, 68, 68, 0.22)',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    color: '#f87171',
+                    fontWeight: 800,
                     fontSize: '0.9rem',
                     cursor: 'pointer'
                   }}
                 >
-                  Cancel
+                  No
                 </motion.button>
               </div>
             </motion.div>

@@ -667,6 +667,93 @@ const Home = () => {
         )}
       </AnimatePresence>
 
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.7)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 9999999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px'
+            }}
+            onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              style={{
+                background: 'rgba(30, 41, 59, 0.95)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '24px',
+                borderRadius: '24px',
+                width: '100%',
+                maxWidth: '360px',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 style={{ color: 'white', margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 800 }}>
+                Confirm Action
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem', margin: '0 0 24px 0', lineHeight: 1.5 }}>
+                {confirmModal.message}
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(239, 68, 68, 0.22)',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    color: '#f87171',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  No
+                </button>
+                <button
+                  onClick={() => {
+                    const confirmAction = confirmModal.onConfirm;
+                    setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+                    if (typeof confirmAction === 'function') confirmAction();
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(34, 197, 94, 0.24)',
+                    background: 'rgba(34, 197, 94, 0.16)',
+                    color: '#4ade80',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  Yes
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

@@ -5911,7 +5911,7 @@ const Purge = () => {
                   cursor: 'pointer', fontSize: '0.9rem'
                 }}
               >
-                No / ยกเลิก
+                No
               </button>
               <button
                 onClick={() => {
@@ -5924,7 +5924,7 @@ const Purge = () => {
                   cursor: 'pointer', fontSize: '0.9rem'
                 }}
               >
-                Yes / ตกลง
+                Yes
               </button>
             </div>
           </div>
