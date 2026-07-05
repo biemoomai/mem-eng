@@ -1,4 +1,4 @@
-﻿-- ==========================================
+-- ==========================================
 -- Mem-eng Phase 3: Supabase Database Schema
 -- Run this in the Supabase SQL Editor
 -- ==========================================
@@ -71,6 +71,13 @@ CREATE TABLE if not exists public.user_decks (
   lapses INTEGER DEFAULT 0,
   state INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  -- User Personal Edits (Library overrides)
+  custom_word TEXT,
+  custom_meaning JSONB,
+  custom_video_url TEXT,
+  custom_notes TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   -- Prevent users from duplicating the same word in their deck
   UNIQUE(user_id, word_id) 

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Trash2, HelpCircle, Bot } from 'lucide-react';
+import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Trash2, HelpCircle, Bot, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VocabProvider, useVocab } from './context/VocabContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -10,6 +10,7 @@ import AddWord from './pages/AddWord';
 import Purge from './pages/Purge';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import Library from './pages/Library';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import { playClickSound, playSwipeSound } from './utils/soundHelper';
@@ -235,7 +236,7 @@ function AppContent() {
 
   const handleDragEnd = () => {
     if (pageSwipeEnabled && dragStart && swipeDirection === 'horizontal') {
-      const routes = ['/', '/purge', '/profile'];
+      const routes = ['/', '/purge', '/library', '/profile'];
       const currentIdx = routes.indexOf(location.pathname);
       const finalSwipeOffset = lowGraphics ? swipeOffsetRef.current : swipeOffset;
       
@@ -400,6 +401,12 @@ function AppContent() {
       badge: dueToday
     },
     {
+      path: '/library',
+      label: 'Library',
+      description: 'Manage your vocabulary deck',
+      icon: BookOpen
+    },
+    {
       path: '/profile',
       label: 'My Profile',
       description: 'Track stats, levels, and word log',
@@ -457,8 +464,8 @@ function AppContent() {
     }
   };
 
-  const isTabRoute = location.pathname === '/' || location.pathname === '/purge' || location.pathname === '/profile';
-  const currentIdx = ['/', '/purge', '/profile'].indexOf(location.pathname);
+  const isTabRoute = location.pathname === '/' || location.pathname === '/purge' || location.pathname === '/library' || location.pathname === '/profile';
+  const currentIdx = ['/', '/purge', '/library', '/profile'].indexOf(location.pathname);
   
   const getEffectiveSwipeOffset = () => {
     if (currentIdx === -1) return 0;
@@ -474,6 +481,7 @@ function AppContent() {
   const renderCurrentTabRoute = () => {
     if (location.pathname === '/') return <AddWord />;
     if (location.pathname === '/purge') return <Purge />;
+    if (location.pathname === '/library') return <Library />;
     if (location.pathname === '/profile') return <Profile />;
     return null;
   };
@@ -503,7 +511,7 @@ function AppContent() {
       {(() => {
         if (!pageSwipeEnabled || lowGraphics || Math.abs(swipeOffset) < 20) return null;
         
-        const routes = ['/', '/purge', '/profile'];
+        const routes = ['/', '/purge', '/library', '/profile'];
         const currentIdx = routes.indexOf(location.pathname);
         if (currentIdx === -1) return null;
         
@@ -511,8 +519,8 @@ function AppContent() {
         
         if (swipeOffset < 0 && currentIdx < routes.length - 1) {
           const nextRoute = routes[currentIdx + 1];
-          const text = nextRoute === '/purge' ? 'FLASHCARDS' : 'PROFILE';
-          const color = nextRoute === '/purge' ? '#eab308' : '#06b6d4';
+          const text = nextRoute === '/purge' ? 'FLASHCARDS' : (nextRoute === '/library' ? 'LIBRARY' : 'PROFILE');
+          const color = nextRoute === '/purge' ? '#eab308' : (nextRoute === '/library' ? '#a78bfa' : '#06b6d4');
           return (
             <div
               style={{
@@ -539,8 +547,8 @@ function AppContent() {
           );
         } else if (swipeOffset > 0 && currentIdx > 0) {
           const prevRoute = routes[currentIdx - 1];
-          const text = prevRoute === '/' ? 'TRANSLATE' : 'FLASHCARDS';
-          const color = prevRoute === '/' ? '#a78bfa' : '#eab308';
+          const text = prevRoute === '/' ? 'TRANSLATE' : (prevRoute === '/purge' ? 'FLASHCARDS' : 'LIBRARY');
+          const color = prevRoute === '/' ? '#a78bfa' : (prevRoute === '/purge' ? '#eab308' : '#a78bfa');
           return (
             <div
               style={{
@@ -586,19 +594,22 @@ function AppContent() {
             <div
               style={{
                 display: 'flex',
-                width: '300%',
+                width: '400%',
                 height: '100%',
-                transform: `translate3d(calc(-${(currentIdx * 100) / 3}% + ${effectiveSwipeOffset}px), 0, 0)`,
+                transform: `translate3d(calc(-${(currentIdx * 100) / 4}% + ${effectiveSwipeOffset}px), 0, 0)`,
                 transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
             >
-              <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 <AddWord />
               </div>
-              <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 <Purge />
               </div>
-              <div style={{ width: '33.333%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <Library />
+              </div>
+              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 <Profile />
               </div>
             </div>
@@ -610,6 +621,10 @@ function AppContent() {
             <Route path="/login" element={<Login />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/library" element={<Library />} />
+            <Route path="/purge" element={<Purge />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/" element={<AddWord />} />
             <Route path="*" element={<AddWord />} />
           </Routes>
         </div>

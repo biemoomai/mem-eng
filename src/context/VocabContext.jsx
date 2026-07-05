@@ -1,4 +1,4 @@
-﻿import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { getVocabImageUrl, fetchVocabImage } from '../utils/imageHelper';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
@@ -295,11 +295,14 @@ export const VocabProvider = ({ children }) => {
 
           return {
             id: ud.id,
-            word: ud.global_dictionary.word,
+            word: ud.custom_word || ud.global_dictionary.word,
+            originalWord: ud.global_dictionary.word,
             pos: ud.global_dictionary.pos,
             meaning: parsedMeaning,
             richCardData: parsedRichData || parsedMeaning,
-            videoUrl: parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
+            customMeaning: ud.custom_meaning,
+            customVideoUrl: ud.custom_video_url,
+            videoUrl: ud.custom_video_url || parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
             curriculum: parsedRichData?.curriculum || parsedMeaning?.curriculum || 'Self-Study only',
             srsLevel: ud.srs_level,
             repetition: ud.repetition,
