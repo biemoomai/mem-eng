@@ -1253,8 +1253,8 @@ export const VocabProvider = ({ children }) => {
     try {
       console.log(`🔮 Requesting word translation via Edge Function: "${word}" (forceValid: ${forceValid})...`);
       details = await queryGemini(word, forceValid);
-      if (!details || details.error) {
-        throw new Error(details?.error || "Empty response from server");
+      if (!details || typeof details === 'string' || details.error) {
+        throw new Error(details?.error || (typeof details === 'string' ? details : "Empty response from server"));
       }
     } catch (err) {
       console.error('❌ Server-side translation failed:', err.message);
