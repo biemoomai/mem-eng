@@ -864,7 +864,7 @@ export const VocabProvider = ({ children }) => {
     const uncachedGroup = unadded.filter(w => !cachedWithImages.has(w.word.toLowerCase().trim()));
 
     // Prefer ready cached cards, but keep one wider-pool slot when possible so new guests do not keep seeing the same tiny cached set.
-    const diverseCached = diversifyWords(cachedGroup);
+        const diverseCached = diversifyWords(cachedGroup);
     const diverseUncached = diversifyWords(uncachedGroup);
     const cachedQuota = diverseCached.length > 0 && diverseUncached.length > 0
       ? Math.min(diverseCached.length, Math.max(1, count - 1))
@@ -875,6 +875,7 @@ export const VocabProvider = ({ children }) => {
       ...diverseCached.slice(cachedQuota)
     ].slice(0, count);
     const addedCardsList = [];
+    let lastError = null;
     
     for (const item of targetWords) {
       try {
@@ -995,8 +996,11 @@ export const VocabProvider = ({ children }) => {
           if (typeof onWordAdded === 'function') {
             onWordAdded(addedCardsList.length);
           }
+        } else {
+          lastError = details?.error || 'Empty response from translation provider';
         }
       } catch (e) {
+        lastError = e.message;
         console.error(`Failed to automatically import "${item.word}":`, e);
       }
     }
@@ -1005,7 +1009,7 @@ export const VocabProvider = ({ children }) => {
       return { success: true, count: addedCardsList.length, addedWords: addedCardsList };
     }
     
-    return { success: false, error: 'Could not fetch details for any new words at this time.' };
+    return { success: false, error: lastError || 'Could not fetch details for any new words at this time.' };
   };
 
   // Update a card's image in the database dynamically

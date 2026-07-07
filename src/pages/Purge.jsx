@@ -2076,6 +2076,58 @@ const Purge = () => {
     );
   };
 
+  const renderConfirmModal = () => {
+    if (!confirmModal.isOpen) return null;
+    return createPortal((
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 2147483647, padding: '24px', boxSizing: 'border-box'
+      }} onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}>
+        <div style={{
+          background: 'rgba(30, 30, 30, 0.9)', border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '20px', padding: '24px', width: 'min(320px, calc(100vw - 48px))', maxWidth: '320px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)'
+        }} onClick={(e) => e.stopPropagation()}>
+          <h3 style={{ color: 'white', margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 700 }}>
+            Confirm Action
+          </h3>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', margin: '0 0 24px 0', lineHeight: 1.5 }}>
+            {confirmModal.message}
+          </p>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
+              style={{
+                flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)',
+                background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 700,
+                cursor: 'pointer', fontSize: '0.9rem'
+              }}
+            >
+              No
+            </button>
+            <button
+              onClick={() => {
+                confirmModal.onConfirm();
+                setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+              }}
+              style={{
+                flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid rgba(34, 197, 94, 0.2)',
+                background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', fontWeight: 700,
+                cursor: 'pointer', fontSize: '0.9rem'
+              }}
+            >
+              Yes
+            </button>
+          </div>
+        </div>
+      </div>
+    ), document.body);
+  };
+
+
   const renderStatusModal = () => {
     const getWordSrsColor = (level) => {
       const colors = {
@@ -2336,17 +2388,19 @@ const Purge = () => {
 
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {/* Definition */}
-                                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+                                    <p style={{ 
+                                      margin: 0, 
+                                      fontSize: '0.8rem', 
+                                      color: '#94a3b8', 
+                                      lineHeight: '1.4',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}>
                                       {definition}
                                     </p>
-
-                                    {/* Example Sentence */}
-                                    <div>
-                                      <span style={{ fontSize: '0.58rem', textTransform: 'uppercase', color: 'var(--accent-color)', fontWeight: 800, letterSpacing: '0.5px', display: 'block', marginBottom: '0.15rem' }}>Example Sentence</span>
-                                      <p style={{ margin: 0, fontSize: '0.82rem', color: 'white', fontWeight: 700, fontStyle: 'italic', lineHeight: '1.4' }}>
-                                        "{item.example || parsedMeaning?.scenes?.[0]?.dialogue || 'No example sentence available.'}"
-                                      </p>
-                                    </div>
                                   </div>
                                 </div>
 
@@ -4781,6 +4835,7 @@ const Purge = () => {
         {renderStatusModal()}
         {renderWordTooltip()}
         {renderToast()}
+        {renderConfirmModal()}
         <AnimatePresence>
           {unlockedWords.length > 0 && renderUnlockedModal()}
           {showInterestingModal && renderInterestingWordsModal()}
@@ -5883,53 +5938,7 @@ const Purge = () => {
         {renderWordTooltip()}
         {renderToast()}
       </div>
-          {confirmModal.isOpen && createPortal((
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 2147483647, padding: '24px', boxSizing: 'border-box'
-        }} onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}>
-          <div style={{
-            background: 'rgba(30, 30, 30, 0.9)', border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '20px', padding: '24px', width: 'min(320px, calc(100vw - 48px))', maxWidth: '320px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center',
-            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)'
-          }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ color: 'white', margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 700 }}>
-              Confirm Action
-            </h3>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', margin: '0 0 24px 0', lineHeight: 1.5 }}>
-              {confirmModal.message}
-            </p>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
-                style={{
-                  flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)',
-                  background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 700,
-                  cursor: 'pointer', fontSize: '0.9rem'
-                }}
-              >
-                No
-              </button>
-              <button
-                onClick={() => {
-                  confirmModal.onConfirm();
-                  setConfirmModal({ isOpen: false, message: '', onConfirm: null });
-                }}
-                style={{
-                  flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid rgba(34, 197, 94, 0.2)',
-                  background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', fontWeight: 700,
-                  cursor: 'pointer', fontSize: '0.9rem'
-                }}
-              >
-                Yes
-              </button>
-            </div>
-          </div>
-        </div>
-      ), document.body)}
+      {renderConfirmModal()}
 </div>
   );
 };
