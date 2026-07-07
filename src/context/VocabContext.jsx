@@ -117,9 +117,8 @@ const getDaysUntil = (date, now = new Date()) => {
 
 const formatReviewInterval = (date, now = new Date()) => {
   const minutes = Math.max(0, Math.round((date.getTime() - now.getTime()) / (1000 * 60)));
-  if (minutes < 60) return `${Math.max(1, minutes)}m`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h`;
+  // Any interval less than 24 hours will loop/be due inside the active study session
+  if (minutes < 24 * 60) return 'Loop';
   const days = Math.max(1, Math.round(minutes / (60 * 24)));
   if (days < 30) return `${days}d`;
   const months = Math.round(days / 30);
