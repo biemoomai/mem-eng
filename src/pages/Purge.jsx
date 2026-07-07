@@ -910,6 +910,7 @@ const Purge = () => {
 
   // local active queue for this study session
   const [sessionQueue, setSessionQueue] = useState([]);
+  const [isMasterHolding, setIsMasterHolding] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
   const [isInitialized, setIsInitialized] = useState(false);
   const [isStudying, setIsStudying] = useState(false);
@@ -1022,13 +1023,14 @@ const Purge = () => {
       clearTimeout(masterPressTimerRef.current);
       masterPressTimerRef.current = null;
     }
+    setIsMasterHolding(false);
   };
 
   const startMasterPress = (event) => {
     const target = event.target;
     if (
       !wordObj ||
-      revealStep < 3 ||
+      revealStep === 0 ||
       tutorialStep === 10 ||
       (target && (target.closest('button') || target.closest('a') || target.closest('svg') || target.closest('[role="button"]')))
     ) {
@@ -1037,8 +1039,11 @@ const Purge = () => {
 
     clearMasterPress();
     masterLongPressTriggeredRef.current = false;
+    setIsMasterHolding(true);
+
     masterPressTimerRef.current = setTimeout(() => {
       masterLongPressTriggeredRef.current = true;
+      setIsMasterHolding(false);
       playSuccessSound();
       if (navigator.vibrate) {
         try {
@@ -5144,6 +5149,52 @@ const Purge = () => {
               pointerEvents: 'none'
             }}>
               <PremiumFingerPointer direction="up" scale={1.1} />
+            </div>
+          )}
+
+          {isMasterHolding && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'radial-gradient(circle, rgba(212, 175, 55, 0.15) 0%, rgba(8, 9, 11, 0.75) 80%)',
+              border: '3px solid rgba(212, 175, 55, 0.5)',
+              borderRadius: '24px',
+              zIndex: 100,
+              pointerEvents: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'masterGlow 2.5s linear forwards'
+            }}>
+              <style>{`
+                @keyframes masterGlow {
+                  0% { opacity: 0.3; transform: scale(0.98); box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.2); }
+                  50% { opacity: 0.7; box-shadow: inset 0 0 30px rgba(212, 175, 55, 0.4); }
+                  100% { opacity: 1; transform: scale(1); box-shadow: inset 0 0 50px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.3); }
+                }
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              `}</style>
+              {/* Spinning gold loader */}
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                border: '4px solid rgba(212, 175, 55, 0.1)',
+                borderTop: '4px solid #eab308',
+                animation: 'spin 0.8s linear infinite',
+                marginBottom: '1rem',
+                boxShadow: '0 0 15px rgba(234, 179, 8, 0.3)'
+              }} />
+              <span style={{ fontSize: '1rem', color: '#eab308', fontWeight: 900, letterSpacing: '0.8px', textTransform: 'uppercase', textShadow: '0 2px 10px rgba(234, 179, 8, 0.4)' }}>
+                Holding to Master
+              </span>
+              <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.25rem' }}>
+                Keep pressing for 2.5 seconds
+              </span>
             </div>
           )}
 

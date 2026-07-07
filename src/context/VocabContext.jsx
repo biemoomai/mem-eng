@@ -1063,11 +1063,17 @@ export const VocabProvider = ({ children }) => {
     const fsrsCard = toFsrsCard(card, now);
     const preview = fsrsScheduler.repeat(fsrsCard, now);
 
+    const getFormattedOrMaster = (nextDate) => {
+      const days = getDaysUntil(nextDate, now);
+      if (days >= 90) return 'Master';
+      return formatReviewInterval(nextDate, now);
+    };
+
     return {
       again: 'Loop', // Again ALWAYS loops in the active study session queue
-      hard: formatReviewInterval(preview[Rating.Hard].card.due, now),
-      normal: formatReviewInterval(preview[Rating.Good].card.due, now),
-      easy: formatReviewInterval(preview[Rating.Easy].card.due, now),
+      hard: getFormattedOrMaster(preview[Rating.Hard].card.due),
+      normal: getFormattedOrMaster(preview[Rating.Good].card.due),
+      easy: getFormattedOrMaster(preview[Rating.Easy].card.due),
     };
   };
 
@@ -1114,6 +1120,17 @@ export const VocabProvider = ({ children }) => {
       nextReviewDate = nextCard.due;
       newInterval = Math.max(0, getDaysUntil(nextReviewDate, now));
       newSrsLevel = getLevelFromFsrs(nextCard, rating);
+
+      // Auto-Mastered Logic: if review interval is 90 days or more, graduate to Mastered
+      if (newInterval >= 90) {
+        newSrsLevel = 'Mastered';
+        nextReviewDate = new Date(now);
+        nextReviewDate.setFullYear(nextReviewDate.getFullYear() + 100);
+        newInterval = 36500;
+        stability = 36500;
+        difficulty = 0;
+        state = State.Review;
+      }
     }
 
     const newRepetition = reps;
