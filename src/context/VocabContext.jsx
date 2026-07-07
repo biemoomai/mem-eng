@@ -117,8 +117,9 @@ const getDaysUntil = (date, now = new Date()) => {
 
 const formatReviewInterval = (date, now = new Date()) => {
   const minutes = Math.max(0, Math.round((date.getTime() - now.getTime()) / (1000 * 60)));
-  // Any interval less than 24 hours will loop/be due inside the active study session
-  if (minutes < 24 * 60) return 'Loop';
+  if (minutes < 60) return `${Math.max(1, minutes)}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
   const days = Math.max(1, Math.round(minutes / (60 * 24)));
   if (days < 30) return `${days}d`;
   const months = Math.round(days / 30);
@@ -1057,13 +1058,13 @@ export const VocabProvider = ({ children }) => {
 
   // Preview intervals with the official FSRS scheduler.
   const getProjectedIntervals = (card) => {
-    if (!card) return { again: '10m', hard: '1d', normal: '2d', easy: '6d' };
+    if (!card) return { again: 'Loop', hard: '10m', normal: '2d', easy: '6d' };
     const now = new Date();
     const fsrsCard = toFsrsCard(card, now);
     const preview = fsrsScheduler.repeat(fsrsCard, now);
 
     return {
-      again: formatReviewInterval(preview[Rating.Again].card.due, now),
+      again: 'Loop', // Again ALWAYS loops in the active study session queue
       hard: formatReviewInterval(preview[Rating.Hard].card.due, now),
       normal: formatReviewInterval(preview[Rating.Good].card.due, now),
       easy: formatReviewInterval(preview[Rating.Easy].card.due, now),

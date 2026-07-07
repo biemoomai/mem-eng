@@ -647,13 +647,13 @@ const getNextReviewText = (nextReviewDate) => {
   if (diffMs <= 0) return 'Due';
   
   const diffMins = Math.round(diffMs / (1000 * 60));
-  if (diffMins < 60) return `N:${diffMins}m`;
+  if (diffMins < 60) return `Next:${diffMins}m`;
   
   const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-  if (diffHours < 24) return `N:${diffHours}h`;
+  if (diffHours < 24) return `Next:${diffHours}h`;
   
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-  return `N:${diffDays}d`;
+  return `Next:${diffDays}d`;
 };
 
 const shortenPos = (pos) => {
