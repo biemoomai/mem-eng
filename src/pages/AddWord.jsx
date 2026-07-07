@@ -2124,25 +2124,66 @@ const AddWord = () => {
                 )}
 
                 {richCardData.validation.suggestion && (
-                  <button
-                    onClick={() => {
-                      const sugg = String(richCardData.validation.suggestion || '').toLowerCase();
-                      setWordInput(sugg);
-                      performTranslation(sugg, true);
-                    }}
-                    className="glass-button primary animate-scale"
-                    style={{
-                      borderRadius: '14px',
-                      padding: '0.75rem 1.25rem',
-                      fontSize: '0.85rem',
-                      fontWeight: 800,
-                      gap: '0.4rem',
-                      marginTop: '0.5rem'
-                    }}
-                  >
-                    <Sparkles size={14} />
-                    <span>Translate "{String(richCardData.validation.suggestion || '').toLowerCase()}"</span>
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                    <button
+                      onClick={() => {
+                        const sugg = String(richCardData.validation.suggestion || '').toLowerCase();
+                        setWordInput(sugg);
+                        performTranslation(sugg, true);
+                      }}
+                      className="glass-button primary animate-scale"
+                      style={{
+                        borderRadius: '14px',
+                        padding: '0.75rem 1.25rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 800,
+                        gap: '0.4rem',
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Sparkles size={14} />
+                      <span>Translate "{String(richCardData.validation.suggestion || '').toLowerCase()}"</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const orig = String(richCardData.word || wordInput).toLowerCase();
+                        performTranslation(orig, true);
+                      }}
+                      className="animate-scale"
+                      style={{
+                        borderRadius: '14px',
+                        padding: '0.75rem 1.25rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 800,
+                        gap: '0.4rem',
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(0, 0, 0, 0.55)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: 'rgba(255, 255, 255, 0.45)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(0, 0, 0, 0.55)';
+                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                      }}
+                    >
+                      <span>Continue with "{String(richCardData.word || wordInput).toLowerCase()}"</span>
+                    </button>
+                  </div>
                 )}
               </motion.div>
             ) : (
