@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
-import { playClickSound, playSwipeSound, playSuccessSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
+import { playClickSound, playSwipeSound, playSuccessSound, playMasterSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
 import { speakEnglish } from '../utils/speechHelper';
 
 const getWordLookupCandidates = (word) => {
@@ -956,6 +956,7 @@ const Purge = () => {
   const isLongPressRef = useRef(false);
   const touchActiveRef = useRef(false);
   const masterPressTimerRef = useRef(null);
+  const masterGlowTimerRef = useRef(null);
   const masterLongPressTriggeredRef = useRef(false);
 
   const startPress = (e, isTouch) => {
@@ -1023,6 +1024,10 @@ const Purge = () => {
       clearTimeout(masterPressTimerRef.current);
       masterPressTimerRef.current = null;
     }
+    if (masterGlowTimerRef.current) {
+      clearTimeout(masterGlowTimerRef.current);
+      masterGlowTimerRef.current = null;
+    }
     setIsMasterHolding(false);
   };
 
@@ -1039,18 +1044,36 @@ const Purge = () => {
 
     clearMasterPress();
     masterLongPressTriggeredRef.current = false;
-    setIsMasterHolding(true);
 
+    // 1. Delay the visual glow by 400ms to prevent flickering on normal taps
+    masterGlowTimerRef.current = setTimeout(() => {
+      setIsMasterHolding(true);
+    }, 400);
+
+    // 2. Start the master transition timer (2.5 seconds total)
     masterPressTimerRef.current = setTimeout(() => {
       masterLongPressTriggeredRef.current = true;
       setIsMasterHolding(false);
-      playSuccessSound();
+      playMasterSound();
+      
       if (navigator.vibrate) {
         try {
-          navigator.vibrate([40, 40, 80]);
+          navigator.vibrate([80, 50, 120]);
         } catch (err) {}
       }
-      handleSrsChoice('master');
+      
+      // Show the MASTERED stamp overlay
+      setFlickSelection({
+        label: 'MASTERED',
+        interval: 'Retired',
+        count: 4
+      });
+
+      // Delay going to the next card by 1 second so the user can enjoy the stamp
+      setTimeout(() => {
+        handleSrsChoice('master');
+        setFlickSelection(null);
+      }, 1000);
     }, 2500);
   };
 
@@ -2357,6 +2380,43 @@ const Purge = () => {
                                     }}>
                                       {getNextReviewText(item.nextReviewDate)}
                                     </span>
+                                    {item.srsLevel === 'Mastered' && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setConfirmModal({
+                                            isOpen: true,
+                                            message: `ต้องการดึงคำว่า "${item.word}" กลับเข้าสู่คิวเรียนปกติเพื่อทวนใหม่หรือไม่?`,
+                                            onConfirm: () => {
+                                              updateWordSrs(item.id, 'again');
+                                            }
+                                          });
+                                        }}
+                                        style={{
+                                          background: 'transparent',
+                                          border: 'none',
+                                          color: 'rgba(16, 185, 129, 0.5)',
+                                          cursor: 'pointer',
+                                          padding: '4px',
+                                          borderRadius: '6px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          transition: 'color 0.2s, background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.color = '#10b981';
+                                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.color = 'rgba(16, 185, 129, 0.5)';
+                                          e.currentTarget.style.background = 'transparent';
+                                        }}
+                                        title="Move back to review queue"
+                                      >
+                                        <RotateCcw size={13} />
+                                      </button>
+                                    )}
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -4334,15 +4394,14 @@ const Purge = () => {
               {addedProgress !== null && addedProgress > 0 && (
                 <motion.div
                   key="added-progress"
-                  initial={{ opacity: 0, y: -56, scale: 0.96 }}
-                  animate={{ opacity: 1, y: -64, scale: 1 }}
-                  exit={{ opacity: 0, y: -72, scale: 0.96 }}
-                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  initial={{ opacity: 0, y: -60, x: '-50%', scale: 0.96 }}
+                  animate={{ opacity: 1, y: -75, x: '-50%', scale: 1 }}
+                  exit={{ opacity: 0, y: -90, x: '-50%', scale: 0.96 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
                   style={{
                     position: 'absolute',
-                    top: '25%',
+                    top: '50%',
                     left: '50%',
-                    transform: 'translate(-50%, -50%)',
                     padding: '0.35rem 0.75rem',
                     background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)',
                     borderRadius: '20px',
@@ -4897,6 +4956,7 @@ const Purge = () => {
                 style={{
                   background: 'rgba(15, 18, 24, 0.95)',
                   border: `2px solid ${
+                    flickSelection.label === 'MASTERED' ? '#eab308' :
                     flickSelection.label === 'EASY' ? '#3b82f6' : 
                     flickSelection.label === 'GOOD' ? '#10b981' : 
                     flickSelection.label === 'HARD' ? '#f97316' : '#ef4444'
@@ -4911,11 +4971,14 @@ const Purge = () => {
                   gap: '0.25rem'
                 }}
               >
-                <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>Flick Rating</span>
+                <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>
+                  {flickSelection.label === 'MASTERED' ? 'Deck Status' : 'Flick Rating'}
+                </span>
                 <div style={{ 
                   fontSize: '2rem', 
                   fontWeight: 950, 
                   color: 
+                    flickSelection.label === 'MASTERED' ? '#eab308' :
                     flickSelection.label === 'EASY' ? '#3b82f6' : 
                     flickSelection.label === 'GOOD' ? '#10b981' : 
                     flickSelection.label === 'HARD' ? '#f97316' : '#ef4444',
@@ -4935,11 +4998,13 @@ const Purge = () => {
                         height: '8px', 
                         borderRadius: '50%', 
                         background: i <= flickSelection.count ? (
+                          flickSelection.label === 'MASTERED' ? '#eab308' :
                           flickSelection.label === 'EASY' ? '#3b82f6' : 
                           flickSelection.label === 'GOOD' ? '#10b981' : 
                           flickSelection.label === 'HARD' ? '#f97316' : '#ef4444'
                         ) : 'rgba(255,255,255,0.15)',
                         boxShadow: i <= flickSelection.count ? `0 0 8px ${
+                          flickSelection.label === 'MASTERED' ? '#eab308' :
                           flickSelection.label === 'EASY' ? '#3b82f6' : 
                           flickSelection.label === 'GOOD' ? '#10b981' : 
                           flickSelection.label === 'HARD' ? '#f97316' : '#ef4444'
@@ -5165,11 +5230,11 @@ const Purge = () => {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              animation: 'masterGlow 2.5s linear forwards'
+              animation: 'masterGlow 2.1s linear forwards'
             }}>
               <style>{`
                 @keyframes masterGlow {
-                  0% { opacity: 0.3; transform: scale(0.98); box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.2); }
+                  0% { opacity: 0.1; transform: scale(0.98); box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.1); }
                   50% { opacity: 0.7; box-shadow: inset 0 0 30px rgba(212, 175, 55, 0.4); }
                   100% { opacity: 1; transform: scale(1); box-shadow: inset 0 0 50px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.3); }
                 }

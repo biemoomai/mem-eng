@@ -93,6 +93,34 @@ export const playSuccessSound = () => {
   }
 };
 
+// 3b. Congratulatory level-up arpeggio for mastering a card
+export const playMasterSound = () => {
+  try {
+    const ctx = getAudioContext();
+    const playChime = (freq, time, duration, vol) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+      gainNode.gain.setValueAtTime(vol, time);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
+      osc.start(time);
+      osc.stop(time + duration);
+    };
+
+    const now = ctx.currentTime;
+    playChime(1046.50, now, 0.35, 0.04);       // C6
+    playChime(1318.51, now + 0.07, 0.4, 0.04);   // E6
+    playChime(1567.98, now + 0.14, 0.45, 0.04);  // G6
+    playChime(2093.00, now + 0.21, 0.7, 0.05);   // C7 (long shiny tail)
+    playChime(3135.96, now + 0.28, 0.3, 0.02);   // G7 (ultra-high sparkle)
+  } catch (e) {
+    console.warn("Audio playback blocked or unsupported:", e);
+  }
+};
+
 // 4. Low-pitched alert sound for "Again" / error
 export const playAgainSound = () => {
   try {
