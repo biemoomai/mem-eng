@@ -1045,12 +1045,12 @@ const Purge = () => {
     clearMasterPress();
     masterLongPressTriggeredRef.current = false;
 
-    // 1. Delay the visual glow by 300ms to prevent flickering on normal taps
+    // 1. Delay the visual glow by 250ms to prevent flickering on normal taps
     masterGlowTimerRef.current = setTimeout(() => {
       setIsMasterHolding(true);
-    }, 300);
+    }, 250);
 
-    // 2. Start the master transition timer (1.5 seconds total)
+    // 2. Start the master transition timer (1.0 second total)
     masterPressTimerRef.current = setTimeout(() => {
       masterLongPressTriggeredRef.current = true;
       setIsMasterHolding(false);
@@ -1074,7 +1074,7 @@ const Purge = () => {
         handleSrsChoice('master');
         setFlickSelection(null);
       }, 1000);
-    }, 1500);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -5231,7 +5231,7 @@ const Purge = () => {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              animation: 'masterGlow 1.2s linear forwards'
+              animation: 'masterGlow 0.75s linear forwards'
             }}>
               <style>{`
                 @keyframes masterGlow {
