@@ -1045,12 +1045,12 @@ const Purge = () => {
     clearMasterPress();
     masterLongPressTriggeredRef.current = false;
 
-    // 1. Delay the visual glow by 400ms to prevent flickering on normal taps
+    // 1. Delay the visual glow by 300ms to prevent flickering on normal taps
     masterGlowTimerRef.current = setTimeout(() => {
       setIsMasterHolding(true);
-    }, 400);
+    }, 300);
 
-    // 2. Start the master transition timer (2.5 seconds total)
+    // 2. Start the master transition timer (1.5 seconds total)
     masterPressTimerRef.current = setTimeout(() => {
       masterLongPressTriggeredRef.current = true;
       setIsMasterHolding(false);
@@ -1074,7 +1074,7 @@ const Purge = () => {
         handleSrsChoice('master');
         setFlickSelection(null);
       }, 1000);
-    }, 2500);
+    }, 1500);
   };
 
   useEffect(() => {
@@ -4389,45 +4389,6 @@ const Purge = () => {
             margin: showStats ? '1.5rem 0' : 'auto 0',
             position: 'relative'
           }}>
-            {/* Floating animating counter at the wrapper level */}
-            <AnimatePresence>
-              {addedProgress !== null && addedProgress > 0 && (
-                <motion.div
-                  key="added-progress"
-                  initial={{ opacity: 0, y: -60, x: '-50%', scale: 0.96 }}
-                  animate={{ opacity: 1, y: -75, x: '-50%', scale: 1 }}
-                  exit={{ opacity: 0, y: -90, x: '-50%', scale: 0.96 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    padding: '0.35rem 0.75rem',
-                    background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)',
-                    borderRadius: '20px',
-                    color: 'white',
-                    fontWeight: 900,
-                    fontSize: '0.85rem',
-                    boxShadow: lowGraphics ? 'none' : '0 8px 18px rgba(239, 68, 68, 0.28)',
-                    willChange: 'transform, opacity',
-                    zIndex: 100,
-                    pointerEvents: 'none',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <motion.span
-                    key={addedProgress}
-                    initial={{ opacity: 0.72, y: 4, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.12, ease: 'easeOut' }}
-                    style={{ display: 'inline-block', willChange: 'transform, opacity' }}
-                  >
-                    +{addedProgress} words
-                  </motion.span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Glowing Start Button or Check Circle */}
             <AnimatePresence mode="wait">
               {dueCount > 0 ? (
@@ -4439,8 +4400,9 @@ const Purge = () => {
                   transition={{ duration: 0.22 }}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', marginBottom: '1rem', zIndex: 1, position: 'relative', width: '100%' }}
                 >
-                  {/* Unified Glossy Button-Card */}
-                  <motion.div
+                  <div style={{ position: 'relative', width: '240px' }}>
+                    {/* Unified Glossy Button-Card */}
+                    <motion.div
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.96 }}
                     onMouseDown={(e) => startPress(e, false)}
@@ -4527,6 +4489,45 @@ const Purge = () => {
                       {startHovered ? 'starts' : 'cards'}
                     </p>
                   </motion.div>
+
+                  {/* Badge on the top-right corner of the button */}
+                  <AnimatePresence>
+                    {addedProgress !== null && addedProgress > 0 && (
+                      <motion.div
+                        key="added-progress"
+                        initial={{ opacity: 0, scale: 0.6, y: 10, x: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.6, y: -10, x: 10 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                        style={{
+                          position: 'absolute',
+                          top: '-12px',
+                          right: '-12px',
+                          padding: '0.35rem 0.75rem',
+                          background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)',
+                          borderRadius: '20px',
+                          color: 'white',
+                          fontWeight: 900,
+                          fontSize: '0.85rem',
+                          boxShadow: lowGraphics ? 'none' : '0 8px 18px rgba(239, 68, 68, 0.35)',
+                          zIndex: 10,
+                          pointerEvents: 'none',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <motion.span
+                          key={addedProgress}
+                          initial={{ opacity: 0.72, y: 4, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ duration: 0.12, ease: 'easeOut' }}
+                          style={{ display: 'inline-block', willChange: 'transform, opacity' }}
+                        >
+                          +{addedProgress} words
+                        </motion.span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                   {/* Dropdown Menu */}
                   <AnimatePresence>
@@ -5230,7 +5231,7 @@ const Purge = () => {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              animation: 'masterGlow 2.1s linear forwards'
+              animation: 'masterGlow 1.2s linear forwards'
             }}>
               <style>{`
                 @keyframes masterGlow {
