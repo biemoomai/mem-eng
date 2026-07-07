@@ -13,14 +13,19 @@
 export const cleanKeyword = (rawPrompt) => {
   if (!rawPrompt) return '';
   
-  const hasThai = /[\u0e00-\u0e7f]/.test(rawPrompt);
+  // Safeguard: Extract string if it is an object (e.g. { prompt: "..." })
+  const promptStr = typeof rawPrompt === 'object' && rawPrompt !== null
+    ? (rawPrompt.prompt || rawPrompt.text || JSON.stringify(rawPrompt))
+    : String(rawPrompt);
+
+  const hasThai = /[\u0e00-\u0e7f]/.test(promptStr);
   if (hasThai) {
-    return rawPrompt
+    return promptStr
       .replace(/[^a-zA-Z0-9\s\u0e00-\u0e7f]/g, ' ')
       .trim();
   }
 
-  return rawPrompt
+  return promptStr
     .toLowerCase()
     .replace(/scene\s*\d+[:\-]?\s*/gi, '')
     .replace(/[^a-z0-9\s]/g, ' ')
