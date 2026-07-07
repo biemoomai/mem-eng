@@ -864,16 +864,20 @@ export const VocabProvider = ({ children }) => {
     const uncachedGroup = unadded.filter(w => !cachedWithImages.has(w.word.toLowerCase().trim()));
 
     // Prefer ready cached cards, but keep one wider-pool slot when possible so new guests do not keep seeing the same tiny cached set.
-        const diverseCached = diversifyWords(cachedGroup);
+    const diverseCached = diversifyWords(cachedGroup);
     const diverseUncached = diversifyWords(uncachedGroup);
-    const cachedQuota = diverseCached.length > 0 && diverseUncached.length > 0
-      ? Math.min(diverseCached.length, Math.max(1, count - 1))
-      : count;
-    const targetWords = [
-      ...diverseCached.slice(0, cachedQuota),
-      ...diverseUncached.slice(0, count - cachedQuota),
-      ...diverseCached.slice(cachedQuota)
-    ].slice(0, count);
+    
+    const targetWords = [];
+    const cachedArr = [...diverseCached];
+    const uncachedArr = [...diverseUncached];
+    
+    while (targetWords.length < count && (cachedArr.length > 0 || uncachedArr.length > 0)) {
+      if (uncachedArr.length > 0 && (targetWords.length % 2 === 1 || cachedArr.length === 0)) {
+        targetWords.push(uncachedArr.shift());
+      } else if (cachedArr.length > 0) {
+        targetWords.push(cachedArr.shift());
+      }
+    }
     const addedCardsList = [];
     let lastError = null;
     

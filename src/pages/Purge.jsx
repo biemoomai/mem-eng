@@ -644,16 +644,30 @@ const getCategory = (wordObj) => {
 const getNextReviewText = (nextReviewDate) => {
   if (!nextReviewDate) return 'No review';
   const diffMs = new Date(nextReviewDate) - new Date();
-  if (diffMs <= 0) return 'Due Now';
+  if (diffMs <= 0) return 'Due';
   
   const diffMins = Math.round(diffMs / (1000 * 60));
-  if (diffMins < 60) return `Next: ${diffMins}m`;
+  if (diffMins < 60) return `N:${diffMins}m`;
   
   const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-  if (diffHours < 24) return `Next: ${diffHours}h`;
+  if (diffHours < 24) return `N:${diffHours}h`;
   
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-  return `Next: ${diffDays}d`;
+  return `N:${diffDays}d`;
+};
+
+const shortenPos = (pos) => {
+  if (!pos) return 'n.';
+  const p = pos.toLowerCase().trim();
+  if (p.startsWith('noun')) return 'n.';
+  if (p.startsWith('verb')) return 'v.';
+  if (p.startsWith('adject')) return 'adj.';
+  if (p.startsWith('adverb')) return 'adv.';
+  if (p.startsWith('prep')) return 'prep.';
+  if (p.startsWith('conj')) return 'conj.';
+  if (p.startsWith('pron')) return 'pron.';
+  if (p.startsWith('interj')) return 'int.';
+  return p;
 };
 
 const renderHighlightedText = (text, targetWord) => {
@@ -2293,31 +2307,51 @@ const Purge = () => {
                                 visibility: isFlipped ? 'hidden' : 'visible',
                                 pointerEvents: isFlipped ? 'none' : 'auto',
                                 backfaceVisibility: 'hidden',
-                                boxSizing: 'border-box'
+                                boxSizing: 'border-box',
+                                overflow: 'hidden'
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                      {item.word}
-                                      <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
-                                        {item.pos || 'n.'}
-                                      </span>
-                                    </h3>
-                                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', marginLeft: 'auto', marginRight: '0.5rem' }}>
-                                      <span style={{ 
-                                        fontSize: '0.55rem', 
-                                        padding: '0.22rem 0.5rem', 
-                                        borderRadius: '8px', 
-                                        background: 'rgba(255, 255, 255, 0.04)', 
-                                        border: '1px solid rgba(255, 255, 255, 0.08)', 
-                                        color: '#94a3b8', 
-                                        fontWeight: 700 
-                                      }}>
-                                         {getNextReviewText(item.nextReviewDate)}
-                                      </span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', gap: '1rem', width: '100%' }}>
+                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '96px' }}>
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                      <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'white', fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        {item.word}
+                                        <span style={{ fontSize: '0.62rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>
+                                          {shortenPos(item.pos)}
+                                        </span>
+                                      </h3>
                                     </div>
+
+                                    {/* Definition */}
+                                    <p style={{ 
+                                      margin: 0, 
+                                      fontSize: '0.78rem', 
+                                      color: '#94a3b8', 
+                                      lineHeight: '1.35',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}>
+                                      {definition}
+                                    </p>
+                                  </div>
+
+                                  {/* Meta Row (Review, Speak, Delete) */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                    <span style={{ 
+                                      fontSize: '0.55rem', 
+                                      padding: '0.2rem 0.45rem', 
+                                      borderRadius: '6px', 
+                                      background: 'rgba(255, 255, 255, 0.04)', 
+                                      border: '1px solid rgba(255, 255, 255, 0.08)', 
+                                      color: '#94a3b8', 
+                                      fontWeight: 800 
+                                    }}>
+                                      {getNextReviewText(item.nextReviewDate)}
+                                    </span>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -2333,8 +2367,7 @@ const Purge = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        transition: 'color 0.2s, background 0.2s',
-                                        marginRight: '0.25rem'
+                                        transition: 'color 0.2s, background 0.2s'
                                       }}
                                       onMouseEnter={(e) => {
                                         e.currentTarget.style.color = '#3b82f6';
@@ -2346,19 +2379,19 @@ const Purge = () => {
                                       }}
                                       title="Pronounce word"
                                     >
-                                      <Volume2 size={15} />
+                                      <Volume2 size={13} />
                                     </button>
 
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setConfirmModal({
-                                        isOpen: true,
-                                        message: `ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`,
-                                        onConfirm: () => {
-                                          deleteWordFromDeck(item.id);
-                                        }
-                                      });
+                                          isOpen: true,
+                                          message: `ต้องการลบคำว่า "${item.word}" ออกจาก Deck จริงๆ หรือไม่?`,
+                                          onConfirm: () => {
+                                            deleteWordFromDeck(item.id);
+                                          }
+                                        });
                                       }}
                                       style={{
                                         background: 'transparent',
@@ -2382,25 +2415,8 @@ const Purge = () => {
                                       }}
                                       title="Delete word from deck"
                                     >
-                                      <Trash2 size={15} />
+                                      <Trash2 size={13} />
                                     </button>
-                                  </div>
-
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {/* Definition */}
-                                    <p style={{ 
-                                      margin: 0, 
-                                      fontSize: '0.8rem', 
-                                      color: '#94a3b8', 
-                                      lineHeight: '1.4',
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: 2,
-                                      WebkitBoxOrient: 'vertical',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis'
-                                    }}>
-                                      {definition}
-                                    </p>
                                   </div>
                                 </div>
 
@@ -2445,16 +2461,17 @@ const Purge = () => {
                                 pointerEvents: isFlipped ? 'auto' : 'none',
                                 backfaceVisibility: 'hidden',
                                 transform: 'rotateY(180deg)',
-                                boxSizing: 'border-box'
+                                boxSizing: 'border-box',
+                                overflow: 'hidden'
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', gap: '1rem', width: '100%' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                                     <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                       {item.word}
-                                      <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
-                                        {item.pos || 'n.'}
+                                      <span style={{ fontSize: '0.62rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>
+                                        {shortenPos(item.pos)}
                                       </span>
                                     </h3>
                                     <button
