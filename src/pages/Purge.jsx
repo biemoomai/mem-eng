@@ -2982,7 +2982,7 @@ const Purge = () => {
 
                 return (
                   <motion.div
-                    key={card.id}
+                    key={card.id || card.word || index}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
