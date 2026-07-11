@@ -207,14 +207,24 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = async () => {
     localStorage.removeItem('memeng_logged_out');
-    return supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin
-      }
-    });
+    const options = { redirectTo: window.location.origin };
+    if (isAnonymous) {
+      return supabase.auth.linkIdentity({ provider: 'google', options });
+    }
+    return supabase.auth.signInWithOAuth({ provider: 'google', options });
   };
 
+  const deleteAccount = async () => {
+    const { error } = await supabase.functions.invoke('delete-account');
+    if (error) return { error };
+
+    localStorage.removeItem('chatgpt_anki_deck');
+    localStorage.removeItem('chatgpt_anki_streak');
+    localStorage.removeItem('vocab_review_logs');
+    await supabase.auth.signOut();
+    const freshSession = await supabase.auth.signInAnonymously();
+    return { error: freshSession.error || null };
+  };
   const signOut = async () => {
     localStorage.removeItem('memeng_logged_out');
     const res = await supabase.auth.signOut();
@@ -227,7 +237,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, signUp, signIn, signInWithGoogle, signOut, isAnonymous, loginAsGuest }}>
+    <AuthContext.Provider value={{ user, profile, signUp, signIn, signInWithGoogle, signOut, deleteAccount, isAnonymous, loginAsGuest }}>
       {!loading && children}
     </AuthContext.Provider>
   );

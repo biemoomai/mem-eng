@@ -245,7 +245,12 @@ export const VocabProvider = ({ children }) => {
               difficulty: card.difficulty || 3.0,
               reps: card.reps || 0,
               lapses: card.lapses || 0,
-              state: card.state || 0
+              state: card.state || 0,
+              scheduled_days: card.scheduled_days || 0,
+              elapsed_days: card.elapsed_days || 0,
+              learning_steps: card.learning_steps || 0,
+              last_review_date: card.lastReviewDate || null,
+              mastered_at: card.masteredAt || null
             });
         }
       }
@@ -317,6 +322,11 @@ export const VocabProvider = ({ children }) => {
             reps: ud.reps,
             lapses: ud.lapses,
             state: ud.state,
+            scheduled_days: ud.scheduled_days || 0,
+            elapsed_days: ud.elapsed_days || 0,
+            learning_steps: ud.learning_steps || 0,
+            lastReviewDate: ud.last_review_date || null,
+            masteredAt: ud.mastered_at || null,
             created_at: ud.created_at
           };
         });
@@ -499,7 +509,12 @@ export const VocabProvider = ({ children }) => {
             difficulty,
             reps,
             lapses: typeof item.lapses === 'number' ? item.lapses : 0,
-            state: state
+            state: state,
+            scheduled_days: typeof item.scheduled_days === 'number' ? item.scheduled_days : (item.interval || 0),
+            elapsed_days: typeof item.elapsed_days === 'number' ? item.elapsed_days : 0,
+            learning_steps: typeof item.learning_steps === 'number' ? item.learning_steps : 0,
+            lastReviewDate: item.lastReviewDate || null,
+            masteredAt: item.masteredAt || null
           };
         }) : [];
         setVocab(normalized);
@@ -582,7 +597,12 @@ export const VocabProvider = ({ children }) => {
       difficulty: 5.0,
       reps: 0,
       lapses: 0,
-      state: 0
+      state: 0,
+      scheduled_days: 0,
+      elapsed_days: 0,
+      learning_steps: 0,
+      lastReviewDate: null,
+      masteredAt: null
     };
 
     // Push to Supabase if logged in
@@ -640,7 +660,12 @@ export const VocabProvider = ({ children }) => {
               difficulty: newCard.difficulty,
               reps: newCard.reps,
               lapses: newCard.lapses,
-              state: newCard.state
+              state: newCard.state,
+              scheduled_days: newCard.scheduled_days || 0,
+              elapsed_days: newCard.elapsed_days || 0,
+              learning_steps: newCard.learning_steps || 0,
+              last_review_date: newCard.lastReviewDate || null,
+              mastered_at: newCard.masteredAt || null
             })
             .select()
             .single();
@@ -965,7 +990,12 @@ export const VocabProvider = ({ children }) => {
             difficulty: 5.0,
             reps: 0,
             lapses: 0,
-            state: 0
+            state: 0,
+            scheduled_days: 0,
+            elapsed_days: 0,
+            learning_steps: 0,
+            lastReviewDate: null,
+            masteredAt: null
           };
 
           if (user && wordId) {
@@ -980,6 +1010,11 @@ export const VocabProvider = ({ children }) => {
                 reps: 0,
                 lapses: 0,
                 state: 0,
+                scheduled_days: 0,
+                elapsed_days: 0,
+                learning_steps: 0,
+                last_review_date: null,
+                mastered_at: null,
                 next_review_date: newCard.nextReviewDate
               })
               .select('id')
@@ -1056,34 +1091,29 @@ export const VocabProvider = ({ children }) => {
     console.log(`💾 Card images updated in database for "${word}":`, mainImageUrl, sceneImagesArray, falImageUrl);
   };
 
-  // Preview intervals with the official FSRS scheduler.
+  // Preview official FSRS intervals. Master is a manual archive action, not an FSRS rating.
   const getProjectedIntervals = (card) => {
     if (!card) return { again: 'Loop', hard: '10m', normal: '2d', easy: '6d' };
     const now = new Date();
     const fsrsCard = toFsrsCard(card, now);
     const preview = fsrsScheduler.repeat(fsrsCard, now);
 
-    const getFormattedOrMaster = (nextDate) => {
-      const days = getDaysUntil(nextDate, now);
-      if (days >= 90) return 'Master';
-      return formatReviewInterval(nextDate, now);
-    };
-
     return {
-      again: 'Loop', // Again ALWAYS loops in the active study session queue
-      hard: getFormattedOrMaster(preview[Rating.Hard].card.due),
-      normal: getFormattedOrMaster(preview[Rating.Good].card.due),
-      easy: getFormattedOrMaster(preview[Rating.Easy].card.due),
+      again: 'Loop',
+      hard: formatReviewInterval(preview[Rating.Hard].card.due, now),
+      normal: formatReviewInterval(preview[Rating.Good].card.due, now),
+      easy: formatReviewInterval(preview[Rating.Easy].card.due, now),
     };
   };
 
-  // Update SRS with official FSRS. Master is a product-level escape hatch, not an FSRS rating.
+  // Manual Master archives a word without corrupting its FSRS memory state.
   const updateWordSrs = (cardId, actionOrLevel, responseTimeMs) => {
     const itemToUpdate = vocab.find(item => item.id === cardId);
     if (!itemToUpdate) return;
 
     const now = new Date();
     const isMaster = actionOrLevel === 'master';
+    const isRelearningMastered = !isMaster && itemToUpdate.srsLevel === 'Mastered';
     let nextReviewDate = new Date(now);
     let stability = typeof itemToUpdate.stability === 'number' ? itemToUpdate.stability : 0;
     let difficulty = typeof itemToUpdate.difficulty === 'number' ? itemToUpdate.difficulty : 0;
@@ -1095,14 +1125,27 @@ export const VocabProvider = ({ children }) => {
     let learningSteps = typeof itemToUpdate.learning_steps === 'number' ? itemToUpdate.learning_steps : 0;
     let newSrsLevel = itemToUpdate.srsLevel || 'Learning';
     let newInterval = Math.max(0, scheduledDays);
+    let masteredAt = itemToUpdate.masteredAt || null;
 
     if (isMaster) {
       newSrsLevel = 'Mastered';
-      state = State.Review;
-      reps += 1;
       scheduledDays = 36500;
       newInterval = scheduledDays;
       nextReviewDate.setFullYear(nextReviewDate.getFullYear() + 100);
+      masteredAt = now.toISOString();
+    } else if (isRelearningMastered) {
+      stability = 0;
+      difficulty = 0;
+      reps = 0;
+      lapses = 0;
+      state = State.New;
+      scheduledDays = 0;
+      elapsedDays = 0;
+      learningSteps = 0;
+      newSrsLevel = 'Learning';
+      newInterval = 0;
+      nextReviewDate = new Date(now);
+      masteredAt = null;
     } else {
       const rating = reviewRatingMap[actionOrLevel] || Rating.Good;
       const fsrsCard = toFsrsCard(itemToUpdate, now);
@@ -1120,17 +1163,6 @@ export const VocabProvider = ({ children }) => {
       nextReviewDate = nextCard.due;
       newInterval = Math.max(0, getDaysUntil(nextReviewDate, now));
       newSrsLevel = getLevelFromFsrs(nextCard, rating);
-
-      // Auto-Mastered Logic: if review interval is 90 days or more, graduate to Mastered
-      if (newInterval >= 90) {
-        newSrsLevel = 'Mastered';
-        nextReviewDate = new Date(now);
-        nextReviewDate.setFullYear(nextReviewDate.getFullYear() + 100);
-        newInterval = 36500;
-        stability = 36500;
-        difficulty = 0;
-        state = State.Review;
-      }
     }
 
     const newRepetition = reps;
@@ -1157,6 +1189,7 @@ export const VocabProvider = ({ children }) => {
       easeFactor: newEaseFactor,
       nextReviewDate: nextReviewDate.toISOString(),
       lastReviewDate: now.toISOString(),
+      masteredAt,
       stability,
       difficulty,
       reps,
@@ -1185,7 +1218,12 @@ export const VocabProvider = ({ children }) => {
             difficulty,
             reps,
             lapses,
-            state
+            state,
+            scheduled_days: scheduledDays,
+            elapsed_days: elapsedDays,
+            learning_steps: learningSteps,
+            last_review_date: now.toISOString(),
+            mastered_at: masteredAt
           })
           .eq('id', cardId)
           .then(({ error }) => {

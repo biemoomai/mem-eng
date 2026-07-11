@@ -70,6 +70,11 @@ CREATE TABLE if not exists public.user_decks (
   reps INTEGER DEFAULT 0,
   lapses INTEGER DEFAULT 0,
   state INTEGER DEFAULT 0,
+  scheduled_days INTEGER DEFAULT 0,
+  elapsed_days INTEGER DEFAULT 0,
+  learning_steps INTEGER DEFAULT 0,
+  last_review_date TIMESTAMP WITH TIME ZONE,
+  mastered_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
   -- User Personal Edits (Library overrides)

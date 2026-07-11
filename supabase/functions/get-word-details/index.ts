@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 // Supabase Edge Function: get-word-details
 // Securely handles word translation and analysis with 3-tier server-side fallback:
 // Gemini (Primary) ➔ Groq (Backup 1) ➔ Cerebras (Backup 2)
@@ -89,6 +91,37 @@ Deno.serve(async (req) => {
 
   try {
     const { word, forceValid } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const { data: quota, error: quotaError } = await admin.rpc('consume_word_generation_quota', {
+      p_user_id: user.id,
+      p_is_anonymous: Boolean(user.is_anonymous)
+    });
+    if (quotaError || !quota?.allowed) {
+      return new Response(JSON.stringify({ error: 'Daily generation limit reached. Please try again tomorrow.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     if (!word) {
       return new Response(JSON.stringify({ error: "Missing required 'word' parameter" }), {
@@ -305,12 +338,12 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
     }
 
     if (!textResponse) {
-      return new Response(JSON.stringify({ error: `All translation providers failed. Log: ${errorLog}` }), {
+      console.error('All translation providers failed:', errorLog);
+      return new Response(JSON.stringify({ error: 'Translation is temporarily unavailable. Please try again soon.' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
     // Parse the text to ensure it's valid JSON
     const parsed = JSON.parse(textResponse.trim());
     parsed._provider = usedProvider; // Add provider metadata
@@ -323,13 +356,24 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
       )
     };
 
+    // Cache server-generated data centrally. Existing entries are never overwritten here.
+    await admin
+      .from('global_dictionary')
+      .upsert({
+        word: String(word).trim().toLowerCase(),
+        pos: parsed.pos || 'n.',
+        meaning: JSON.stringify(parsed),
+        rich_data: parsed,
+        cefr_level: parsed.cefrLevel || 'Unranked'
+      }, { onConflict: 'word', ignoreDuplicates: true });
     return new Response(JSON.stringify(parsed), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('get-word-details failed:', err);
+    return new Response(JSON.stringify({ error: 'Translation is temporarily unavailable. Please try again soon.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
