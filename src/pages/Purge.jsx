@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Sparkles, Loader2, ArrowRight, Activity, CheckSquare, Search, Trash2, RotateCw, Bookmark, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Info, Plus, Upload } from 'lucide-react';
+import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Sparkles, Loader2, ArrowRight, Activity, CheckSquare, Search, Trash2, RotateCw, Bookmark, RotateCcw, ChevronDown, ChevronUp, TrendingUp, Info, Plus, Upload, Compass } from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -1109,6 +1109,7 @@ const Purge = () => {
   const [flippedCollectionWords, setFlippedCollectionWords] = useState({});
   const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
+  const collectionPromptArmedRef = useRef(true);
   const lowGraphics = false;
   const [addedProgress, setAddedProgress] = useState(null);
   
@@ -1986,22 +1987,23 @@ const Purge = () => {
     }
   }, [vocab, loading]);
 
-  // 2. Trigger Recommended Collections modal when caught up
+  // 2. Trigger Recommended Collections modal whenever a study round finishes
   useEffect(() => {
     if (loading) return;
     const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
     if (!isDone) return;
 
     const dueCountLocal = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()).length;
-    if (dueCountLocal === 0 && !isStudying) {
-      const lastRecommendDate = localStorage.getItem('memeng_last_collection_recommend_date');
-      const todayStr = new Date().toDateString();
-      if (lastRecommendDate !== todayStr) {
-        setShowCollectionChoice(true);
-        localStorage.setItem('memeng_last_collection_recommend_date', todayStr);
-      }
+    if (isStudying || dueCountLocal > 0) {
+      collectionPromptArmedRef.current = true;
+      return;
     }
-  }, [vocab, isStudying, loading]);
+
+    if (collectionPromptArmedRef.current && !showCollectionChoice && !showCollectionImport) {
+      collectionPromptArmedRef.current = false;
+      setShowCollectionChoice(true);
+    }
+  }, [vocab, isStudying, loading, showCollectionChoice, showCollectionImport]);
   
   let richCardData = wordObj ? parseMeaningField(wordObj.meaning) : null;
 
@@ -2298,7 +2300,7 @@ const Purge = () => {
                       const srsColor = getWordSrsColor(item.srsLevel);
 
                       return (
-                        <div key={item.id} className="flip-card-container" style={{ height: 'auto', flexShrink: 0, transition: 'height 0.6s cubic-bezier(0.4, 0, 0.2, 1)', marginBottom: '1rem' }}>
+                        <div key={`${item.id || item.word || 'card'}-interesting-${index}`} className="flip-card-container" style={{ height: 'auto', flexShrink: 0, transition: 'height 0.6s cubic-bezier(0.4, 0, 0.2, 1)', marginBottom: '1rem' }}>
                           <div 
                             className={`flip-card-inner ${isFlipped ? 'flipped' : ''}`}
                             style={{ position: 'relative', width: '100%', transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)', transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
@@ -3404,7 +3406,7 @@ const Purge = () => {
 
                 return (
                   <motion.div
-                    key={card.word}
+                    key={`${card.word}-${index}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
@@ -3744,7 +3746,7 @@ const Purge = () => {
 
                 return (
                   <motion.div
-                    key={card.word}
+                    key={`${card.word}-${index}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
@@ -4615,6 +4617,26 @@ const Purge = () => {
 
                   <h2 style={{ color: theme === 'theme-3' ? '#000000' : 'white', marginBottom: '0.2rem', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px' }}>All caught up!</h2>
                   <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontSize: '0.85rem' }}>You've reviewed all cards for today.</p>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setShowCollectionChoice(true);
+                    }}
+                    style={{
+                      marginTop: '0.4rem',
+                      padding: '0.42rem 0.72rem',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(250, 204, 21, 0.3)',
+                      color: '#fde68a',
+                      background: 'rgba(250, 204, 21, 0.08)',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Browse word collections
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>

@@ -1,31 +1,38 @@
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
+import { lazy, Suspense, useEffect, useState, useRef } from 'react';
 import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Trash2, HelpCircle, Bot, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VocabProvider, useVocab } from './context/VocabContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import ThemeBackground from './components/ThemeBackground';
-import AddWord from './pages/AddWord';
-import Purge from './pages/Purge';
-import Login from './pages/Login';
-import Profile from './pages/Profile';
-import Library from './pages/Library';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
+import AppErrorBoundary from './components/AppErrorBoundary';
 import { playClickSound, playSwipeSound } from './utils/soundHelper';
 import { speakEnglish } from './utils/speechHelper';
-import { Tutorial } from './components/Tutorial';
+const AddWord = lazy(() => import('./pages/AddWord'));
+const Purge = lazy(() => import('./pages/Purge'));
+const Login = lazy(() => import('./pages/Login'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Library = lazy(() => import('./pages/Library'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Tutorial = lazy(() => import('./components/Tutorial').then((module) => ({ default: module.Tutorial })));
 
+const ScreenLoading = () => (
+  <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.62)', fontSize: '0.8rem' }}>
+    Loading...
+  </div>
+);
 
 function AppContent() {
-  const { user, signOut, loading, isAnonymous } = useAuth();
+  const { user, signOut, deleteAccount, loading, isAnonymous } = useAuth();
   const { vocab, streak, clearDeckAndResetStats } = useVocab();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [showShortcutButtons, setShowShortcutButtons] = useState(() => {
     try {
       return localStorage.getItem('memeng_show_shortcut_buttons') !== 'false';
@@ -156,6 +163,7 @@ function AppContent() {
     }
   });
   const lowGraphics = false;
+  const [routeTransitionDirection, setRouteTransitionDirection] = useState(0);
   const [dueReminders, setDueReminders] = useState(() => {
     try {
       const val = localStorage.getItem('memeng_due_reminders');
@@ -173,6 +181,16 @@ function AppContent() {
   });
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const pageSwipeEnabled = !isTutorialActive && !menuOpen;
+
+  useEffect(() => {
+    const preloadTimer = window.setTimeout(() => {
+      void import('./pages/AddWord');
+      void import('./pages/Purge');
+      void import('./pages/Library');
+      void import('./pages/Profile');
+    }, 1400);
+    return () => window.clearTimeout(preloadTimer);
+  }, []);
 
   useEffect(() => {
     const handleActiveChange = (e) => {
@@ -223,11 +241,7 @@ function AppContent() {
         }
       }
     } else if (swipeDirection === 'horizontal') {
-      if (lowGraphics) {
-        swipeOffsetRef.current = dx;
-        return;
-      }
-      if (Math.abs(dx - swipeOffsetRef.current) >= 12) {
+      if (Math.abs(dx - swipeOffsetRef.current) >= 3) {
         swipeOffsetRef.current = dx;
         setSwipeOffset(dx);
       }
@@ -238,7 +252,7 @@ function AppContent() {
     if (pageSwipeEnabled && dragStart && swipeDirection === 'horizontal') {
       const routes = ['/', '/purge', '/library', '/profile'];
       const currentIdx = routes.indexOf(location.pathname);
-      const finalSwipeOffset = lowGraphics ? swipeOffsetRef.current : swipeOffset;
+      const finalSwipeOffset = swipeOffsetRef.current;
       
       if (currentIdx !== -1) {
         if (finalSwipeOffset < -minSwipeDistance && currentIdx < routes.length - 1) {
@@ -416,6 +430,10 @@ function AppContent() {
 
   const handleNavigation = (path) => {
     setMenuOpen(false);
+    const routes = ['/', '/purge', '/library', '/profile'];
+    const fromIndex = routes.indexOf(location.pathname);
+    const toIndex = routes.indexOf(path);
+    if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) setRouteTransitionDirection(toIndex > fromIndex ? -1 : 1);
     navigate(path);
   };
 
@@ -586,38 +604,22 @@ function AppContent() {
           overflow: 'hidden',
           position: 'relative'
         }}>
-          {lowGraphics ? (
-            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-              {renderCurrentTabRoute()}
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'flex',
-                width: '400%',
-                height: '100%',
-                transform: `translate3d(-${currentIdx * 25}%, 0, 0) translate3d(${effectiveSwipeOffset}px, 0, 0)`,
-                transition: isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-              }}
+          <AnimatePresence initial={false} mode="sync">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, x: routeTransitionDirection < 0 ? 34 : routeTransitionDirection > 0 ? -34 : 0 }}
+              animate={{ opacity: 1, x: isSwiping ? effectiveSwipeOffset : 0 }}
+              exit={{ opacity: 0, x: routeTransitionDirection < 0 ? -26 : routeTransitionDirection > 0 ? 26 : 0 }}
+              transition={isSwiping ? { duration: 0 } : { duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', willChange: 'transform' }}
             >
-              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                <AddWord />
-              </div>
-              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                <Purge />
-              </div>
-              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                <Library />
-              </div>
-              <div style={{ width: '25%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                <Profile />
-              </div>
-            </div>
-          )}
+              <Suspense fallback={<ScreenLoading />}>{renderCurrentTabRoute()}</Suspense>
+            </motion.div>
+          </AnimatePresence>
         </div>
       ) : (
         <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Routes>
+          <Suspense fallback={<ScreenLoading />}><Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
@@ -626,7 +628,7 @@ function AppContent() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/" element={<AddWord />} />
             <Route path="*" element={<AddWord />} />
-          </Routes>
+          </Routes></Suspense>
         </div>
       )}
 
@@ -665,7 +667,7 @@ function AppContent() {
                 key={item.path}
                 onClick={() => {
                   playClickSound();
-                  navigate(item.path);
+                  handleNavigation(item.path);
                 }}
                 style={{
                   display: 'flex',
@@ -1249,6 +1251,32 @@ function AppContent() {
                   <span>Reset Deck & Stats</span>
                 </motion.button>
 
+
+                <motion.button
+                  variants={itemVariants}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowDeleteAccountConfirm(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '11px',
+                    borderRadius: '12px',
+                    background: 'rgba(127, 29, 29, 0.14)',
+                    border: '1px solid rgba(248, 113, 113, 0.28)',
+                    color: '#fca5a5',
+                    fontSize: '0.78rem',
+                    fontWeight: 750,
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <Trash2 size={15} />
+                  <span>{isAnonymous ? 'Delete Guest Data' : 'Delete Account & Data'}</span>
+                </motion.button>
                 {/* Privacy & Terms */}
                 <motion.div
                   variants={itemVariants}
@@ -1439,6 +1467,31 @@ function AppContent() {
         )}
       </AnimatePresence>
       
+
+      <AnimatePresence>
+        {showDeleteAccountConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 2147483000, display: 'grid', placeItems: 'center', padding: '22px', background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(10px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 12 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 12 }}
+              style={{ width: 'min(100%, 360px)', padding: '22px', borderRadius: '16px', background: '#14151a', border: '1px solid rgba(248,113,113,0.28)', boxShadow: '0 20px 60px rgba(0,0,0,0.55)' }}
+            >
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.05rem' }}>{isAnonymous ? 'Delete guest data?' : 'Delete account and data?'}</h3>
+              <p style={{ color: '#a8b3c7', fontSize: '0.82rem', lineHeight: 1.55, margin: '10px 0 18px' }}>This cannot be undone. Your saved words, review progress, and account data will be removed.</p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="button" onClick={() => setShowDeleteAccountConfirm(false)} style={{ flex: 1, border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px', color: '#d1d5db', background: 'transparent', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={async () => { const result = await deleteAccount(); if (result?.error) { alert('Could not delete data yet. Please try again shortly.'); return; } setShowDeleteAccountConfirm(false); navigate('/'); }} style={{ flex: 1, border: 0, borderRadius: '10px', padding: '10px', color: '#fff', background: '#dc2626', fontWeight: 800, cursor: 'pointer' }}>Delete</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <Tutorial />
     </div>
   );
@@ -1449,7 +1502,9 @@ function App() {
     <AuthProvider>
       <VocabProvider>
         <BrowserRouter>
-          <AppContent />
+          <AppErrorBoundary>
+            <AppContent />
+          </AppErrorBoundary>
         </BrowserRouter>
       </VocabProvider>
     </AuthProvider>
