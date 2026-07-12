@@ -2,98 +2,73 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, ChevronRight, Globe2, HelpCircle, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, Globe2, HelpCircle, X } from 'lucide-react';
 
 const STEPS = [
   {
-    path: '/', selector: '#tutorial-translate-input', placement: 'bottom', section: 'Translate',
-    en: ['Type a word', 'Enter any English word you want to understand or remember. Mem-eng will build one learning card around that word.'],
-    th: ['พิมพ์คำศัพท์', 'ใส่คำศัพท์อังกฤษที่อยากเข้าใจหรืออยากจำ Mem-eng จะสร้างการ์ดเรียนรู้ของคำนั้นให้'],
+    path: '/', selector: '#tutorial-translate-input textarea', placement: 'bottom', section: 'Translate', completeOn: 'input',
+    en: ['Type one English word', 'Enter a word you genuinely want to learn. This is your own live deck, so choose something useful.'],
+    th: ['พิมพ์คำศัพท์อังกฤษ 1 คำ', 'ใส่คำที่อยากเรียนจริง ๆ นี่คือ deck จริงของคุณ เลือกคำที่มีประโยชน์ได้เลย'],
   },
   {
-    path: '/', selector: '#tutorial-translate-submit-btn', placement: 'bottom', section: 'Translate',
-    en: ['Create the learning card', 'Tap Translate. The result can include a short definition, Thai meaning, examples, collocations, an image, and pronunciation.'],
-    th: ['สร้างการ์ดเรียนรู้', 'แตะ Translate ผลลัพธ์จะมีคำอธิบายสั้น ๆ คำแปลไทย ตัวอย่าง collocation รูป และเสียงอ่านตามข้อมูลที่หาได้'],
+    path: '/', selector: '#tutorial-translate-submit-btn', placement: 'bottom', section: 'Translate', completeOn: 'click',
+    en: ['Translate the word', 'Tap Translate and wait for the learning card to be prepared.'],
+    th: ['แปลคำศัพท์', 'แตะ Translate แล้วรอให้ระบบเตรียม learning card'],
   },
   {
-    path: '/', selector: '#tutorial-translate-submit-btn', placement: 'bottom', section: 'Translate',
-    en: ['Save what matters', 'After a result appears, swipe right or tap Save to add it to your deck. Swipe left or tap Back when you do not want it.'],
-    th: ['เก็บเฉพาะคำที่ต้องการ', 'เมื่อผลลัพธ์ขึ้นแล้ว ปัดขวาหรือแตะ Save เพื่อเก็บเข้าคลัง ปัดซ้ายหรือแตะ Back ถ้าไม่ต้องการคำนั้น'],
+    path: '/', selector: '#tutorial-tinder-save-btn', placement: 'top', section: 'Translate', completeOn: 'click',
+    en: ['Save it to your deck', 'Tap Save to keep this word. The next steps use a real card from your deck.'],
+    th: ['บันทึกเข้าคลังคำศัพท์', 'แตะ Save เพื่อเก็บคำนี้ ขั้นต่อไปจะใช้การ์ดจริงจาก deck ของคุณ'],
   },
   {
-    path: '/', selector: '#tutorial-nav-purge', placement: 'top', section: 'Navigate',
-    en: ['Move between pages', 'Use the four buttons below, or swipe across the page, to move between Translate, Flashcards, Library, and My Profile.'],
-    th: ['เปลี่ยนหน้า', 'ใช้ 4 ปุ่มด้านล่างหรือปัดหน้าจอ เพื่อสลับระหว่าง Translate, Flashcards, Library และ My Profile'],
+    path: '/', selector: '#tutorial-nav-purge', placement: 'top', section: 'Navigate', completeOn: 'click',
+    en: ['Open Flashcards', 'Use the Flashcards button in the bottom navigation.'],
+    th: ['เปิดหน้า Flashcards', 'แตะปุ่ม Flashcards ที่แถบด้านล่าง'],
   },
   {
-    path: '/purge', selector: '#tutorial-add-five-card', placement: 'bottom', section: 'Flashcards',
-    en: ['Add five words', 'When no review is due, tap the orange +5 badge to pull five varied words from your selected word set. It disappears when that set has no unused words left.'],
-    th: ['เพิ่มครั้งละ 5 คำ', 'เมื่อไม่มีคำถึงรอบ แตะป้าย +5 สีส้มเพื่อดึงคำที่หลากหลายจากชุดที่เลือก ป้ายจะหายเมื่อชุดนั้นไม่มีคำใหม่เหลือแล้ว'],
+    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'bottom', section: 'Review', completeOn: 'click',
+    en: ['Reveal the word', 'Tap the card once to reveal the word and short definition.'],
+    th: ['เปิดคำศัพท์', 'แตะการ์ด 1 ครั้งเพื่อดูคำศัพท์และคำอธิบายสั้น ๆ'],
   },
   {
-    path: '/purge', selector: '#tutorial-collection-modal', placement: 'top', section: 'Discover', action: 'openCollections',
-    en: ['Discover fresh topics', 'After a review round, Mem-eng offers shuffled collections such as movies, music, and business. Pick a collection, preview the words, then import only the ones you want.'],
-    th: ['ค้นหาหมวดใหม่', 'หลังจบรอบทบทวน Mem-eng จะสุ่มแนะนำหมวด เช่น หนัง เพลง และธุรกิจ เลือกหมวด ดูตัวอย่าง แล้วนำเข้าเฉพาะคำที่ต้องการได้'],
+    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'bottom', section: 'Review', completeOn: 'click',
+    en: ['Reveal the English context', 'Tap the same card again to see how the word is used in a sentence.'],
+    th: ['ดูบริบทภาษาอังกฤษ', 'แตะการ์ดเดิมอีกครั้งเพื่อดูประโยคที่ใช้คำนี้'],
   },
   {
-    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'top', section: 'Review',
-    en: ['Reveal in three taps', 'A review starts with the image. Tap once for the word and definition, again for the English context, and a third time for the Thai meaning and answer controls.'],
-    th: ['เปิดคำตอบ 3 จังหวะ', 'การทบทวนเริ่มจากรูป แตะครั้งแรกเพื่อดูคำและความหมาย แตะครั้งที่สองเพื่อดูบริบทอังกฤษ และครั้งที่สามเพื่อดูคำแปลไทยกับตัวเลือกคำตอบ'],
+    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'bottom', section: 'Review', completeOn: 'click',
+    en: ['Reveal the Thai meaning', 'Tap once more. The answer controls will appear after the Thai meaning.'],
+    th: ['ดูความหมายภาษาไทย', 'แตะอีกครั้ง แล้วปุ่มให้คะแนนความจำจะปรากฏ'],
   },
   {
-    path: '/purge', selector: '#tutorial-srs-buttons', placement: 'top', section: 'Review',
-    en: ['Rate your memory', 'Choose Again, Hard, Normal, or Easy. You can also swipe left, down, up, or right. FSRS uses every answer to choose the next review date.'],
-    th: ['ให้คะแนนความจำ', 'เลือก Again, Hard, Normal หรือ Easy หรือปัด ซ้าย ลง ขึ้น ขวา ระบบ FSRS จะใช้ทุกคำตอบเพื่อคำนวณวันทบทวนครั้งถัดไป'],
+    path: '/purge', selector: '#tutorial-srs-buttons', placement: 'top', section: 'Review', completeOn: 'click',
+    en: ['Rate your memory', 'Choose Again, Hard, Normal, or Easy. FSRS uses your real answer to calculate the next review date.'],
+    th: ['ให้คะแนนความจำ', 'เลือก Again, Hard, Normal หรือ Easy ระบบ FSRS จะใช้คำตอบจริงของคุณคำนวณวันทบทวนครั้งถัดไป'],
   },
   {
-    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'top', section: 'Review',
-    en: ['Archive a mastered word', 'If a word is already permanent knowledge, press and hold the middle of its card for about one second. Mastered words leave normal review but remain editable in Library.'],
-    th: ['เก็บคำที่จำได้ถาวร', 'ถ้าคำนี้จำได้แน่นอนแล้ว ให้กดค้างกลางการ์ดประมาณ 1 วินาที คำ Mastered จะไม่วนทบทวนตามปกติ แต่ยังแก้ได้ใน Library'],
+    path: '/purge', selector: '#tutorial-nav-library', placement: 'top', section: 'Library', completeOn: 'click',
+    en: ['Open your Library', 'Tap Library to manage every saved card.'],
+    th: ['เปิด Library', 'แตะ Library เพื่อจัดการการ์ดทั้งหมดที่บันทึกไว้'],
   },
   {
-    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'top', section: 'Review',
-    en: ['Look up words in context', 'Tap an English word inside a sentence to open the mini dictionary. You can hear it, see a quick meaning, explore related words, and add a new card.'],
-    th: ['เปิดพจนานุกรมจากประโยค', 'แตะคำอังกฤษในประโยคเพื่อเปิดพจนานุกรมย่อ ฟังเสียง ดูความหมาย คำที่เกี่ยวข้อง และเพิ่มเป็นการ์ดใหม่ได้'],
+    path: '/library', selector: '#tutorial-library-search', placement: 'bottom', section: 'Library', completeOn: 'input',
+    en: ['Find a saved word', 'Type any part of a word. You can then open a card to edit text, change its image, or remove it.'],
+    th: ['ค้นหาคำที่บันทึก', 'พิมพ์ส่วนหนึ่งของคำ แล้วเปิดการ์ดเพื่อแก้ข้อความ เปลี่ยนรูป หรือลบออกได้'],
   },
   {
-    path: '/library', selector: '#tutorial-library-search', placement: 'bottom', section: 'Library',
-    en: ['Find and filter cards', 'Search your whole deck, then use the stage filters to inspect Learning, Hard, Normal, Easy, or Mastered words.'],
-    th: ['ค้นหาและกรองการ์ด', 'ค้นหาคำในคลังทั้งหมด แล้วใช้ตัวกรองเพื่อดูคำในระดับ Learning, Hard, Normal, Easy หรือ Mastered'],
+    path: '/library', selector: '#tutorial-nav-profile', placement: 'top', section: 'Profile', completeOn: 'click',
+    en: ['Open My Profile', 'Tap My Profile to control your word set, stages, and settings.'],
+    th: ['เปิด My Profile', 'แตะ My Profile เพื่อจัดการชุดคำศัพท์ ระดับการเรียน และการตั้งค่า'],
   },
   {
-    path: '/library', selector: '#tutorial-library-create', placement: 'bottom', section: 'Library',
-    en: ['Create your own card', 'Create a flashcard manually when you already know exactly what you want to study. Add the English word, Thai meaning, definition, and image.'],
-    th: ['สร้างการ์ดเอง', 'สร้าง flashcard ด้วยตัวเองเมื่อรู้แล้วว่าอยากเรียนอะไร ใส่คำอังกฤษ คำแปลไทย คำอธิบาย และรูปได้'],
+    path: '/profile', selector: '#tutorial-profile-curriculum', placement: 'bottom', section: 'Profile', completeOn: 'click',
+    en: ['Choose a word set', 'Open this control whenever you want to switch between Self-Study, Oxford, TOEIC, IELTS, or daily phrases.'],
+    th: ['เลือกชุดคำศัพท์', 'เปิดปุ่มนี้เมื่อต้องการสลับระหว่าง Self-Study, Oxford, TOEIC, IELTS หรือ Daily Phrases'],
   },
   {
-    path: '/library', selector: '#tutorial-library-list', placement: 'top', section: 'Library',
-    en: ['Manage every card', 'Open any card to edit its text, search or upload a personal image, regenerate details, or remove it. Your personal edits stay on your own card.'],
-    th: ['จัดการทุกการ์ด', 'เปิดการ์ดเพื่อแก้ข้อความ ค้นหารูป อัปโหลดรูปส่วนตัว สร้างรายละเอียดใหม่ หรือลบออก การแก้ของคุณจะอยู่กับการ์ดของคุณเอง'],
-  },
-  {
-    path: '/profile', selector: '#tutorial-profile-curriculum', placement: 'bottom', section: 'Profile',
-    en: ['Choose a word set', 'Select Self-Study, Oxford, TOEIC, IELTS, or another available curriculum. The +5 button draws unused words from this choice.'],
-    th: ['เลือกชุดคำศัพท์', 'เลือก Self-Study, Oxford, TOEIC, IELTS หรือชุดอื่นที่มี ปุ่ม +5 จะดึงคำที่ยังไม่เคยใช้จากชุดนี้'],
-  },
-  {
-    path: '/profile', selector: '#tutorial-profile-srs', placement: 'top', section: 'Profile',
-    en: ['Inspect memory stages', 'Open a stage to see exactly which words are Learning, Hard, Normal, Easy, or Mastered and when they are due.'],
-    th: ['ดูระดับความจำ', 'เปิดแต่ละระดับเพื่อดูว่าคำไหนอยู่ Learning, Hard, Normal, Easy หรือ Mastered และถึงรอบเมื่อไร'],
-  },
-  {
-    path: '/profile', selector: '#tutorial-profile-progress', placement: 'top', section: 'Profile',
-    en: ['Read your progress', 'Use the progress area to see how your deck and review history are changing over time.'],
-    th: ['ดูความคืบหน้า', 'ใช้ส่วน Progress เพื่อตรวจว่าคลังคำและประวัติการทบทวนเปลี่ยนไปอย่างไรตามเวลา'],
-  },
-  {
-    path: '/profile', selector: '#tutorial-settings-panel', placement: 'top', section: 'Settings', action: 'openMenu',
-    en: ['Settings and account', 'Here you can show or hide the bottom bar, manage reminders, restart this guide, reset a deck, read Privacy and Terms, or sign in to keep a guest deck.'],
-    th: ['ตั้งค่าและบัญชี', 'ที่นี่คุณซ่อนหรือแสดงแถบล่าง จัดการการแจ้งเตือน เปิด Guide ใหม่ รีเซ็ต deck อ่าน Privacy/Terms หรือ Sign in เพื่อเก็บ deck ของ Guest ได้'],
-  },
-  {
-    path: '/profile', selector: null, placement: 'center', section: 'Done',
-    en: ['You are ready', 'Translate useful words, review only when they are due, and use Library whenever you want full control. You can replay this guide from the menu at any time.'],
-    th: ['พร้อมใช้งานแล้ว', 'แปลคำที่มีประโยชน์ ทบทวนเมื่อถึงรอบ และใช้ Library เมื่อต้องการจัดการเต็มรูปแบบ กลับมาเปิด Guide จากเมนูได้ทุกเมื่อ'],
+    path: '/profile', selector: '#tutorial-profile-curriculum-modal-content', placement: 'top', section: 'Complete', final: true,
+    en: ['You are ready', 'You have completed the real learning flow. From the menu you can replay this guide, manage reminders, reset a deck, read Privacy and Terms, or sign in to keep a guest deck.'],
+    th: ['พร้อมใช้งานแล้ว', 'คุณทำ flow การเรียนจริงครบแล้ว จากเมนู คุณเปิด Guide ใหม่ จัดการการแจ้งเตือน รีเซ็ต deck อ่าน Privacy/Terms หรือ Sign in เพื่อเก็บ Guest deck ได้'],
   },
 ];
 
@@ -113,6 +88,7 @@ export const Tutorial = () => {
   const [targetFound, setTargetFound] = useState(false);
   const guideCardRef = useRef(null);
   const locationPathRef = useRef(location.pathname);
+  const completedStepRef = useRef(null);
 
   const step = STEPS[currentStep];
   const words = COPY[language] || COPY.en;
@@ -161,20 +137,18 @@ export const Tutorial = () => {
 
   useEffect(() => {
     if (!active || !step) return undefined;
-
     if (locationPathRef.current !== step.path) navigate(step.path);
-    const timer = window.setTimeout(() => {
-      if (step.action === 'openCollections') window.dispatchEvent(new Event('tutorial-open-collections'));
-      else window.dispatchEvent(new Event('tutorial-close-collections'));
-
-      if (step.action === 'openMenu') window.dispatchEvent(new Event('tutorial-open-menu'));
-      else window.dispatchEvent(new Event('tutorial-close-menu'));
-    }, locationPathRef.current === step.path ? 60 : 320);
-
-    return () => window.clearTimeout(timer);
-  // Navigate only when the guide changes step. A learner may use the highlighted
-  // navigation control without the tour immediately pulling them back.
+    return undefined;
   }, [active, currentStep, navigate, step]);
+
+  const advanceFromAction = useCallback(() => {
+    if (!active || step?.final || completedStepRef.current === currentStep) return;
+    completedStepRef.current = currentStep;
+    window.setTimeout(() => {
+      setCurrentStep((value) => Math.min(value + 1, STEPS.length - 1));
+      completedStepRef.current = null;
+    }, 180);
+  }, [active, currentStep, step?.final]);
 
   const updateHighlight = useCallback(() => {
     if (!active || !step?.selector) {
@@ -229,20 +203,27 @@ export const Tutorial = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [active, closeGuide]);
 
-  // The spotlight intentionally leaves the highlighted control usable.
-  // Users can try the real control while the tour never writes tutorial data.
+  // Each guided action is detected on the real control. Until it happens,
+  // the four blocker panels prevent accidental interaction with anything else.
   useEffect(() => {
-    if (!active || !step?.selector) return undefined;
+    if (!active || !step?.selector || !step.completeOn) return undefined;
     const target = document.querySelector(step.selector);
     if (!target) return undefined;
-    const refresh = () => window.requestAnimationFrame(updateHighlight);
-    target.addEventListener('click', refresh);
-    target.addEventListener('input', refresh);
-    return () => {
-      target.removeEventListener('click', refresh);
-      target.removeEventListener('input', refresh);
+    const handleAction = (event) => {
+      if (step.completeOn === 'input' && !String(event.currentTarget.value || '').trim()) return;
+      if (step.completeOn === 'click' && event.currentTarget.disabled) return;
+      advanceFromAction();
     };
-  }, [active, step, updateHighlight]);
+    target.addEventListener(step.completeOn, handleAction);
+    return () => target.removeEventListener(step.completeOn, handleAction);
+  }, [active, step, targetFound, advanceFromAction]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    const observer = new MutationObserver(() => window.requestAnimationFrame(updateHighlight));
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'disabled'] });
+    return () => observer.disconnect();
+  }, [active, updateHighlight]);
 
   const goBack = () => setCurrentStep((value) => Math.max(0, value - 1));
   const goNext = () => {
@@ -316,11 +297,15 @@ export const Tutorial = () => {
                 </div>
                 <h3 style={{ margin: '0 0 7px', fontSize: '1rem', lineHeight: 1.25 }}>{content[0]}</h3>
                 <p style={{ margin: 0, color: '#c5cad5', fontSize: '0.78rem', lineHeight: 1.55 }}>{content[1]}</p>
-                <p style={{ margin: '10px 0 0', padding: '8px 9px', borderRadius: 9, color: '#b7c1d7', background: 'rgba(255,255,255,0.045)', fontSize: '0.68rem', lineHeight: 1.45 }}>{words.live}</p>
+                <p style={{ margin: '10px 0 0', padding: '8px 9px', borderRadius: 9, color: '#facc15', background: 'rgba(250,204,21,0.08)', fontSize: '0.68rem', lineHeight: 1.45, fontWeight: 750 }}>{step.final ? (language === 'th' ? 'Guide จบแล้ว กดเสร็จสิ้นเพื่อกลับไปใช้งานตามปกติ' : 'The guided flow is complete. Finish to return to the app.') : (targetFound ? (language === 'th' ? 'แตะเฉพาะจุดที่ไฮไลต์เพื่อปลดล็อกขั้นถัดไป' : 'Tap the highlighted control to unlock the next step.') : (language === 'th' ? 'กำลังรอให้หน้าจอแสดงจุดนี้...' : 'Waiting for this control to appear...'))}</p>
                 {!targetFound && step.selector && <p style={{ margin: '9px 0 0', color: '#facc15', fontSize: '0.68rem', lineHeight: 1.4 }}>{words.missing}</p>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 15 }}>
                   <button type="button" onClick={goBack} disabled={currentStep === 0} style={{ ...secondaryButtonStyle, opacity: currentStep === 0 ? 0.35 : 1 }}><ChevronLeft size={15} /> {words.back}</button>
-                  <button type="button" onClick={goNext} style={primaryButtonStyle}>{currentStep === STEPS.length - 1 ? <CheckCircle2 size={15} /> : null}{currentStep === STEPS.length - 1 ? words.finish : words.next}{currentStep < STEPS.length - 1 ? <ChevronRight size={15} /> : null}</button>
+                  {step.final ? (
+                    <button type="button" onClick={() => closeGuide(true)} style={primaryButtonStyle}><CheckCircle2 size={15} /> {words.finish}</button>
+                  ) : (
+                    <span style={{ color: '#b7c1d7', fontSize: '0.68rem', fontWeight: 800, textAlign: 'right' }}>{targetFound ? (language === 'th' ? 'รอการแตะ' : 'Action required') : (language === 'th' ? 'กำลังเตรียม' : 'Preparing')}</span>
+                  )}
                 </div>
               </motion.div>
             </div>

@@ -125,6 +125,12 @@ const Profile = () => {
   const [showStreakSplash, setShowStreakSplash] = useState(false);
   const [displayedStreak, setDisplayedStreak] = useState(1);
   const [showCurriculumModal, setShowCurriculumModal] = useState(false);
+
+  useEffect(() => {
+    const closeCurriculum = () => setShowCurriculumModal(false);
+    window.addEventListener('tutorial-close-curriculum', closeCurriculum);
+    return () => window.removeEventListener('tutorial-close-curriculum', closeCurriculum);
+  }, []);
   const [headerHovered, setHeaderHovered] = useState(false);
   const [progressHovered, setProgressHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
