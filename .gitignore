@@ -34,3 +34,7 @@ backup-stable-v1/
 backup-v1-stable/
 backup-v2-tutorial-complete/
 scripts/
+!scripts/
+scripts/*
+!scripts/verify_fsrs.mjs
+!scripts/verify_release_surface.mjs

@@ -1,302 +1,101 @@
-# Mem-eng Final Deploy Handoff For Gemini / Antigravity
+# Mem-eng Release Candidate Handoff
 
-Project path:
-`C:\Users\BoomBorriboon\.gemini\antigravity\scratch\mem-eng`
+Project path: C:\Users\BoomBorriboon\.gemini\antigravity\scratch\mem-eng
+Branch: codex/release-hardening
 
-Current branch:
-`codex/tutorial-stability-fix`
+## Scope
 
-Latest important commits:
-- `46f291a fix: diversify plus five word selection`
-- `52c551a fix: polish library create action and loading copy`
-- `c5e5a23 feat: add manual card creation in library`
+This branch is a release candidate. Do not redesign the UI or change product behavior. First deploy the code and backend protections exactly as listed below, then run the smoke tests. Ask the user before any destructive database test or real data deletion.
 
-## What Gemini Should Do Now
+## Verified Locally
 
-Do not redesign the app from scratch.
-The product is close to deploy. Your job is to verify, deploy, and guide the user step by step.
+Run these before deployment:
 
-Recommended order:
-1. Run `git status`.
-2. Run `npm run build`.
-3. Run `npm run lint`.
-4. Verify Supabase schema and environment variables.
-5. Verify Cloudflare/Netlify deploy settings.
-6. Deploy beta.
-7. Help connect domain.
-8. Plan PWA/App Store only after web beta works.
-
-## Current Build Status From Codex
-
-Verified on Codex:
-- `npm run build` passes.
-- `npm run lint` has warnings only, no errors.
-- Warning count is currently 15 React hook dependency warnings. These are not beta deploy blockers.
-- The JS bundle is still large, but route splitting was intentionally deferred to avoid risking smoothness before beta.
-
-## Core Product
-
-Mem-eng is a mobile-first vocabulary learning app:
-- Translate English words.
-- Save words into flashcards.
-- Review with FSRS spaced repetition.
-- Use visual context, Thai translation, examples, synonyms, related words, and word family where available.
-- Guest users can start immediately.
-- Logged-in users can save/sync progress.
-
-Main routes:
-- `/` Translate
-- `/purge` Flashcards / review
-- `/library` Manage saved cards
-- `/profile` Settings/profile
-- `/privacy`
-- `/terms`
-
-Bottom nav:
-- Translate
-- Flashcards
-- Library
-- My Profile
-
-## FSRS / Review Logic Check
-
-FSRS is implemented in:
-`src/context/VocabContext.jsx`
-
-Dependency:
-`ts-fsrs`
-
-Scheduler config:
-- `request_retention: 0.9`
-- `maximum_interval: 36500`
-- `enable_fuzz: false`
-- `enable_short_term: true`
-- `learning_steps: ['10m']`
-- `relearning_steps: ['10m']`
-
-Review button mapping:
-- Again -> `Rating.Again`
-- Hard -> `Rating.Hard`
-- Normal -> `Rating.Good`
-- Easy -> `Rating.Easy`
-
-Persisted FSRS fields:
-- `stability`
-- `difficulty`
-- `reps`
-- `lapses`
-- `state`
-- `scheduled_days`
-- `elapsed_days`
-- `learning_steps`
-- `next_review_date`
-- `lastReviewDate`
-
-Database table:
-`public.user_decks`
-
-Mastered behavior:
-- Mastered is not an FSRS rating.
-- It is a product-level escape hatch.
-- User can long-press the revealed flashcard center for about 2.5 seconds to mark Mastered.
-- Mastered cards get `srsLevel = 'Mastered'` and next review is pushed about 100 years forward.
-
-Potential future improvement:
-- Consider enabling FSRS fuzz later for more natural scheduling distribution, but do not change before beta unless the user confirms.
-
-## +5 Word Loading Logic
-
-Code:
-`src/context/VocabContext.jsx` -> `addNewCurriculumWords`
-`src/pages/Purge.jsx` -> `handleStartWithNewWords`
-
-Current behavior:
-- Adds 5 new cards from the active curriculum.
-- Active curriculum comes from `chatgpt_anki_curriculum`.
-- If curriculum is missing or `Self-Study only`, backend fallback target is `Oxford 5000`.
-- Words are loaded from Supabase table `curriculum_words`.
-- Existing deck words are filtered out.
-- It checks `global_dictionary` cache first.
-- Cached words with images are preferred for speed.
-- Selection was recently improved to randomize and diversify by CEFR + POS so new guests do not keep seeing the same sequence.
-- If a word is not cached, it calls Supabase Edge Function `get-word-details`.
-- If no image exists, it fetches one with `fetchVocabImage`.
-
-Important:
-- The app should not generate random out-of-curriculum words when a curriculum is complete.
-- If all words in a selected curriculum are already in the deck, show a friendly complete state and hide/disable `+5`.
-- This final "hide +5 when exhausted" polish is not fully guaranteed yet; verify before public release.
-
-## Library Feature Status
-
-Library is implemented at:
-`src/pages/Library.jsx`
-
-Capabilities:
-- View all deck words.
-- Search.
-- Filter by review stage.
-- Open card details.
-- Edit English word.
-- Edit Thai translation.
-- Edit English definition.
-- Search Photo.
-- Upload image.
-- Auto Generate Details.
-- Remove from deck.
-- Create a manual flashcard from the `Create flashcard` button under search.
-
-Critical data rule:
-- User-specific edits must not overwrite `global_dictionary`.
-- Use `user_decks.custom_word`, `custom_meaning`, `custom_video_url`, and `custom_notes`.
-
-## Supabase Database Checklist
-
-Files:
-- `database/schema.sql`
-- `database/library_overrides_migration.sql`
-- `database/curriculum_schema.sql`
-
-Verify live Supabase has these:
-
-`public.user_decks`
-- `custom_word text`
-- `custom_meaning jsonb`
-- `custom_video_url text`
-- `custom_notes text`
-- `updated_at timestamp with time zone`
-- FSRS fields listed above
-
-Storage:
-- Public bucket or signed-access bucket named `user-card-images`
-- File path convention: `{user_id}/{user_deck_id}/{timestamp}.webp` or similar
-- App stores URL in `user_decks.custom_video_url`
-
-Curriculum:
-- `public.curriculum_words`
-- Has rows for `Oxford 5000`
-- Has rows for `TOEIC Essential`
-- Confirm `curriculum_name`, `word`, `pos`, `cefr_level`
-
-Dictionary cache:
-- `public.global_dictionary`
-- `word`
-- `meaning`
-- `rich_data`
-- `cefr_level`
-
-## Guest / Anonymous User Cleanup
-
-Important: Current guest mode uses Supabase anonymous auth.
-
-Code:
-`src/context/AuthContext.jsx`
-
-Behavior:
-- If no session exists, app automatically calls `supabase.auth.signInAnonymously()`.
-- Sign out also signs in anonymously again.
-- Anonymous users can create rows in `users`, `user_decks`, and review logs.
-
-The user's goal:
-- If a guest/anonymous user does not convert/login within 30 days, delete that anonymous user and related data so the database does not bloat.
-
-Recommended implementation:
-1. Confirm Supabase anonymous auth is enabled intentionally.
-2. Confirm how anonymous users are represented:
-   - `auth.users.is_anonymous`
-   - `email is null`
-   - `public.users.email is null`
-   - `display_name = 'Guest'`
-3. Create a cleanup SQL function or scheduled Edge Function.
-4. Delete anonymous users older than 30 days that have not linked email/OAuth.
-5. Because foreign keys use `ON DELETE CASCADE`, deleting auth/public users should remove related deck/log rows if relationships are correct.
-6. Test on a fake anonymous user first.
-
-Do not delete real logged-in users.
-Do not run cleanup SQL blindly.
-Ask the user before applying destructive database cleanup.
-
-Suggested Supabase-side approach:
-- Use Supabase scheduled Edge Function or pg_cron if available.
-- Cleanup criteria should be conservative:
-  - anonymous auth user
-  - no email
-  - created more than 30 days ago
-  - no linked identities except anonymous
-
-## Environment / Secrets
-
-Check `.env.local` locally but do not expose secrets in chat.
-
-Likely needed:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- API keys used by Supabase Edge Functions, not frontend.
-
-Codex previously could not verify live Supabase schema because the local service key/check failed. Gemini should help the user verify keys and database from Supabase dashboard.
-
-## Deploy Checklist
-
-Before deploy:
-```bash
-git status
-npm run build
+npm run verify:release
+npm run verify:fsrs
 npm run lint
-```
+npm run build
+npm audit --omit=dev
 
-Cloudflare Pages / Netlify:
-- Build command: `npm run build`
-- Output directory: `dist`
-- SPA fallback must route all paths to `index.html`
-- Confirm env vars are set in hosting dashboard
-- Confirm Supabase redirect URLs include deployed domain
+Current results:
+- Release surface check passes.
+- FSRS check passes with Again 10m, Hard 15m, Normal 2d, and Easy 8d for a new card. A second Normal review advances to 11d in the deterministic check.
+- Lint has no errors or warnings.
+- Production build succeeds with route-level chunks.
+- Production dependency audit reports zero vulnerabilities.
 
-After deploy, test on iPhone:
-- Open deployed URL
-- Guest entry goes directly to app
-- Translate a new word
-- Save a card
-- Use +5
-- Review card with Again/Hard/Normal/Easy
-- Long-press Mastered
-- Open Library
-- Create manual card
-- Edit card
-- Upload/search photo
-- Sign in / link account
-- Logout returns to guest mode
+## Product State
 
-## Domain Checklist
+- Guest users enter directly through Supabase anonymous auth.
+- Translate builds a rich card, save adds it to the deck, and Flashcards use ts-fsrs for Again / Hard / Normal / Easy.
+- Mastered is a manual archive: long-press an exposed review card; it leaves ordinary review without changing its FSRS history.
+- +5 selects unused words from the current curriculum with cryptographic shuffle plus CEFR/POS diversification. It does not prioritize cached words, so new guests should not see a fixed first batch.
+- Movie, Music, and Business collections reappear after a review round. Their order and words are shuffled from curriculum_words; no static fixture remains.
+- Library edits are private per user through user_decks.custom_* fields and never overwrite the shared dictionary.
+- Interactive Guide Tour is a real Thai/English 18-step overlay. It highlights live UI, lets the learner try highlighted controls, and does not create, save, delete, reset, or rate cards itself.
 
-Once beta URL works:
-1. Buy or connect domain.
-2. Add domain to Cloudflare Pages/Netlify.
-3. Update DNS records as instructed by host.
-4. Wait for SSL certificate.
-5. Add final domain to Supabase auth redirect URLs.
-6. Retest Google login and guest flow.
+## Mandatory Supabase Deployment
 
-## App Store / PWA Plan
+Apply these in order using the Supabase CLI migration workflow or SQL Editor. Record success for every file:
 
-Do web beta first.
+1. database/library_overrides_migration.sql if it is not already live.
+2. supabase/migrations/20260711_release_hardening.sql
+3. supabase/migrations/20260711_secure_dictionary_writes.sql
+4. supabase/migrations/20260711_discovery_collections.sql
+5. supabase/migrations/20260711_guest_lifecycle.sql
+6. supabase/migrations/20260711_user_image_upload_policy.sql
 
-Then:
-1. Make PWA installable:
-   - manifest
-   - icons
-   - service worker
-   - offline/fallback strategy
-2. Test add-to-home-screen on iPhone.
-3. If wrapping for App Store:
-   - likely Capacitor
-   - Apple Developer account required
-   - privacy policy required
-   - terms required
-   - app icon and screenshots required
-   - review login/guest behavior carefully
+Database expectations:
+- global_dictionary is readable by the app, but browser roles cannot insert, update, or delete it.
+- user_decks has FSRS fields plus custom_word, custom_meaning, custom_video_url, and custom_notes.
+- curriculum_words contains main curricula and Movie Words / Music Words / Business Words.
+- user-card-images is intentionally public for existing card URLs. Uploads are owner-scoped and limited to image extensions and 5 MB. It is not private photo storage.
 
-Do not start App Store packaging until web deploy is stable.
+## Mandatory Edge Function Deployment
 
-## Prompt For The User To Paste Into Gemini
+Deploy or redeploy get-word-details, save-dictionary-card, cleanup-anonymous-users, and delete-account.
 
-Read `GEMINI_FINAL_DEPLOY_HANDOFF.md` first. Do not redesign or rebuild the app from scratch. Start by running `git status`, `npm run build`, and `npm run lint`. Then help me verify Supabase schema, anonymous guest cleanup strategy, hosting env vars, and deploy the current beta step by step. Ask me before running any destructive database cleanup. After web beta works, guide me through connecting a domain, then plan PWA/App Store.
+Set secrets only in Supabase, never as VITE_* hosting values:
+- GEMINI_API_KEY and optional fallback-provider keys.
+- SUPABASE_SERVICE_ROLE_KEY for Edge Functions only.
+- CLEANUP_CRON_SECRET for the HTTP cleanup function if that scheduling path is used.
+- ALLOWED_ORIGINS as a comma-separated allow-list. Include https://mem-eng.pages.dev and the final custom domain.
+
+The web host may receive only VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. Rotate any former API key that was ever deployed as a VITE_* key.
+
+## Guest Cleanup
+
+Guest retention is 30 days from last_sign_in_at or account creation if unavailable. The migration defines the cleanup function. Configure exactly one daily scheduler after deployment:
+
+- Preferred: a Supabase pg_cron job calling public.cleanup_anonymous_users().
+- Alternative: a scheduled HTTP request to cleanup-anonymous-users with x-cleanup-secret.
+
+Before scheduling, use only a deliberately created throwaway anonymous account older than the cutoff. Never test cleanup against real user data.
+
+## Cloudflare Pages Deployment
+
+1. Confirm the connected repository points to this branch and the working tree is clean.
+2. Build command: npm run build.
+3. Output folder: dist.
+4. Keep SPA fallback to index.html for /purge, /library, /profile, /privacy, and /terms.
+5. Add the deployed Pages URL and final domain to Supabase Auth redirect URLs.
+6. Deploy and run the smoke list below on a phone.
+
+## Required Production Smoke Test
+
+- Fresh visitor enters guest mode directly.
+- Translate one cached word and one new word.
+- Save a card, then use +5; verify it is not a fixed A-to-Z batch.
+- Finish a review round and import a Movie/Music/Business collection word.
+- Review through three reveal taps, then test Again / Hard / Normal / Easy.
+- Master a card and confirm it appears only in Library Mastered.
+- Edit a private Library card, change an image, and remove a test card. The confirmation dialog must center and dismiss cleanly.
+- Start Guide in Thai and English, try live navigation, then close it. No test word or card should appear.
+- Link Google/email from guest and verify the deck remains present.
+- Check Browser DevTools and Supabase logs for errors.
+
+## Do Not Do Yet
+
+- Do not introduce paywalls, subscriptions, App Store wrapping, analytics SDKs, or a redesign during this deployment pass.
+- Do not expose AI/provider keys to the browser.
+- Do not run destructive cleanup against real data without the user's confirmation.
