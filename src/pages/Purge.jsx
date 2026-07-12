@@ -10,6 +10,7 @@ import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { playClickSound, playSwipeSound, playSuccessSound, playMasterSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
 import { speakEnglish } from '../utils/speechHelper';
+import { supabase } from '../lib/supabaseClient';
 
 const getWordLookupCandidates = (word) => {
   const cleaned = String(word || '').toLowerCase().replace(/[^a-z\s-]/g, '').trim();
@@ -102,400 +103,40 @@ const cleanMediaUrl = (url) => {
   return url;
 };
 
-const TODAY_INTERESTING_WORDS = [
+const DISCOVERY_COLLECTIONS = [
   {
-    word: 'ubiquitous',
-    pos: 'adjective',
-    cefrLevel: 'C2',
-    meaning: JSON.stringify({
-      word: 'ubiquitous',
-      pos: 'adjective',
-      cefrLevel: 'C2',
-      _provider: 'Offline Curated',
-      englishExplanation: {
-        definition: 'Present, appearing, or found everywhere at the same time.',
-        phrase: 'the ubiquitous smartphones',
-        phraseMeaning: 'สมาร์ทโฟนที่มีอยู่ทุกหนทุกแห่ง'
-      },
-      thaiTranslation: {
-        word: 'ที่มีอยู่ทุกหนทุกแห่ง',
-        phrase: 'สมาร์ทโฟนที่มีอยู่ทุกหนทุกแห่ง'
-      },
-      scenes: [
-        {
-          situation: 'People looking at screens on a crowded train',
-          dialogue: 'Smartphones have become ubiquitous in our daily lives.',
-          meaning: 'สมาร์ทโฟนได้กลายเป็นสิ่งที่มีอยู่ทุกหนทุกแห่งในชีวิตประจำวันของเรา',
-          thaiWordUsed: 'มีอยู่ทุกหนทุกแห่ง',
-          imageTag: 'subway'
-        }
-      ],
-      imagePrompts: ['smartphones everywhere', 'screens crowd train'],
-      savedSceneImages: ['https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop']
-    }),
-    videoUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop',
+    name: 'Movie Words',
+    accent: '#e11d48',
+    fallbackWords: ['scene', 'script', 'sequel', 'trailer', 'cast', 'director', 'soundtrack', 'plot', 'genre', 'audience', 'premiere', 'dialogue', 'suspense', 'villain', 'hero', 'character', 'performance', 'screenplay', 'documentary', 'animation', 'cinema', 'footage', 'episode', 'franchise', 'critic', 'review', 'subtitle', 'dubbing', 'narrative', 'cameo']
   },
   {
-    word: 'pragmatic',
-    pos: 'adjective',
-    cefrLevel: 'C1',
-    meaning: JSON.stringify({
-      word: 'pragmatic',
-      pos: 'adjective',
-      cefrLevel: 'C1',
-      _provider: 'Offline Curated',
-      englishExplanation: {
-        definition: 'Solving problems in a sensible way that suits the conditions, rather than obeying fixed theories.',
-        phrase: 'a pragmatic approach',
-        phraseMeaning: 'แนวทางที่เน้นการปฏิบัติจริง'
-      },
-      thaiTranslation: {
-        word: 'ที่เน้นความเป็นจริง/ในทางปฏิบัติ',
-        phrase: 'แนวทางที่เน้นการปฏิบัติจริง'
-      },
-      scenes: [
-        {
-          situation: 'A business meeting choosing a simple working solution',
-          dialogue: 'We need to take a pragmatic approach to solve this issue.',
-          meaning: 'เราจำเป็นต้องใช้วิธีการที่เป็นไปได้จริงเพื่อแก้ปัญหานี้',
-          thaiWordUsed: 'เป็นไปได้จริง',
-          imageTag: 'office'
-        }
-      ],
-      imagePrompts: ['business strategy team', 'practical work solution'],
-      savedSceneImages: ['https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&auto=format&fit=crop']
-    }),
-    videoUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&auto=format&fit=crop',
+    name: 'Music Words',
+    accent: '#8b5cf6',
+    fallbackWords: ['melody', 'rhythm', 'chorus', 'verse', 'harmony', 'tempo', 'lyrics', 'album', 'single', 'concert', 'band', 'orchestra', 'instrument', 'vocalist', 'composer', 'producer', 'rehearsal', 'acoustic', 'remix', 'genre', 'beat', 'tune', 'pitch', 'note', 'stage', 'encore', 'playlist', 'recording', 'studio', 'microphone']
   },
   {
-    word: 'resilient',
-    pos: 'adjective',
-    cefrLevel: 'B2',
-    meaning: JSON.stringify({
-      word: 'resilient',
-      pos: 'adjective',
-      cefrLevel: 'B2',
-      _provider: 'Offline Curated',
-      englishExplanation: {
-        definition: 'Able to quickly return to a previous good condition after problems or difficulties.',
-        phrase: 'a resilient character',
-        phraseMeaning: 'อุปนิสัยที่ยืดหยุ่นไม่ยอมแพ้'
-      },
-      thaiTranslation: {
-        word: 'ที่ยืดหยุ่น/ฟื้นตัวเร็ว',
-        phrase: 'อุปนิสัยที่ยืดหยุ่นไม่ยอมแพ้'
-      },
-      scenes: [
-        {
-          situation: 'A small plant growing through a crack in concrete',
-          dialogue: 'She is resilient enough to bounce back from failure.',
-          meaning: 'เธอยืดหยุ่นแข็งแกร่งพอที่จะลุกขึ้นใหม่จากความล้มเหลว',
-          thaiWordUsed: 'ยืดหยุ่นแข็งแกร่ง',
-          imageTag: 'plant'
-        }
-      ],
-      imagePrompts: ['plant concrete crack', 'person rising up'],
-      savedSceneImages: ['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop']
-    }),
-    videoUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop',
+    name: 'Business Words',
+    accent: '#059669',
+    fallbackWords: ['revenue', 'profit', 'budget', 'strategy', 'client', 'customer', 'market', 'sales', 'contract', 'deadline', 'meeting', 'proposal', 'negotiate', 'investment', 'expense', 'invoice', 'manager', 'employee', 'colleague', 'department', 'target', 'growth', 'brand', 'competitor', 'launch', 'campaign', 'partnership', 'supplier', 'stock', 'forecast']
   }
 ];
 
-const COLLECTIONS_DATA = {
-  'Movie Words': [
-    {
-      word: 'climax',
-      pos: 'noun',
-      cefrLevel: 'B2',
-      meaning: JSON.stringify({
-        word: 'climax',
-        pos: 'noun',
-        cefrLevel: 'B2',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'The most exciting or important part of a story, play, or movie, usually near the end.',
-          phrase: 'reach a dramatic climax',
-          phraseMeaning: 'เข้าสู่จุดไคลแม็กซ์ที่น่าตื่นเต้น'
-        },
-        thaiTranslation: {
-          word: 'จุดสำคัญสุด/จุดไคลแม็กซ์',
-          phrase: 'เข้าสู่จุดไคลแม็กซ์ที่น่าตื่นเต้น'
-        },
-        scenes: [
-          {
-            situation: 'A movie theater screen during an action battle scene',
-            dialogue: 'The film reaches its dramatic climax in the final battle.',
-            meaning: 'ภาพยนตร์เรื่องนี้มาถึงจุดสำคัญที่สุดในฉากต่อสู้สุดท้าย',
-            thaiWordUsed: 'จุดสำคัญที่สุด',
-            imageTag: 'theater'
-          }
-        ],
-        imagePrompts: ['movie climax explosion', 'exciting movie end'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop',
-    },
-    {
-      word: 'protagonist',
-      pos: 'noun',
-      cefrLevel: 'C1',
-      meaning: JSON.stringify({
-        word: 'protagonist',
-        pos: 'noun',
-        cefrLevel: 'C1',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'The main character in a movie, play, story, or book.',
-          phrase: 'the heroic protagonist',
-          phraseMeaning: 'ตัวละครเอกที่เป็นผู้กล้า'
-        },
-        thaiTranslation: {
-          word: 'ตัวเอกของเรื่อง/ตัวละครนำ',
-          phrase: 'ตัวละครเอกที่เป็นผู้กล้า'
-        },
-        scenes: [
-          {
-            situation: 'A spotlight on a lead actor on a theatre stage',
-            dialogue: 'The protagonist of the story struggles to save his city.',
-            meaning: 'ตัวเอกของเรื่องดิ้นรนต่อสู้เพื่อกอบกู้เมืองของเขา',
-            thaiWordUsed: 'ตัวเอกของเรื่อง',
-            imageTag: 'stage'
-          }
-        ],
-        imagePrompts: ['spotlight lead actor', 'hero story book'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500&auto=format&fit=crop',
-    },
-    {
-      word: 'thriller',
-      pos: 'noun',
-      cefrLevel: 'B2',
-      meaning: JSON.stringify({
-        word: 'thriller',
-        pos: 'noun',
-        cefrLevel: 'B2',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'A book, play, or movie with an exciting story, especially about crime, mystery, or danger.',
-          phrase: 'a suspenseful thriller',
-          phraseMeaning: 'ภาพยนตร์ระทึกขวัญที่ตึงเครียด'
-        },
-        thaiTranslation: {
-          word: 'หนังระทึกขวัญ/นิยายระทึกขวัญ',
-          phrase: 'ภาพยนตร์ระทึกขวัญที่ตึงเครียด'
-        },
-        scenes: [
-          {
-            situation: 'A dark detective room with neon shadows',
-            dialogue: 'I love watching mystery thrillers on rainy nights.',
-            meaning: 'ฉันชอบดูภาพยนตร์ระทึกขวัญสืบสวนในคืนที่ฝนตก',
-            thaiWordUsed: 'ภาพยนตร์ระทึกขวัญ',
-            imageTag: 'neon'
-          }
-        ],
-        imagePrompts: ['dark detective mystery', 'suspense movie shadow'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500&auto=format&fit=crop',
-    }
-  ],
-  'Music Words': [
-    {
-      word: 'harmony',
-      pos: 'noun',
-      cefrLevel: 'B2',
-      meaning: JSON.stringify({
-        word: 'harmony',
-        pos: 'noun',
-        cefrLevel: 'B2',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'The combination of different musical notes played or sung at the same time to produce a pleasing sound.',
-          phrase: 'sing in perfect harmony',
-          phraseMeaning: 'ร้องเพลงประสานเสียงอย่างสมบูรณ์แบบ'
-        },
-        thaiTranslation: {
-          word: 'ความประสานเสียง/ความกลมกลืน',
-          phrase: 'ร้องเพลงประสานเสียงอย่างสมบูรณ์แบบ'
-        },
-        scenes: [
-          {
-            situation: 'A choir singing together on stage',
-            dialogue: 'Their voices blended in beautiful harmony during the show.',
-            meaning: 'เสียงของพวกเขาผสานเข้าด้วยกันอย่างสอดประสานสวยงามในระหว่างการแสดง',
-            thaiWordUsed: 'สอดประสาน',
-            imageTag: 'choir'
-          }
-        ],
-        imagePrompts: ['choir stage singing', 'harmony musical notes'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500&auto=format&fit=crop',
-    },
-    {
-      word: 'rhythm',
-      pos: 'noun',
-      cefrLevel: 'B1',
-      meaning: JSON.stringify({
-        word: 'rhythm',
-        pos: 'noun',
-        cefrLevel: 'B1',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'A strong, regular, repeated pattern of movement or sound in music.',
-          phrase: 'a catchy drum rhythm',
-          phraseMeaning: 'จังหวะกลองที่ติดหู'
-        },
-        thaiTranslation: {
-          word: 'จังหวะดนตรี/ท่วงทำนอง',
-          phrase: 'จังหวะกลองที่ติดหู'
-        },
-        scenes: [
-          {
-            situation: 'A drummer playing a snare drum energetically',
-            dialogue: 'Just tap your feet to the rhythm of the drums.',
-            meaning: 'แค่เคาะเท้าตามจังหวะของกลองก็พอ',
-            thaiWordUsed: 'จังหวะ',
-            imageTag: 'drummer'
-          }
-        ],
-        imagePrompts: ['snare drum player', 'foot tapping music'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?w=500&auto=format&fit=crop',
-    },
-    {
-      word: 'crescendo',
-      pos: 'noun',
-      cefrLevel: 'C2',
-      meaning: JSON.stringify({
-        word: 'crescendo',
-        pos: 'noun',
-        cefrLevel: 'C2',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'A gradual increase in loudness in a piece of music, or a peak of excitement.',
-          phrase: 'build to a crescendo',
-          phraseMeaning: 'ค่อยๆ ดังขึ้นเรื่อยๆ จนถึงจุดพีค'
-        },
-        thaiTranslation: {
-          word: 'การเพิ่มความดังของเสียงดนตรี/จุดดนตรีดังสุด',
-          phrase: 'ค่อยๆ ดังขึ้นเรื่อยๆ จนถึงจุดพีค'
-        },
-        scenes: [
-          {
-            situation: 'An orchestra conductor waving baton passionately',
-            dialogue: 'The orchestra built up to a powerful crescendo.',
-            meaning: 'วงออเคสตราค่อยๆ เพิ่มเสียงบรรเลงให้ดังสุดขีดอย่างทรงพลัง',
-            thaiWordUsed: 'เพิ่มเสียงบรรเลงให้ดังสุดขีด',
-            imageTag: 'conductor'
-          }
-        ],
-        imagePrompts: ['orchestra conductor baton', 'crescendo peak music'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=500&auto=format&fit=crop',
-    }
-  ],
-  'Business Words': [
-    {
-      word: 'revenue',
-      pos: 'noun',
-      cefrLevel: 'C1',
-      meaning: JSON.stringify({
-        word: 'revenue',
-        pos: 'noun',
-        cefrLevel: 'C1',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'The total income/money generated by a business from sales of goods or services.',
-          phrase: 'boost annual revenue',
-          phraseMeaning: 'เพิ่มรายได้ประจำปี'
-        },
-        thaiTranslation: {
-          word: 'รายได้/รายรับ',
-          phrase: 'เพิ่มรายได้ประจำปี'
-        },
-        scenes: [
-          {
-            situation: 'A tablet showing rising financial bar charts',
-            dialogue: 'Our company has increased its annual revenue by twenty percent.',
-            meaning: 'บริษัทของเราได้เพิ่มรายได้ประจำปีขึ้นอีกร้อยละยี่สิบ',
-            thaiWordUsed: 'รายได้ประจำปี',
-            imageTag: 'charts'
-          }
-        ],
-        imagePrompts: ['financial bar charts tablet', 'business sales cash'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500&auto=format&fit=crop',
-    },
-    {
-      word: 'equity',
-      pos: 'noun',
-      cefrLevel: 'C1',
-      meaning: JSON.stringify({
-        word: 'equity',
-        pos: 'noun',
-        cefrLevel: 'C1',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'The value of a company shares, or the state of being fair and impartial.',
-          phrase: 'hold company equity',
-          phraseMeaning: 'ถือหุ้นหรือส่วนของเจ้าของในบริษัท'
-        },
-        thaiTranslation: {
-          word: 'หุ้น/ส่วนของผู้ถือหุ้น/ความเท่าเทียม',
-          phrase: 'ถือหุ้นหรือส่วนของเจ้าของในบริษัท'
-        },
-        scenes: [
-          {
-            situation: 'A business owner signing a share contract document',
-            dialogue: 'He was given some equity in the startup as a reward.',
-            meaning: 'เขาได้รับส่วนแบ่งหุ้นในบริษัทสตาร์ทอัพเป็นรางวัลตอบแทน',
-            thaiWordUsed: 'ส่วนแบ่งหุ้น',
-            imageTag: 'contract'
-          }
-        ],
-        imagePrompts: ['owner sign document contract', 'scales of equity fairness'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1450133064473-71024230f91b?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=500&auto=format&fit=crop',
-    },
-    {
-      word: 'synergy',
-      pos: 'noun',
-      cefrLevel: 'C2',
-      meaning: JSON.stringify({
-        word: 'synergy',
-        pos: 'noun',
-        cefrLevel: 'C2',
-        _provider: 'Offline Curated',
-        englishExplanation: {
-          definition: 'The extra energy, power, or effectiveness created when two or more people or organizations work together.',
-          phrase: 'create powerful team synergy',
-          phraseMeaning: 'สร้างพลังการทำงานร่วมกันอย่างแข็งแกร่ง'
-        },
-        thaiTranslation: {
-          word: 'การประสานพลัง/การทำงานร่วมกันแบบเสริมพลัง',
-          phrase: 'สร้างพลังการทำงานร่วมกันอย่างแข็งแกร่ง'
-        },
-        scenes: [
-          {
-            situation: 'Three team members stacking hands together in unity',
-            dialogue: 'The merger will create powerful synergy between the teams.',
-            meaning: 'การควบรวมกิจการจะสร้างการประสานพลังงานที่ยอดเยี่ยมระหว่างสองทีม',
-            thaiWordUsed: 'การประสานพลังงาน',
-            imageTag: 'unity'
-          }
-        ],
-        imagePrompts: ['hands stacked unity team', 'synergy puzzle fit'],
-        savedSceneImages: ['https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500&auto=format&fit=crop']
-      }),
-      videoUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500&auto=format&fit=crop',
-    }
-  ]
+const randomFloat = () => {
+  if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    const values = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(values);
+    return values[0] / 0x100000000;
+  }
+  return Math.random();
+};
+
+const shuffleItems = (items) => {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(randomFloat() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 };
 
 const parseMeaningField = (meaning) => {
@@ -943,7 +584,6 @@ const Purge = () => {
   const [activeReviewImageUrl, setActiveReviewImageUrl] = useState('');
   const [showStats, setShowStats] = useState(false);
   const [hoveredSrs, setHoveredSrs] = useState(null);
-  const [tutorialStep, setTutorialStep] = useState(null);
 
   useEffect(() => {
     if (regenCount >= 6) {
@@ -1036,8 +676,7 @@ const Purge = () => {
     if (
       !wordObj ||
       revealStep === 0 ||
-      tutorialStep === 10 ||
-      (target && (target.closest('button') || target.closest('a') || target.closest('svg') || target.closest('[role="button"]')))
+(target && (target.closest('button') || target.closest('a') || target.closest('svg') || target.closest('[role="button"]')))
     ) {
       return;
     }
@@ -1100,14 +739,14 @@ const Purge = () => {
   const [unlockedWords, setUnlockedWords] = useState([]);
   const [selectedUnlockIds, setSelectedUnlockIds] = useState({});
   const [flippedUnlockIds, setFlippedUnlockIds] = useState({});
-  const [showInterestingModal, setShowInterestingModal] = useState(false);
-  const [flippedInterestingWords, setFlippedInterestingWords] = useState({});
-  const [selectedInterestingWords, setSelectedInterestingWords] = useState({});
   const [showCollectionChoice, setShowCollectionChoice] = useState(false);
   const [showCollectionImport, setShowCollectionImport] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [flippedCollectionWords, setFlippedCollectionWords] = useState({});
   const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
+  const [activeCollectionWords, setActiveCollectionWords] = useState([]);
+  const [collectionCategories, setCollectionCategories] = useState(() => shuffleItems(DISCOVERY_COLLECTIONS));
+  const [isCollectionLoading, setIsCollectionLoading] = useState(false);
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
   const collectionPromptArmedRef = useRef(true);
   const lowGraphics = false;
@@ -1483,8 +1122,6 @@ const Purge = () => {
     const cleaned = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "").trim().toLowerCase();
     if (!cleaned) return;
     
-    window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: cleaned } }));
-    
     // Prevent duplicate push
     if (tooltipStack.length > 0 && tooltipStack[tooltipStack.length - 1].word === cleaned) {
       return;
@@ -1560,7 +1197,6 @@ const Purge = () => {
       };
       const res = await addWordToDeck(activeTooltipWord, richData);
       if (res.success || res.error?.includes('already exists')) {
-        window.dispatchEvent(new Event('tutorial-tooltip-saved'));
         setTooltipStack(prev => prev.map((item, idx) => 
           idx === prev.length - 1 && item.word === activeTooltipWord 
             ? { ...item, details: { ...item.details, alreadyInDeck: true } }
@@ -1606,61 +1242,107 @@ const Purge = () => {
     }
   };
 
-  const handleAddInterestingWords = async () => {
-    const unadded = TODAY_INTERESTING_WORDS.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
-    let count = 0;
-    for (const w of unadded) {
-      if (selectedInterestingWords[w.word] !== false) {
-        const richData = JSON.parse(w.meaning);
-        await addWordToDeck(w.word, richData);
-        count += 1;
-      }
-    }
-    setShowInterestingModal(false);
-    if (count > 0) {
-      showToast(`Added ${count} new words to your deck!`);
-      setIsInitialized(false);
-    }
-  };
-
-  const handleSelectCollection = (colName) => {
+  const handleSelectCollection = async (colName) => {
+    if (isCollectionLoading) return;
+    setIsCollectionLoading(true);
     setSelectedCollection(colName);
-    setShowCollectionChoice(false);
-    
-    const colWords = COLLECTIONS_DATA[colName] || [];
-    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
-    
-    if (unadded.length > 0) {
+
+    try {
+      const config = DISCOVERY_COLLECTIONS.find(item => item.name === colName);
+      let sourceWords = [];
+      const { data: databaseWords, error: databaseError } = await supabase
+        .from('curriculum_words')
+        .select('word, pos, cefr_level')
+        .eq('curriculum_name', colName);
+
+      if (!databaseError && databaseWords?.length) {
+        sourceWords = databaseWords;
+      } else {
+        sourceWords = (config?.fallbackWords || []).map(word => ({ word, pos: 'word', cefr_level: 'B1' }));
+      }
+
+      const existingWords = new Set(rawVocab.filter(Boolean).map(item => item.word?.toLowerCase().trim()).filter(Boolean));
+      const unaddedWords = sourceWords.filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()));
+      if (unaddedWords.length === 0) {
+        setSelectedCollection(null);
+        showToast('You have already imported every available word from "' + colName + '".');
+        return;
+      }
+
+      const recentKey = 'memeng_recent_discovery_' + colName.replace(/\s+/g, '_').toLowerCase();
+      let recentWords = [];
+      try { recentWords = JSON.parse(localStorage.getItem(recentKey) || '[]'); } catch (error) { recentWords = []; }
+      const recentSet = new Set(recentWords);
+      const freshPool = unaddedWords.filter(item => !recentSet.has(item.word.toLowerCase().trim()));
+      const candidatePool = freshPool.length >= 3 ? freshPool : unaddedWords;
+
+      const candidateNames = candidatePool.map(item => item.word.toLowerCase().trim());
+      const cachedDetails = new Map();
+      if (candidateNames.length > 0) {
+        const { data: cachedRows } = await supabase.from('global_dictionary').select('word, rich_data').in('word', candidateNames);
+        (cachedRows || []).forEach(row => {
+          if (row.rich_data) cachedDetails.set(row.word.toLowerCase().trim(), row.rich_data);
+        });
+      }
+
+      // Cache availability affects only loading speed, never the selection order.
+      const selectedCandidates = shuffleItems(candidatePool).slice(0, 3);
+      const cards = [];
+
+      for (const item of selectedCandidates) {
+        const normalizedWord = item.word.toLowerCase().trim();
+        let details = cachedDetails.get(normalizedWord);
+        if (typeof details === 'string') {
+          try { details = JSON.parse(details); } catch (error) { details = null; }
+        }
+        if (!details) details = await getAiWordRichDetails(item.word);
+        if (!details || details.error) continue;
+
+        cards.push({
+          word: item.word,
+          pos: details.pos || item.pos || 'word',
+          cefrLevel: details.cefrLevel || item.cefr_level || 'B1',
+          meaning: JSON.stringify(details),
+          videoUrl: details.savedSceneImages?.[0] || ''
+        });
+      }
+
+      if (cards.length === 0) {
+        showToast('Fresh words could not be loaded. Please try this collection again.');
+        return;
+      }
+
+      const pickedNames = cards.map(card => card.word.toLowerCase().trim());
+      localStorage.setItem(recentKey, JSON.stringify([...recentWords, ...pickedNames].slice(-12)));
       const defaultSelected = {};
-      unadded.forEach(w => {
-        defaultSelected[w.word] = true;
-      });
+      cards.forEach(card => { defaultSelected[card.word] = true; });
+      setActiveCollectionWords(cards);
       setSelectedCollectionWords(defaultSelected);
+      setFlippedCollectionWords({});
+      setShowCollectionChoice(false);
       setShowCollectionImport(true);
-    } else {
-      showToast(`You have already imported all words from "${colName}"!`);
+    } catch (error) {
+      console.error('Could not load discovery collection:', error);
+      showToast('Fresh words could not be loaded. Please try again.');
+    } finally {
+      setIsCollectionLoading(false);
     }
   };
 
   const handleAddCollectionWords = async () => {
     if (!selectedCollection) return;
-    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
-    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
-    for (const w of unadded) {
-      if (selectedCollectionWords[w.word] !== false) {
-        const richData = {
-          ...JSON.parse(w.meaning),
-          curriculum: selectedCollection
-        };
-        await addWordToDeck(w.word, richData);
-        count += 1;
-      }
+    for (const card of activeCollectionWords) {
+      if (selectedCollectionWords[card.word] === false) continue;
+      const richData = { ...parseMeaningField(card.meaning), curriculum: selectedCollection };
+      const result = await addWordToDeck(card.word, richData);
+      if (result?.success) count += 1;
     }
     setShowCollectionImport(false);
     setSelectedCollection(null);
+    setActiveCollectionWords([]);
     if (count > 0) {
-      showToast(`Added ${count} new words to your deck!`);
+      showToast('Added ' + count + ' new words to your deck!');
       setIsInitialized(false);
     }
   };
@@ -1726,7 +1408,7 @@ const Purge = () => {
     if (wordObj && revealStep === 0) {
       cardShowTimeRef.current = performance.now();
     }
-  }, [wordObj?.id, revealStep]);
+  }, [wordObj, revealStep]);
 
   const scrollContainerRef = useRef(null);
   const isProgrammaticScrolling = false; // kept for inline handler guard (no-op)
@@ -1750,57 +1432,6 @@ const Purge = () => {
 
   // Initialize queue once when vocab is loaded
   useEffect(() => {
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
-    if (isTutorialActive) {
-      const mockCard = {
-        id: 'tutorial-mock-hello',
-        word: 'hello',
-        pos: 'interjection',
-        cefrLevel: 'A1',
-        meaning: JSON.stringify({
-          word: 'hello',
-          pos: 'interjection',
-          cefrLevel: 'A1',
-          _provider: 'Offline Tutorial Mock',
-          englishExplanation: {
-            definition: 'Used as a greeting or to begin a telephone conversation.',
-            phrase: 'Hello! How are you doing today?',
-            phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
-          },
-          thaiTranslation: {
-            word: 'สวัสดี',
-            phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
-          },
-          scenes: [
-            {
-              situation: 'A warm greeting between friends meeting at a cafe',
-              thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ'
-            },
-            {
-              situation: 'Greeting someone on a phone call politely',
-              thaiDescription: 'การทักทายใครบางคนทางโทรศัพท์อย่างสุภาพ'
-            }
-          ],
-          imagePrompts: [
-            'A warm greeting between friends meeting at a cafe',
-            'Greeting someone on a phone call politely'
-          ],
-          validation: {
-            isInvalid: false,
-            suggestion: null
-          }
-        }),
-        videoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
-        isImageSaved: true,
-        srsLevel: 'Learning',
-        nextReviewDate: new Date().toISOString()
-      };
-      setSessionQueue([mockCard]);
-      setIsStudying(true);
-      setIsInitialized(true);
-      return;
-    }
-
     if (!loading && !isInitialized) {
       const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
       setSessionQueue(due);
@@ -1808,191 +1439,22 @@ const Purge = () => {
     }
   }, [vocab, loading, isInitialized]);
 
-  // Listeners for custom study session exits, tutorial step syncs, and resets
+  // Listener used by the normal study exit control.
   useEffect(() => {
     const handleExitSession = () => {
       const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
       setSessionQueue(due);
       setIsStudying(false);
       setIsCustomSession(false);
-      try {
-        localStorage.removeItem('memeng_is_studying');
-      } catch (err) {}
+      try { localStorage.removeItem('memeng_is_studying'); } catch (err) {}
     };
-
-    const handleStepChanged = (e) => {
-      const step = e.detail?.step;
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
-
-      if (isTutorialActive) {
-        setSessionQueue(prev => {
-          if (!prev.some(c => c.id === 'tutorial-mock-hello')) {
-            return [{
-              id: 'tutorial-mock-hello',
-              word: 'hello',
-              pos: 'interjection',
-              cefrLevel: 'A1',
-              meaning: JSON.stringify({
-                word: 'hello',
-                pos: 'interjection',
-                cefrLevel: 'A1',
-                _provider: 'Offline Tutorial Mock',
-                englishExplanation: {
-                  definition: 'Used as a greeting or to begin a telephone conversation.',
-                  phrase: 'Hello! How are you doing today?',
-                  phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
-                },
-                thaiTranslation: {
-                  word: 'สวัสดี',
-                  phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
-                },
-                scenes: [
-                  {
-                    situation: 'A warm greeting between friends meeting at a cafe',
-                    thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ'
-                  },
-                  {
-                    situation: 'Greeting someone on a phone call politely',
-                    thaiDescription: 'การทักทายใครบางคนทางโทรศัพท์อย่างสุภาพ'
-                  }
-                ],
-                imagePrompts: [
-                  'A warm greeting between friends meeting at a cafe',
-                  'Greeting someone on a phone call politely'
-                ],
-                validation: {
-                  isInvalid: false,
-                  suggestion: null
-                }
-              }),
-              videoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
-              isImageSaved: true,
-              srsLevel: 'Learning',
-              nextReviewDate: new Date().toISOString()
-            }];
-          }
-          return prev;
-        });
-        setIsStudying(true);
-      }
-
-      // Sync reveal steps with current step in TUTORIAL_STEPS:
-      // Index 5: Flashcard Deck -> revealStep = 0 (unrevealed)
-      // Index 6: Reveal English word -> revealStep = 1
-      // Index 7-11: Context, dictionary, speaker, add, swipe demo, SRS Buttons -> revealStep = 3 (fully revealed)
-      setTutorialStep(step);
-      if (step === 5) {
-        setRevealStep(0);
-        setExitDirection(null);
-      } else if (step === 6) {
-        setRevealStep(1);
-        setExitDirection(null);
-      } else if (step >= 7 && step <= 11) {
-        setRevealStep(3);
-        // For step 10 (Swipe Demo): force reset the card so it's visible for the wobble animation
-        if (step === 10) {
-          setExitDirection(null);
-          x.set(0);
-          y.set(0);
-          // Ensure mock card is in queue and visible
-          setSessionQueue(prev => {
-            const mockCard = {
-              id: 'tutorial-mock-hello',
-              word: 'hello',
-              pos: 'interjection',
-              cefrLevel: 'A1',
-              meaning: JSON.stringify({
-                word: 'hello',
-                pos: 'interjection',
-                cefrLevel: 'A1',
-                _provider: 'Offline Tutorial Mock',
-                englishExplanation: {
-                  definition: 'Used as a greeting or to begin a telephone conversation.',
-                  phrase: 'Hello! How are you doing today?',
-                  phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
-                },
-                thaiTranslation: { word: 'สวัสดี', phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?' },
-                scenes: [{ situation: 'A warm greeting between friends meeting at a cafe', thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ' }],
-                imagePrompts: ['A warm greeting between friends meeting at a cafe'],
-                validation: { isInvalid: false, suggestion: null }
-              }),
-              videoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
-              isImageSaved: true,
-              srsLevel: 'Learning',
-              nextReviewDate: new Date().toISOString()
-            };
-            if (prev.some(c => c.id === 'tutorial-mock-hello')) return prev;
-            return [mockCard];
-          });
-          setIsStudying(true);
-        }
-      }
-    };
-
-    const handleResetEvent = () => {
-      setRevealStep(0);
-      const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-      if (isDone) {
-        const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
-        setSessionQueue(due);
-        setIsStudying(false);
-      }
-    };
-
     window.addEventListener('exit-study-session', handleExitSession);
-    window.addEventListener('tutorial-step-changed', handleStepChanged);
-    window.addEventListener('tutorial-reset', handleResetEvent);
-    return () => {
-      window.removeEventListener('exit-study-session', handleExitSession);
-      window.removeEventListener('tutorial-step-changed', handleStepChanged);
-      window.removeEventListener('tutorial-reset', handleResetEvent);
-    };
+    return () => window.removeEventListener('exit-study-session', handleExitSession);
   }, [vocab]);
 
-  // Self-correcting mock card purge on mount/update if tutorial is finished
+  // Offer a freshly shuffled collection whenever the user returns to a caught-up state.
   useEffect(() => {
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (isDone) {
-      const hasMock = sessionQueue.some(c => c.id === 'tutorial-mock-hello');
-      if (hasMock) {
-        const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
-        setSessionQueue(due);
-        setIsStudying(false);
-      }
-    }
-  }, [vocab, sessionQueue]);
-  
-  // 1. Today's Interesting Words check on mount
-  useEffect(() => {
-    if (loading) return;
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone) return; // Skip if tutorial is active
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const lastSeenDate = localStorage.getItem('memeng_last_interesting_seen_date');
-
-    if (lastSeenDate !== todayStr) {
-      const unadded = TODAY_INTERESTING_WORDS.filter(
-        w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase())
-      );
-      if (unadded.length > 0) {
-        const defaultSelected = {};
-        unadded.forEach(w => {
-          defaultSelected[w.word] = true;
-        });
-        setSelectedInterestingWords(defaultSelected);
-        setShowInterestingModal(true);
-      }
-      localStorage.setItem('memeng_last_interesting_seen_date', todayStr);
-    }
-  }, [vocab, loading]);
-
-  // 2. Trigger Recommended Collections modal whenever a study round finishes
-  useEffect(() => {
-    if (loading) return;
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone) return;
-
+    if (loading || localStorage.getItem('memeng_tutorial_running') === 'true') return;
     const dueCountLocal = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()).length;
     if (isStudying || dueCountLocal > 0) {
       collectionPromptArmedRef.current = true;
@@ -2004,6 +1466,31 @@ const Purge = () => {
       setShowCollectionChoice(true);
     }
   }, [vocab, isStudying, loading, showCollectionChoice, showCollectionImport]);
+
+  useEffect(() => {
+    if (showCollectionChoice) setCollectionCategories(shuffleItems(DISCOVERY_COLLECTIONS));
+  }, [showCollectionChoice]);
+
+  useEffect(() => {
+    const openCollections = () => {
+      setShowCollectionImport(false);
+      setSelectedCollection(null);
+      setActiveCollectionWords([]);
+      setShowCollectionChoice(true);
+    };
+    const closeCollections = () => {
+      setShowCollectionChoice(false);
+      setShowCollectionImport(false);
+      setSelectedCollection(null);
+      setActiveCollectionWords([]);
+    };
+    window.addEventListener('tutorial-open-collections', openCollections);
+    window.addEventListener('tutorial-close-collections', closeCollections);
+    return () => {
+      window.removeEventListener('tutorial-open-collections', openCollections);
+      window.removeEventListener('tutorial-close-collections', closeCollections);
+    };
+  }, []);
   
   let richCardData = wordObj ? parseMeaningField(wordObj.meaning) : null;
 
@@ -2030,7 +1517,7 @@ const Purge = () => {
     } else {
       setActiveReviewImageUrl(wordObj.videoUrl || '');
     }
-  }, [wordObj?.id, wordObj?.isImageSaved, wordObj?.videoUrl]);
+  }, [wordObj]);
 
   const getStatusWords = () => {
     if (!selectedStatus) return [];
@@ -2291,7 +1778,7 @@ const Purge = () => {
                       No cards found matching your query.
                     </div>
                   ) : (
-                    statusWords.map(item => {
+                    statusWords.map((item, index) => {
                       let parsedMeaning = parseMeaningField(item.meaning);
                       const definition = parsedMeaning?.englishExplanation?.definition || item.meaning;
                       const thaiTranslation = parsedMeaning?.thaiTranslation?.word || '';
@@ -2801,12 +2288,8 @@ const Purge = () => {
               maxWidth: isCurrentCardWord ? '350px' : '320px',
               maxHeight: '78vh',
               overflowY: 'auto',
-              background: (localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true')
-                ? 'rgba(15, 23, 42, 0.99)'
-                : (lowGraphics ? 'rgba(12, 14, 18, 0.98)' : 'rgba(12, 14, 18, 0.94)'),
-              backdropFilter: (localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true')
-                ? 'none'
-                : (lowGraphics ? 'none' : 'blur(20px)'),
+              background: lowGraphics ? 'rgba(12, 14, 18, 0.98)' : 'rgba(12, 14, 18, 0.94)',
+              backdropFilter: lowGraphics ? 'none' : 'blur(20px)',
               borderRadius: '24px',
               border: '1px solid rgba(255,255,255,0.12)',
               boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
@@ -2858,7 +2341,6 @@ const Purge = () => {
                 id="tutorial-tooltip-speak-btn"
                 onClick={() => {
                   handleSpeak(activeTooltipWord);
-                  window.dispatchEvent(new Event('tutorial-tooltip-spoken'));
                 }} 
                 className="glass-button animate-scale" 
                 style={{ 
@@ -3331,215 +2813,7 @@ const Purge = () => {
     );
   };
 
-  const renderInterestingWordsModal = () => {
-    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
-    
-    return (
-      <>
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          exit={{ opacity: 0 }}
-          style={{ position: 'absolute', inset: 0, background: lowGraphics ? '#050508' : 'rgba(5, 5, 8, 0.9)', zIndex: 15000, backdropFilter: lowGraphics ? 'none' : 'blur(20px)' }}
-        />
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
-          <motion.div
-            initial={{ scale: 0.95, y: 30, opacity: 0 }} 
-            animate={{ scale: 1, y: 0, opacity: 1 }} 
-            exit={{ scale: 0.95, y: 30, opacity: 0 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            style={{
-              pointerEvents: 'auto',
-              width: '92%', 
-              maxWidth: '400px', 
-              height: '82%', 
-              background: 'radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12) 0%, rgba(8, 9, 11, 0.95) 100%)',
-              backdropFilter: lowGraphics ? 'none' : 'blur(30px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-              borderRadius: '28px', 
-              border: '1px solid rgba(59, 130, 246, 0.2)', 
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-              display: 'flex', 
-              flexDirection: 'column', 
-              overflow: 'hidden',
-              padding: '1.5rem 1rem'
-            }}
-          >
-            <div style={{ textAlign: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                background: 'rgba(59, 130, 246, 0.12)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                marginBottom: '0.75rem'
-              }}>
-                <Compass size={22} color="#3b82f6" />
-              </div>
-              <h2 style={{
-                fontSize: '1.45rem',
-                fontWeight: 950,
-                margin: 0,
-                background: 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #3b82f6 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                letterSpacing: '-0.8px'
-              }}>
-                Today's Interesting Words
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>
-                Tap cards to translate. Tap speaker for sound.
-              </p>
-            </div>
-
-            <div className="scrollable-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '4px', marginBottom: '1rem' }}>
-              {unadded.map((card, index) => {
-                let parsedMeaning = JSON.parse(card.meaning);
-                const isChecked = selectedInterestingWords[card.word] !== false;
-                const showThai = !!flippedInterestingWords[card.word];
-                const definition = showThai
-                  ? (parsedMeaning.thaiTranslation?.word || '')
-                  : (parsedMeaning.englishExplanation?.definition || parsedMeaning.definition || 'No definition available.');
-
-                return (
-                  <motion.div
-                    key={`${card.word}-${index}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setFlippedInterestingWords(prev => ({ ...prev, [card.word]: !prev[card.word] }))}
-                    style={{
-                      position: 'relative',
-                      height: '140px',
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      boxShadow: '0 8px 20px rgba(0,0,0,0.3)'
-                    }}
-                  >
-                    <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-                      <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'linear-gradient(to top, rgba(8, 9, 11, 0.95) 0%, rgba(8, 9, 11, 0.4) 60%, rgba(8, 9, 11, 0.75) 100%)',
-                      zIndex: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      padding: '0.75rem'
-                    }} />
-                    <div style={{ position: 'absolute', inset: 0, zIndex: 3, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0.75rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.62rem', background: 'rgba(59, 130, 246, 0.18)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.28)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontWeight: 800 }}>
-                            {card.cefrLevel || 'C1'}
-                          </span>
-                          <span style={{ fontSize: '0.55rem', background: 'rgba(255, 255, 255, 0.06)', color: 'rgba(255, 255, 255, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '6px', fontWeight: 800 }}>
-                            {card.pos || 'n.'}
-                          </span>
-                        </div>
-                        <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedInterestingWords(prev => ({ ...prev, [card.word]: !isChecked }));
-                          }}
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '6px',
-                            background: isChecked ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'rgba(0, 0, 0, 0.4)',
-                            border: "1.5px solid " + (isChecked ? "#3b82f6" : "rgba(255, 255, 255, 0.3)"),
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            zIndex: 5
-                          }}
-                        >
-                          {isChecked && <CheckCircle size={12} color="#fff" strokeWidth={3} />}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', textAlign: 'left' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                          <h4 style={{ fontSize: '1.15rem', fontWeight: 950, margin: 0, color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
-                            {card.word}
-                          </h4>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSpeak(card.word);
-                            }}
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.1)',
-                              border: '1px solid rgba(255, 255, 255, 0.2)',
-                              borderRadius: '50%',
-                              width: '22px',
-                              height: '22px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              color: '#60a5fa',
-                              padding: 0
-                            }}
-                          >
-                            <Volume2 size={12} />
-                          </button>
-                          {showThai && (
-                            <span style={{ fontSize: '0.52rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '1px 4px', borderRadius: '4px', fontWeight: 900, marginLeft: 'auto' }}>THAI</span>
-                          )}
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.68rem', color: showThai ? '#60a5fa' : 'rgba(255, 255, 255, 0.72)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {definition}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', flexShrink: 0, width: '100%' }}>
-              <button
-                onClick={() => setShowInterestingModal(false)}
-                className="glass-button animate-scale"
-                style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem', borderRadius: '18px', fontWeight: 800, background: 'rgba(255, 255, 255, 0.02)', color: 'rgba(255, 255, 255, 0.75)' }}
-              >
-                Skip
-              </button>
-              <button
-                onClick={handleAddInterestingWords}
-                className="glass-button primary animate-scale"
-                style={{ flex: 1.5, padding: '0.65rem', fontSize: '0.85rem', borderRadius: '18px', fontWeight: 900, background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: 'white' }}
-              >
-                Add Selected
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      </>
-    );
-  };
-
   const renderCollectionChoiceModal = () => {
-    const categories = [
-      { name: 'Movie Words', theme: 'from linear-gradient(135deg, #e11d48, #be123c)', accent: '#e11d48' },
-      { name: 'Music Words', theme: 'from linear-gradient(135deg, #8b5cf6, #6d28d9)', accent: '#8b5cf6' },
-      { name: 'Business Words', theme: 'from linear-gradient(135deg, #059669, #047857)', accent: '#059669' }
-    ];
-
     return (
       <>
         <motion.div 
@@ -3592,16 +2866,17 @@ const Purge = () => {
                 Expand Your Vocabulary
               </h2>
               <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', marginTop: '0.3rem' }}>
-                Select a collection to import new words
+                {isCollectionLoading ? 'Loading fresh words...' : 'Select a collection to import new words'}
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {categories.map((cat) => (
+              {collectionCategories.map((cat) => (
                 <motion.button
                   key={cat.name}
                   whileHover={{ scale: 1.01, border: '1px solid rgba(255, 255, 255, 0.15)' }}
                   whileTap={{ scale: 0.99 }}
+                  disabled={isCollectionLoading}
                   onClick={() => handleSelectCollection(cat.name)}
                   style={{
                     display: 'flex',
@@ -3671,7 +2946,7 @@ const Purge = () => {
 
   const renderCollectionImportModal = () => {
     if (!selectedCollection) return null;
-    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
+    const colWords = activeCollectionWords;
     const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
 
     return (
@@ -3684,6 +2959,7 @@ const Purge = () => {
         />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 16000, pointerEvents: 'none' }}>
           <motion.div
+            id="tutorial-collection-modal"
             initial={{ scale: 0.95, y: 30, opacity: 0 }} 
             animate={{ scale: 1, y: 0, opacity: 1 }} 
             exit={{ scale: 0.95, y: 30, opacity: 0 }}
@@ -4072,7 +3348,6 @@ const Purge = () => {
 
   const handleSrsChoice = (choice) => {
     if (!wordObj) return;
-    window.dispatchEvent(new CustomEvent('tutorial-srs-clicked', { detail: choice }));
     
     let durationMs = 1500;
     if (revealTimeRef.current) {
@@ -4086,10 +3361,8 @@ const Purge = () => {
       playSuccessSound();
     }
     
-    // Save FSRS backend calculations
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
-    if (!isTutorialActive) {
-      updateWordSrs(wordObj.id, choice, durationMs);
+    // Save FSRS backend calculations.
+    updateWordSrs(wordObj.id, choice, durationMs);
 
       // Update Nong Mem Stats
       const richCardData = parseMeaningField(wordObj.meaning);
@@ -4166,11 +3439,10 @@ const Purge = () => {
         mood = 'idle';
       }
 
-      if (comment) {
-        window.dispatchEvent(new CustomEvent('nongmem-comment', { 
-          detail: { text: comment, mood, duration: 4000 } 
-        }));
-      }
+    if (comment) {
+      window.dispatchEvent(new CustomEvent('nongmem-comment', {
+        detail: { text: comment, mood, duration: 4000 }
+      }));
     }
 
     setTimeout(() => {
@@ -4186,13 +3458,7 @@ const Purge = () => {
           return [...rest, current];
         });
       } else {
-        // Prevent splicing the queue or exiting study mode if tutorial is currently active
-        // This ensures the tutorial components can transition to the profile page without unmounting mid-animation.
-        const isTutorial = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
         setSessionQueue(prev => {
-          if (isTutorial) {
-            return prev;
-          }
           if (prev.length === 0) return prev;
           const [current, ...rest] = prev;
           if (rest.length === 0) {
@@ -4556,6 +3822,7 @@ const Purge = () => {
                 >
                   {/* Glowing clickable check mark card */}
                   <motion.div 
+                    id="tutorial-add-five-card"
                     whileHover={!isLoadingNewWords ? { scale: 1.06, borderColor: '#f97316', boxShadow: '0 0 35px rgba(249, 115, 22, 0.25)' } : {}}
                     whileTap={!isLoadingNewWords ? { scale: 0.94 } : {}}
                     onClick={(e) => {
@@ -4617,26 +3884,6 @@ const Purge = () => {
 
                   <h2 style={{ color: theme === 'theme-3' ? '#000000' : 'white', marginBottom: '0.2rem', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px' }}>All caught up!</h2>
                   <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontSize: '0.85rem' }}>You've reviewed all cards for today.</p>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setShowCollectionChoice(true);
-                    }}
-                    style={{
-                      marginTop: '0.4rem',
-                      padding: '0.42rem 0.72rem',
-                      borderRadius: '999px',
-                      border: '1px solid rgba(250, 204, 21, 0.3)',
-                      color: '#fde68a',
-                      background: 'rgba(250, 204, 21, 0.08)',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Browse word collections
-                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -4942,7 +4189,6 @@ const Purge = () => {
         {renderConfirmModal()}
         <AnimatePresence>
           {unlockedWords.length > 0 && renderUnlockedModal()}
-          {showInterestingModal && renderInterestingWordsModal()}
           {showCollectionChoice && renderCollectionChoiceModal()}
           {showCollectionImport && renderCollectionImportModal()}
           {showGuestModePopup && renderGuestModeModal()}
@@ -5042,85 +4288,19 @@ const Purge = () => {
           )}
         </AnimatePresence>
 
-        {/* Swipe Gestures HUD Overlay */}
-        {tutorialStep === 10 && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 90,
-            pointerEvents: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            padding: '24px 20px',
-          }}>
-            {/* UP: Good/Normal */}
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '125px' }}>
-              <motion.div
-                animate={{ y: [-4, 2, -4] }}
-                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
-              >
-                <PremiumFingerPointer direction="up" scale={0.7} />
-                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#10b981', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(16,185,129,0.5)', marginTop: '2px' }}>↑ GOOD (Normal)</span>
-              </motion.div>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flex: 1, padding: '0 4px', zIndex: 91 }}>
-              {/* LEFT: Again */}
-              <motion.div
-                animate={{ x: [-4, 2, -4] }}
-                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
-              >
-                <PremiumFingerPointer direction="left" scale={0.7} />
-                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#ef4444', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(239,68,68,0.5)', marginTop: '2px' }}>← AGAIN</span>
-              </motion.div>
-              
-              {/* RIGHT: Easy */}
-              <motion.div
-                animate={{ x: [4, -2, 4] }}
-                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
-              >
-                <PremiumFingerPointer direction="right" scale={0.7} />
-                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#3b82f6', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(59,130,246,0.5)', marginTop: '2px' }}>EASY →</span>
-              </motion.div>
-            </div>
-            
-            {/* DOWN: Hard */}
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '175px' }}>
-              <motion.div
-                animate={{ y: [4, -2, 4] }}
-                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
-              >
-                <PremiumFingerPointer direction="down" scale={0.7} />
-                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#f97316', letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(249,115,22,0.5)', marginTop: '2px' }}>↓ HARD</span>
-              </motion.div>
-            </div>
-          </div>
-        )}
-
         <motion.div
           key={wordObj.id}
           id="tutorial-flashcard-card"
           className="snap-card"
           initial={{ opacity: 0, y: 20 }}
-          animate={tutorialStep === 10 ? {
-            x: [0, 135, 0, -135, 0, 0, 0, 0, 0],
-            y: [0, 0, 0, 0, 0, -135, 0, 135, 0],
-            rotate: [0, 9, 0, -9, 0, 0, 0, 0, 0],
-            opacity: 1,
-            transition: { repeat: Infinity, duration: 4.2, ease: 'easeInOut', repeatDelay: 0.6 }
-          } : { opacity: 1, y: 0 }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ 
             x: exitDirection === 'left' ? -1000 : (exitDirection === 'right' ? 1000 : 0), 
             y: exitDirection === 'up' ? -1000 : (exitDirection === 'down' ? 1000 : 0), 
             opacity: 0, 
             transition: { duration: 0.25 } 
           }}
-          drag={tutorialStep === 10 ? false : true}
+          drag
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           dragSnapToOrigin={true}
           dragElastic={0.7}
@@ -5152,12 +4332,10 @@ const Purge = () => {
             }
             if (revealStep === 0) {
               setRevealStep(1);
-              window.dispatchEvent(new Event('tutorial-card-revealed'));
             } else if (revealStep === 1) {
               setRevealStep(2);
             } else if (revealStep === 2) {
               setRevealStep(3);
-              window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
             }
           }}
           style={{
@@ -5225,20 +4403,6 @@ const Purge = () => {
           >
             EASY ({projections.easy})
           </motion.div>
-
-          {/* Swipe finger pointer demo inside snap-card */}
-          {tutorialStep === 10 && (
-            <div style={{
-              position: 'absolute',
-              left: '50%',
-              top: '55%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 99,
-              pointerEvents: 'none'
-            }}>
-              <PremiumFingerPointer direction="up" scale={1.1} />
-            </div>
-          )}
 
           {isMasterHolding && (
             <div style={{

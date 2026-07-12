@@ -275,6 +275,7 @@ export default function Library() {
       <div style={{ position: 'relative', marginBottom: '16px' }}>
         <Search size={18} color="rgba(255,255,255,0.4)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
         <input 
+          id="tutorial-library-search"
           type="text" 
           placeholder="Search words..." 
           value={searchTerm}
@@ -297,6 +298,7 @@ export default function Library() {
       </div>
 
       <button
+        id="tutorial-library-create"
         onClick={openCreateCard}
         title="Create flashcard"
         style={{
@@ -350,7 +352,7 @@ export default function Library() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '4px', paddingBottom: '24px' }}>
+      <div id="tutorial-library-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '4px', paddingBottom: '24px' }}>
         {filteredVocab.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.3)' }}>
             <SearchX size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />

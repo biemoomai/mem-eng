@@ -93,7 +93,7 @@ function AppContent() {
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, []);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -141,6 +141,8 @@ function AppContent() {
     }, 450);
 
     return () => clearTimeout(timer);
+    // Lookup intentionally follows a selection change; the context callback is recreated by its provider.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWord]);
 
   const handlePopupMouseDown = () => {
@@ -198,6 +200,17 @@ function AppContent() {
     };
     window.addEventListener('tutorial-active-change', handleActiveChange);
     return () => window.removeEventListener('tutorial-active-change', handleActiveChange);
+  }, []);
+
+  useEffect(() => {
+    const openMenuForTutorial = () => setMenuOpen(true);
+    const closeMenuForTutorial = () => setMenuOpen(false);
+    window.addEventListener('tutorial-open-menu', openMenuForTutorial);
+    window.addEventListener('tutorial-close-menu', closeMenuForTutorial);
+    return () => {
+      window.removeEventListener('tutorial-open-menu', openMenuForTutorial);
+      window.removeEventListener('tutorial-close-menu', closeMenuForTutorial);
+    };
   }, []);
 
   const [dragStart, setDragStart] = useState(null);
@@ -376,7 +389,7 @@ function AppContent() {
     return () => {
       document.removeEventListener('click', handleDocumentClick);
     };
-  }, []);
+  }, [location.pathname]);
 
   // Theme is managed globally by ThemeContext now
 
@@ -664,6 +677,7 @@ function AppContent() {
             const isActive = location.pathname === item.path;
             return (
               <button
+                id={`tutorial-nav-${item.path === '/' ? 'translate' : item.path.slice(1)}`}
                 key={item.path}
                 onClick={() => {
                   playClickSound();
@@ -909,6 +923,7 @@ function AppContent() {
       <AnimatePresence>
         {showMenuButton && (
           <motion.button
+            id="tutorial-menu-button"
             key="hamburger-button"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -1014,6 +1029,7 @@ function AppContent() {
 
             {/* Scrollable settings settings section */}
             <motion.div 
+              id="tutorial-settings-panel"
               variants={containerVariants}
               style={{
                 display: 'flex',
@@ -1252,31 +1268,33 @@ function AppContent() {
                 </motion.button>
 
 
-                <motion.button
-                  variants={itemVariants}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowDeleteAccountConfirm(true);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '11px',
-                    borderRadius: '12px',
-                    background: 'rgba(127, 29, 29, 0.14)',
-                    border: '1px solid rgba(248, 113, 113, 0.28)',
-                    color: '#fca5a5',
-                    fontSize: '0.78rem',
-                    fontWeight: 750,
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <Trash2 size={15} />
-                  <span>{isAnonymous ? 'Delete Guest Data' : 'Delete Account & Data'}</span>
-                </motion.button>
+                {!isAnonymous && (
+                  <motion.button
+                    variants={itemVariants}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowDeleteAccountConfirm(true);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '11px',
+                      borderRadius: '12px',
+                      background: 'rgba(127, 29, 29, 0.14)',
+                      border: '1px solid rgba(248, 113, 113, 0.28)',
+                      color: '#fca5a5',
+                      fontSize: '0.78rem',
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    <span>Delete Account & Data</span>
+                  </motion.button>
+                )}
                 {/* Privacy & Terms */}
                 <motion.div
                   variants={itemVariants}

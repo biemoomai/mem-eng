@@ -341,22 +341,6 @@ const AddWord = () => {
   const [activeSearchOverlays, setActiveSearchOverlays] = useState([false, false]);
   const [selectedPrimaryImageIdx, setSelectedPrimaryImageIdx] = useState(null);
   const [activeImageControlsIdx, setActiveImageControlsIdx] = useState(null);
-  const [isTutorialActive, setIsTutorialActive] = useState(() => {
-    try {
-      return localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
-    } catch (e) {
-      return false;
-    }
-  });
-  const [tutorialStep, setTutorialStep] = useState(() => {
-    try {
-      const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-      return isDone ? null : 0;
-    } catch (e) {
-      return null;
-    }
-  });
-  const [tutorialSwipeDemoReady, setTutorialSwipeDemoReady] = useState(false);
 
   const [guestNudge, setGuestNudge] = useState(null); // null, 'soft', 'firm'
   const [showShortcutButtons, setShowShortcutButtons] = useState(() => {
@@ -401,27 +385,6 @@ const AddWord = () => {
     }
     setGuestNudge(null);
   };
-
-  useEffect(() => {
-    const handleStepChanged = (e) => {
-      setTutorialStep(e.detail.step);
-    };
-    const handleActiveChange = (e) => {
-      const nextActive = !!e.detail;
-      setIsTutorialActive(nextActive);
-      if (!nextActive) {
-        setTutorialStep(null);
-      } else {
-        setTutorialStep(0);
-      }
-    };
-    window.addEventListener('tutorial-step-changed', handleStepChanged);
-    window.addEventListener('tutorial-active-change', handleActiveChange);
-    return () => {
-      window.removeEventListener('tutorial-step-changed', handleStepChanged);
-      window.removeEventListener('tutorial-active-change', handleActiveChange);
-    };
-  }, []);
 
   const [tooltipStack, setTooltipStack] = useState([]);
   const currentTooltip = tooltipStack[tooltipStack.length - 1];
@@ -761,19 +724,6 @@ const AddWord = () => {
 
   const handleSaveWord = async () => {
     if (isSuccess || isExiting) return;
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
-    if (isTutorialActive) {
-      setIsExiting(true);
-      setTimeout(() => {
-        setIsSuccess(true);
-        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-        setSourceToast({
-          message: `Saved to deck! (Mock)`,
-          type: 'live'
-        });
-      }, 500);
-      return;
-    }
     
     // Swipe Right / Save
     if (richCardData?.validation?.isInvalid) {
@@ -801,7 +751,6 @@ const AddWord = () => {
             };
             
             await addWordToDeck(suggestion.trim().toLowerCase(), updatedRichData);
-            window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
             setSourceToast({
               message: `Saved "${suggestion.toLowerCase()}" to deck!`,
               type: 'live'
@@ -815,7 +764,6 @@ const AddWord = () => {
           }
         })();
       }
-      window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
       setTimeout(() => {
         handleClear();
       }, 300);
@@ -824,7 +772,6 @@ const AddWord = () => {
 
     if (isAlreadyInDeck) {
       setIsExiting(true);
-      window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
       setTimeout(() => {
         handleClear();
       }, 300);
@@ -857,7 +804,6 @@ const AddWord = () => {
     if (res.success) {
       setIsExiting(true);
       setIsSuccess(true);
-      window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
       setSourceToast({
         message: `Saved to deck!`,
         type: 'live'
@@ -873,21 +819,8 @@ const AddWord = () => {
 
   const handleDiscardWord = () => {
     if (isSuccess || isExiting) return;
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
-    if (isTutorialActive) {
-      setIsExiting(true);
-      setTimeout(() => {
-        setIsSuccess(true);
-        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-        setSourceToast({
-          message: `Discarded! (Mock)`,
-          type: 'live'
-        });
-      }, 500);
-      return;
-    }
     setIsExiting(true);
-    setTimeout(() => {
+    window.setTimeout(() => {
       handleClear();
     }, 300);
   };
@@ -930,7 +863,7 @@ const AddWord = () => {
       }, 1300);
     }
     return () => clearInterval(interval);
-  }, [isFilling]);
+  }, [isFilling, loadingSteps.length]);
 
   const currentIndex = useRef(0);
   const isScrolling = useRef(false);
@@ -1102,14 +1035,6 @@ const AddWord = () => {
     }
   };
 
-  // Self-correcting mock card cleanup when tutorial is completed/reset
-  useEffect(() => {
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (isDone && richCardData?._provider === 'Offline Tutorial Mock') {
-      handleClear();
-    }
-  }, [richCardData]);
-
   // Auto-scroll to center first card when translation completes
   useEffect(() => {
     if (richCardData) {
@@ -1122,19 +1047,7 @@ const AddWord = () => {
         handleScrollToCard(0);
       }, 350);
 
-      if (isTutorialActive) {
-        setSceneImages([
-          {
-            url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
-            source: 'Unsplash (Mock)'
-          },
-          {
-            url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop',
-            source: 'Unsplash (Mock)'
-          }
-        ]);
-        setSceneImagesLoading(false);
-      } else if (richCardData && !richCardData.validation?.isInvalid && richCardData.scenes?.length) {
+      if (richCardData && !richCardData.validation?.isInvalid && richCardData.scenes?.length) {
         setSceneImages([]);
         setSceneImagesLoading(true);
         Promise.all(
@@ -1152,6 +1065,8 @@ const AddWord = () => {
 
       return () => clearTimeout(timer);
     }
+    // Images are fetched once per generated card; adding the provider callback would refetch after every deck update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [richCardData]);
 
   // Paging scroll logic for Mouse Wheel & Touch Swipes
@@ -1245,102 +1160,6 @@ const AddWord = () => {
     speakEnglish(text);
   };
 
-  useEffect(() => {
-    const handleTypeWordEvent = async (e) => {
-      const targetWord = e.detail?.word || 'hello';
-      setWordInput('');
-      
-      let typed = '';
-      for (let i = 0; i < targetWord.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 150));
-        typed += targetWord[i];
-        setWordInput(typed);
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 400));
-      performTranslation(targetWord);
-    };
-
-    const handleSaveWordEvent = async () => {
-      if (isSuccess || isExiting || !richCardData) return;
-      
-      const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
-      if (isTutorialActive) {
-        setIsExiting(true);
-        setTimeout(() => {
-          setIsSuccess(true);
-          window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-          setSourceToast({
-            message: `Saved to deck! (Mock)`,
-            type: 'live'
-          });
-        }, 500);
-        return;
-      }
-      
-      if (isAlreadyInDeck) {
-        setIsExiting(true);
-        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-        setSourceToast({
-          message: `Saved to deck!`,
-          type: 'live'
-        });
-        setTimeout(() => {
-          handleClear();
-        }, 300);
-        return;
-      }
-      
-      const targetWord = richCardData.word ? String(richCardData.word).trim().toLowerCase() : String(wordInput).trim().toLowerCase();
-      const selectedUrls = sceneImages.map(img => img?.url || null);
-      const savedSceneImages = [...selectedUrls];
-      
-      const isExplicitlyPinned = selectedPrimaryImageIdx !== null;
-      let primaryIdx = selectedPrimaryImageIdx;
-      if (primaryIdx === null) {
-        primaryIdx = Math.floor(Math.random() * Math.min(2, savedSceneImages.length));
-      }
-      if (primaryIdx === 1 && savedSceneImages.length > 1) {
-        const temp = savedSceneImages[0];
-        savedSceneImages[0] = savedSceneImages[1];
-        savedSceneImages[1] = temp;
-      }
-      
-      const updatedRichData = {
-        ...richCardData,
-        savedSceneImages: savedSceneImages,
-        hasPinnedImage: isExplicitlyPinned
-      };
-      
-      setIsExiting(true);
-      const res = await addWordToDeck(targetWord, updatedRichData);
-      if (res.success) {
-        setIsSuccess(true);
-        window.dispatchEvent(new CustomEvent('tutorial-word-saved'));
-        setSourceToast({
-          message: `Saved to deck!`,
-          type: 'live'
-        });
-        setTimeout(() => {
-          handleClear();
-        }, 300);
-      }
-    };
-
-    const handleResetEvent = () => {
-      handleClear();
-    };
-
-    window.addEventListener('tutorial-type-word', handleTypeWordEvent);
-    window.addEventListener('tutorial-save-word', handleSaveWordEvent);
-    window.addEventListener('tutorial-reset', handleResetEvent);
-    return () => {
-      window.removeEventListener('tutorial-type-word', handleTypeWordEvent);
-      window.removeEventListener('tutorial-save-word', handleSaveWordEvent);
-      window.removeEventListener('tutorial-reset', handleResetEvent);
-    };
-  }, [vocab, richCardData, sceneImages, selectedPrimaryImageIdx, isAlreadyInDeck, wordInput]);
-
   const handleClear = () => {
     setWordInput('');
     setRichCardData(null);
@@ -1382,65 +1201,6 @@ const AddWord = () => {
     setExistingCard(null);
     setErrorMsg('');
 
-    const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
-    if (isTutorialActive) {
-      setTimeout(() => {
-        const mockDetails = {
-          word: targetWord || 'hello',
-          pos: 'interjection',
-          cefrLevel: 'A1',
-          _provider: 'Offline Tutorial Mock',
-          englishExplanation: {
-            definition: 'Used as a greeting or to begin a telephone conversation.',
-            phrase: 'Hello! How are you doing today?',
-            phraseMeaning: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
-          },
-          thaiTranslation: {
-            word: 'สวัสดี',
-            phrase: 'สวัสดี! วันนี้คุณเป็นอย่างไรบ้าง?'
-          },
-          scenes: [
-            {
-              situation: 'A warm greeting between friends meeting at a cafe',
-              thaiDescription: 'เพื่อนทักทายกันอย่างอบอุ่นที่ร้านกาแฟ'
-            },
-            {
-              situation: 'Greeting someone on a phone call politely',
-              thaiDescription: 'การทักทายใครบางคนทางโทรศัพท์อย่างสุภาพ'
-            }
-          ],
-          imagePrompts: [
-            'A warm greeting between friends meeting at a cafe',
-            'Greeting someone on a phone call politely'
-          ],
-          validation: {
-            isInvalid: false,
-            suggestion: null
-          }
-        };
-
-        setRichCardData(mockDetails);
-        setIsSuccess(false);
-        
-        setSceneImages([
-          {
-            url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop',
-            source: 'Unsplash (Mock)'
-          },
-          {
-            url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop',
-            source: 'Unsplash (Mock)'
-          }
-        ]);
-        setSceneImagesLoading(false);
-        setIsFilling(false);
-
-        // Advance tutorial step 1 -> step 2
-        window.dispatchEvent(new CustomEvent('tutorial-translated'));
-      }, 600);
-      return;
-    }
-
     const isThaiInput = /[\u0e00-\u0e7f]/.test(targetWord);
 
     // 1. Check if word already exists in deck (skip if Thai input since deck stores English)
@@ -1479,7 +1239,6 @@ const AddWord = () => {
         setExistingCard(existing);
         setIsAlreadyInDeck(true);
         setIsFilling(false);
-        window.dispatchEvent(new CustomEvent('tutorial-translated'));
         return;
       }
     }
@@ -1586,8 +1345,6 @@ const AddWord = () => {
           
           setRichCardData(details);
           setIsSuccess(false);
-
-          window.dispatchEvent(new CustomEvent('tutorial-translated'));
         }
       } else {
         setErrorMsg('Failed to translate word. Please verify your Gemini API Key in .env.local.');
@@ -1852,30 +1609,6 @@ const AddWord = () => {
                   maxLength={50}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const isTutorial = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
-                    
-                    if (isTutorial && tutorialStep === 0) {
-                      const target = "hello";
-                      if (val.trim().toLowerCase() === 'hello') {
-                        setWordInput('hello');
-                        window.dispatchEvent(new CustomEvent('tutorial-typed-hello'));
-                        return;
-                      }
-                      const currentLength = wordInput.length;
-                      if (val.length < currentLength) {
-                        setWordInput(val);
-                      } else {
-                        const nextChar = target[currentLength];
-                        if (nextChar) {
-                          const newVal = wordInput + nextChar;
-                          setWordInput(newVal);
-                          if (newVal.toLowerCase() === "hello") {
-                            window.dispatchEvent(new CustomEvent('tutorial-typed-hello'));
-                          }
-                        }
-                      }
-                      return;
-                    }
 
                     // Allow English letters, Thai characters (\u0e00-\u0e7f), numbers, spaces, and basic English punctuation
                     let cleaned = val.replace(/[^a-zA-Z0-9\s\-\'\?!\.,;:\"()\u0e00-\u0e7f]/g, '');
@@ -1945,7 +1678,7 @@ const AddWord = () => {
                 <button
                   id="tutorial-translate-submit-btn"
                   type="submit"
-                  disabled={isFilling || !wordInput.trim() || (localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true' && wordInput.toLowerCase().trim() !== 'hello')}
+                  disabled={isFilling || !wordInput.trim()}
                   className="glass-button primary animate-scale"
                   style={{
                     borderRadius: '12px',
@@ -2190,16 +1923,12 @@ const AddWord = () => {
               <motion.div 
                 key="valid-card-wrapper"
                 exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                drag={(isSuccess || isExiting || tutorialStep === 2 || tutorialStep === 3) ? false : "x"}
+                drag={isSuccess || isExiting ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragSnapToOrigin={true}
                 onDragEnd={handleTranslateDragEnd}
                 className="results-drag-wrapper"
-                animate={(!isSuccess && !isExiting && tutorialStep === 3) ? {
-                  x: [0, 135, 0, -135, 0],
-                  rotate: [0, 9, 0, -9, 0],
-                  transition: { repeat: Infinity, duration: 3.2, ease: 'easeInOut', repeatDelay: 0.8 }
-                } : undefined}
+
                 style={{ 
                   x: translateX, 
                   rotate: rotateTranslate,
@@ -3195,63 +2924,10 @@ const AddWord = () => {
             </motion.div>
           </div>
         )}
-      {/* Tutorial Step 3: Swipe Demo Overlay — shows BACK/SAVE direction hints while card wobbles */}
-      {tutorialStep === 3 && !isSuccess && !isExiting && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 9990,
-            pointerEvents: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 28px',
-            bottom: '140px',
-            top: 'auto',
-            height: '80px'
-          }}
-        >
-          {/* ← BACK */}
-          <motion.div
-            animate={{ x: [-8, 0, -8] }}
-            transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
-          >
-            <PremiumFingerPointer direction="left" scale={0.9} />
-            <span style={{
-              fontSize: '0.72rem', fontWeight: 900, color: '#ef4444',
-              letterSpacing: '1.5px', textTransform: 'uppercase',
-              textShadow: '0 0 12px rgba(239,68,68,0.7)',
-              marginTop: '4px'
-            }}>Back</span>
-          </motion.div>
-          {/* SAVE → */}
-          <motion.div
-            animate={{ x: [8, 0, 8] }}
-            transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
-          >
-            <PremiumFingerPointer direction="right" scale={0.9} />
-            <span style={{
-              fontSize: '0.72rem', fontWeight: 900, color: '#10b981',
-              letterSpacing: '1.5px', textTransform: 'uppercase',
-              textShadow: '0 0 12px rgba(16,185,129,0.7)',
-              marginTop: '4px'
-            }}>Save</span>
-          </motion.div>
-        </motion.div>
-      )}
-      {richCardData && !isFilling && !isSuccess && !isExiting && showShortcutButtons && tutorialStep !== 2 && (
+      {richCardData && !isFilling && !isSuccess && !isExiting && showShortcutButtons && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ 
-            opacity: (tutorialStep === 3) ? 0 : 1, 
-            y: 0 
-          }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           style={{
             position: 'absolute',
@@ -3265,7 +2941,7 @@ const AddWord = () => {
             alignItems: 'center',
             gap: '0.85rem',
             zIndex: 9999,
-            pointerEvents: (tutorialStep === 3) ? 'none' : 'auto'
+            pointerEvents: 'auto'
           }}
         >
           {/* Discard / Back Button (Red, Left) */}
@@ -3312,7 +2988,7 @@ const AddWord = () => {
               height: '42px',
               borderRadius: '12px',
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              border: tutorialStep === 4 ? '2.5px solid #fff' : 'none',
+              border: 'none',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -3322,21 +2998,14 @@ const AddWord = () => {
               fontWeight: 900,
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
-              boxShadow: tutorialStep === 4 
-                ? '0 0 25px rgba(74, 222, 128, 0.8), 0 6px 20px rgba(16, 185, 129, 0.3)' 
-                : '0 6px 20px rgba(16, 185, 129, 0.3)',
+              boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)',
               outline: 'none',
               transition: 'all 0.2s ease'
             }}
             id="tutorial-tinder-save-btn"
             title="Save Word (Swipe Right)"
           >
-            {tutorialStep === 4 ? (
-              <motion.span
-                animate={{ textShadow: ['0 0 0px #fff', '0 0 12px #4ade80', '0 0 0px #fff'] }}
-                transition={{ repeat: Infinity, duration: 1.0 }}
-              >👉 Save</motion.span>
-            ) : 'Save'}
+            Save
           </button>
         </motion.div>
       )}

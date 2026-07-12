@@ -128,8 +128,7 @@ const Profile = () => {
   const [headerHovered, setHeaderHovered] = useState(false);
   const [progressHovered, setProgressHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const isTutorial = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
-  const activeShowDetails = isTutorial ? true : showDetails;
+  const activeShowDetails = showDetails;
 
   // Auto-close any open modals when navigating away from the profile tab
   useEffect(() => {
@@ -194,10 +193,6 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    if (isTutorial) {
-      setShowStreakSplash(false);
-      return;
-    }
     if (stats.streak > 0) {
       setShowStreakSplash(true);
       setDisplayedStreak(1);
@@ -231,7 +226,7 @@ const Profile = () => {
         clearTimeout(closeTimer);
       };
     }
-  }, [stats.streak, isTutorial]);
+  }, [stats.streak]);
 
   // Nong Mem comment trigger on mount/stats load
   useEffect(() => {
@@ -291,30 +286,6 @@ const Profile = () => {
 
     return () => clearTimeout(timer);
   }, [vocab, profile]);
-
-  // Automatically show details if tutorial is active
-  useEffect(() => {
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone) {
-      setShowDetails(true);
-    }
-
-    const handleTrigger = () => {
-      setShowDetails(true);
-    };
-    window.addEventListener('trigger-tutorial', handleTrigger);
-    return () => window.removeEventListener('trigger-tutorial', handleTrigger);
-  }, []);
-
-  // Automatically close modals on tutorial request
-  useEffect(() => {
-    const handleCloseModals = () => {
-      setShowCurriculumModal(false);
-      setSelectedLevel(null);
-    };
-    window.addEventListener('tutorial-close-modals', handleCloseModals);
-    return () => window.removeEventListener('tutorial-close-modals', handleCloseModals);
-  }, []);
 
   const getCefr = (wordObj) => (wordObj?.cefrLevel || 'A1');
 
@@ -384,7 +355,6 @@ const Profile = () => {
     setSearchQuery('');
     setActiveCategory('All Categories');
     setActivePos('All POS');
-    window.dispatchEvent(new CustomEvent('tutorial-srs-modal-opened', { detail: { level, type } }));
   };
 
   const getModalList = () => {
@@ -1005,7 +975,6 @@ const Profile = () => {
           position: 'relative'
         }}
         onClick={() => {
-          if (isTutorial) return;
           setShowDetails(prev => !prev);
         }}
       >

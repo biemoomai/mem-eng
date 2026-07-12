@@ -1,1320 +1,338 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { X, ChevronRight, HelpCircle, Minimize2, Maximize2 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
-import { useVocab } from '../context/VocabContext';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CheckCircle2, ChevronLeft, ChevronRight, Globe2, HelpCircle, X } from 'lucide-react';
 
-const TUTORIAL_STEPS_EN = [
-  { path: '/', selector: '#tutorial-translate-input', title: 'Translate a Word', text: 'Type a word you want to learn, for example <span style="color:#facc15;font-weight:900">hello</span>. You can type any letter during the guide and Mem-eng will fill in hello for you.', position: 'bottom' },
-  { path: '/', selector: '#tutorial-translate-submit-btn', title: 'Run Translation', text: 'Tap <span style="color:#facc15;font-weight:900">Translate</span> to create a learning card with meaning, examples, and context.', position: 'bottom' },
-  { path: '/', selector: '.results-drag-wrapper', title: 'Explore the Card', text: 'Scroll through the result card to see the definition, example sentence, collocation, and visual context. When you are done, tap <span style="color:#facc15;font-weight:900">Next</span>.', position: 'top' },
-  { path: '/', selector: '.results-drag-wrapper', title: 'Save Gesture Demo', text: 'You can manage a translated word with simple gestures:<br/>- <span style="color:#ef4444;font-weight:900">Swipe left</span> to go back or skip.<br/>- <span style="color:#10b981;font-weight:900">Swipe right</span> to save it to your deck.', position: 'top', showSwipeDemo: true },
-  { path: '/', selector: '#tutorial-tinder-save-btn', title: 'Save the Word', text: 'You can also tap the <span style="color:#4ade80;font-weight:900">Save</span> button directly. This adds the word to your review deck.', position: 'top' },
-  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'Open Flashcards', text: 'This is your flashcard deck. Tap the center card to reveal the answer and learning details.', position: 'top' },
-  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'Reveal the Answer', text: 'Tap the card again to reveal the Thai meaning and the memory-rating controls.', position: 'top' },
-  { path: '/purge', selector: '#tutorial-word-today', title: 'Quick Lookup', text: 'Tap a word inside an example sentence, such as <span style="color:#facc15;font-weight:900">today</span>, to open a quick dictionary popup.', position: 'top' },
-  { path: '/purge', selector: '#tutorial-tooltip-info-container', title: 'Word Details and Sound', text: 'Read the quick meaning or tap the speaker button to hear the word. Then continue to the next step.', position: 'bottom', padding: 12 },
-  { path: '/purge', selector: '#tutorial-tooltip-add-btn', title: 'Add From Lookup', text: 'Tap <span style="color:#facc15;font-weight:900">Add to Deck</span> to save that word into your learning deck.', position: 'bottom' },
-  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'Rate Your Memory', text: 'Mem-eng reviews words based on how well you remember them. You can swipe in four directions:<br/>- <span style="color:#3b82f6;font-weight:800">Right = Easy</span><br/>- <span style="color:#10b981;font-weight:800">Up = Normal</span><br/>- <span style="color:#f97316;font-weight:800">Down = Hard</span><br/>- <span style="color:#ef4444;font-weight:800">Left = Again</span>', position: 'top', padding: 6, showSwipeDemo: true },
-  { path: '/purge', selector: '#tutorial-srs-buttons', title: 'Use Rating Buttons', text: 'If you do not want to swipe, you can tap the rating buttons at the bottom. Each choice changes the next review time.', position: 'top', padding: 6 },
-  { path: '/profile', selector: '#tutorial-profile-curriculum', title: 'Choose a Word Set', text: 'Tap the curriculum label to choose a word set such as Oxford, TOEIC, or Self-Study.', position: 'bottom', padding: 4 },
-  { path: '/profile', selector: '#tutorial-profile-curriculum-modal-content', title: 'Pick Your Focus', text: 'Choose the list you want to study. Use <span style="color:#facc15;font-weight:900">Self-Study</span> when you want to build your own deck.', position: 'top', padding: 10 },
-  { path: '/profile', selector: '#tutorial-profile-srs', title: 'Check Memory Stages', text: 'Tap a memory stage, such as Learning or Mastered, to see the words in that group.', position: 'top', padding: 6 },
-  { path: '/profile', selector: null, title: 'You Are Ready', text: 'That is the full tour. You can now translate words, save them, and review them with spaced repetition.', position: 'top' }
+const STEPS = [
+  {
+    path: '/', selector: '#tutorial-translate-input', placement: 'bottom', section: 'Translate',
+    en: ['Type a word', 'Enter any English word you want to understand or remember. Mem-eng will build one learning card around that word.'],
+    th: ['พิมพ์คำศัพท์', 'ใส่คำศัพท์อังกฤษที่อยากเข้าใจหรืออยากจำ Mem-eng จะสร้างการ์ดเรียนรู้ของคำนั้นให้'],
+  },
+  {
+    path: '/', selector: '#tutorial-translate-submit-btn', placement: 'bottom', section: 'Translate',
+    en: ['Create the learning card', 'Tap Translate. The result can include a short definition, Thai meaning, examples, collocations, an image, and pronunciation.'],
+    th: ['สร้างการ์ดเรียนรู้', 'แตะ Translate ผลลัพธ์จะมีคำอธิบายสั้น ๆ คำแปลไทย ตัวอย่าง collocation รูป และเสียงอ่านตามข้อมูลที่หาได้'],
+  },
+  {
+    path: '/', selector: '#tutorial-translate-submit-btn', placement: 'bottom', section: 'Translate',
+    en: ['Save what matters', 'After a result appears, swipe right or tap Save to add it to your deck. Swipe left or tap Back when you do not want it.'],
+    th: ['เก็บเฉพาะคำที่ต้องการ', 'เมื่อผลลัพธ์ขึ้นแล้ว ปัดขวาหรือแตะ Save เพื่อเก็บเข้าคลัง ปัดซ้ายหรือแตะ Back ถ้าไม่ต้องการคำนั้น'],
+  },
+  {
+    path: '/', selector: '#tutorial-nav-purge', placement: 'top', section: 'Navigate',
+    en: ['Move between pages', 'Use the four buttons below, or swipe across the page, to move between Translate, Flashcards, Library, and My Profile.'],
+    th: ['เปลี่ยนหน้า', 'ใช้ 4 ปุ่มด้านล่างหรือปัดหน้าจอ เพื่อสลับระหว่าง Translate, Flashcards, Library และ My Profile'],
+  },
+  {
+    path: '/purge', selector: '#tutorial-add-five-card', placement: 'bottom', section: 'Flashcards',
+    en: ['Add five words', 'When no review is due, tap the orange +5 badge to pull five varied words from your selected word set. It disappears when that set has no unused words left.'],
+    th: ['เพิ่มครั้งละ 5 คำ', 'เมื่อไม่มีคำถึงรอบ แตะป้าย +5 สีส้มเพื่อดึงคำที่หลากหลายจากชุดที่เลือก ป้ายจะหายเมื่อชุดนั้นไม่มีคำใหม่เหลือแล้ว'],
+  },
+  {
+    path: '/purge', selector: '#tutorial-collection-modal', placement: 'top', section: 'Discover', action: 'openCollections',
+    en: ['Discover fresh topics', 'After a review round, Mem-eng offers shuffled collections such as movies, music, and business. Pick a collection, preview the words, then import only the ones you want.'],
+    th: ['ค้นหาหมวดใหม่', 'หลังจบรอบทบทวน Mem-eng จะสุ่มแนะนำหมวด เช่น หนัง เพลง และธุรกิจ เลือกหมวด ดูตัวอย่าง แล้วนำเข้าเฉพาะคำที่ต้องการได้'],
+  },
+  {
+    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'top', section: 'Review',
+    en: ['Reveal in three taps', 'A review starts with the image. Tap once for the word and definition, again for the English context, and a third time for the Thai meaning and answer controls.'],
+    th: ['เปิดคำตอบ 3 จังหวะ', 'การทบทวนเริ่มจากรูป แตะครั้งแรกเพื่อดูคำและความหมาย แตะครั้งที่สองเพื่อดูบริบทอังกฤษ และครั้งที่สามเพื่อดูคำแปลไทยกับตัวเลือกคำตอบ'],
+  },
+  {
+    path: '/purge', selector: '#tutorial-srs-buttons', placement: 'top', section: 'Review',
+    en: ['Rate your memory', 'Choose Again, Hard, Normal, or Easy. You can also swipe left, down, up, or right. FSRS uses every answer to choose the next review date.'],
+    th: ['ให้คะแนนความจำ', 'เลือก Again, Hard, Normal หรือ Easy หรือปัด ซ้าย ลง ขึ้น ขวา ระบบ FSRS จะใช้ทุกคำตอบเพื่อคำนวณวันทบทวนครั้งถัดไป'],
+  },
+  {
+    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'top', section: 'Review',
+    en: ['Archive a mastered word', 'If a word is already permanent knowledge, press and hold the middle of its card for about one second. Mastered words leave normal review but remain editable in Library.'],
+    th: ['เก็บคำที่จำได้ถาวร', 'ถ้าคำนี้จำได้แน่นอนแล้ว ให้กดค้างกลางการ์ดประมาณ 1 วินาที คำ Mastered จะไม่วนทบทวนตามปกติ แต่ยังแก้ได้ใน Library'],
+  },
+  {
+    path: '/purge', selector: '#tutorial-flashcard-card', placement: 'top', section: 'Review',
+    en: ['Look up words in context', 'Tap an English word inside a sentence to open the mini dictionary. You can hear it, see a quick meaning, explore related words, and add a new card.'],
+    th: ['เปิดพจนานุกรมจากประโยค', 'แตะคำอังกฤษในประโยคเพื่อเปิดพจนานุกรมย่อ ฟังเสียง ดูความหมาย คำที่เกี่ยวข้อง และเพิ่มเป็นการ์ดใหม่ได้'],
+  },
+  {
+    path: '/library', selector: '#tutorial-library-search', placement: 'bottom', section: 'Library',
+    en: ['Find and filter cards', 'Search your whole deck, then use the stage filters to inspect Learning, Hard, Normal, Easy, or Mastered words.'],
+    th: ['ค้นหาและกรองการ์ด', 'ค้นหาคำในคลังทั้งหมด แล้วใช้ตัวกรองเพื่อดูคำในระดับ Learning, Hard, Normal, Easy หรือ Mastered'],
+  },
+  {
+    path: '/library', selector: '#tutorial-library-create', placement: 'bottom', section: 'Library',
+    en: ['Create your own card', 'Create a flashcard manually when you already know exactly what you want to study. Add the English word, Thai meaning, definition, and image.'],
+    th: ['สร้างการ์ดเอง', 'สร้าง flashcard ด้วยตัวเองเมื่อรู้แล้วว่าอยากเรียนอะไร ใส่คำอังกฤษ คำแปลไทย คำอธิบาย และรูปได้'],
+  },
+  {
+    path: '/library', selector: '#tutorial-library-list', placement: 'top', section: 'Library',
+    en: ['Manage every card', 'Open any card to edit its text, search or upload a personal image, regenerate details, or remove it. Your personal edits stay on your own card.'],
+    th: ['จัดการทุกการ์ด', 'เปิดการ์ดเพื่อแก้ข้อความ ค้นหารูป อัปโหลดรูปส่วนตัว สร้างรายละเอียดใหม่ หรือลบออก การแก้ของคุณจะอยู่กับการ์ดของคุณเอง'],
+  },
+  {
+    path: '/profile', selector: '#tutorial-profile-curriculum', placement: 'bottom', section: 'Profile',
+    en: ['Choose a word set', 'Select Self-Study, Oxford, TOEIC, IELTS, or another available curriculum. The +5 button draws unused words from this choice.'],
+    th: ['เลือกชุดคำศัพท์', 'เลือก Self-Study, Oxford, TOEIC, IELTS หรือชุดอื่นที่มี ปุ่ม +5 จะดึงคำที่ยังไม่เคยใช้จากชุดนี้'],
+  },
+  {
+    path: '/profile', selector: '#tutorial-profile-srs', placement: 'top', section: 'Profile',
+    en: ['Inspect memory stages', 'Open a stage to see exactly which words are Learning, Hard, Normal, Easy, or Mastered and when they are due.'],
+    th: ['ดูระดับความจำ', 'เปิดแต่ละระดับเพื่อดูว่าคำไหนอยู่ Learning, Hard, Normal, Easy หรือ Mastered และถึงรอบเมื่อไร'],
+  },
+  {
+    path: '/profile', selector: '#tutorial-profile-progress', placement: 'top', section: 'Profile',
+    en: ['Read your progress', 'Use the progress area to see how your deck and review history are changing over time.'],
+    th: ['ดูความคืบหน้า', 'ใช้ส่วน Progress เพื่อตรวจว่าคลังคำและประวัติการทบทวนเปลี่ยนไปอย่างไรตามเวลา'],
+  },
+  {
+    path: '/profile', selector: '#tutorial-settings-panel', placement: 'top', section: 'Settings', action: 'openMenu',
+    en: ['Settings and account', 'Here you can show or hide the bottom bar, manage reminders, restart this guide, reset a deck, read Privacy and Terms, or sign in to keep a guest deck.'],
+    th: ['ตั้งค่าและบัญชี', 'ที่นี่คุณซ่อนหรือแสดงแถบล่าง จัดการการแจ้งเตือน เปิด Guide ใหม่ รีเซ็ต deck อ่าน Privacy/Terms หรือ Sign in เพื่อเก็บ deck ของ Guest ได้'],
+  },
+  {
+    path: '/profile', selector: null, placement: 'center', section: 'Done',
+    en: ['You are ready', 'Translate useful words, review only when they are due, and use Library whenever you want full control. You can replay this guide from the menu at any time.'],
+    th: ['พร้อมใช้งานแล้ว', 'แปลคำที่มีประโยชน์ ทบทวนเมื่อถึงรอบ และใช้ Library เมื่อต้องการจัดการเต็มรูปแบบ กลับมาเปิด Guide จากเมนูได้ทุกเมื่อ'],
+  },
 ];
-const TUTORIAL_STEPS_TH = [
-  { path: '/', selector: '#tutorial-translate-input', title: 'แปลคำศัพท์', text: 'พิมพ์คำศัพท์ที่อยากเรียน เช่น <span style="color:#facc15;font-weight:900">hello</span> ระหว่างทัวร์นี้พิมพ์ตัวไหนก็ได้ เดี๋ยว Mem-eng จะใส่ hello ให้เอง', position: 'bottom' },
-  { path: '/', selector: '#tutorial-translate-submit-btn', title: 'เริ่มแปล', text: 'แตะ <span style="color:#facc15;font-weight:900">Translate</span> เพื่อสร้างการ์ดเรียนรู้ที่มีความหมาย ตัวอย่าง และบริบทของคำ', position: 'bottom' },
-  { path: '/', selector: '.results-drag-wrapper', title: 'อ่านการ์ดคำศัพท์', text: 'เลื่อนดูการ์ดผลลัพธ์เพื่ออ่าน definition, example sentence, collocation และรูปบริบท ดูเสร็จแล้วแตะ <span style="color:#facc15;font-weight:900">ถัดไป</span>', position: 'top' },
-  { path: '/', selector: '.results-drag-wrapper', title: 'ลอง gesture สำหรับบันทึก', text: 'คำที่แปลแล้วจัดการได้ด้วย gesture ง่าย ๆ:<br/>- <span style="color:#ef4444;font-weight:900">ปัดซ้าย</span> เพื่อย้อนกลับหรือข้าม<br/>- <span style="color:#10b981;font-weight:900">ปัดขวา</span> เพื่อบันทึกเข้าคลังคำศัพท์', position: 'top', showSwipeDemo: true },
-  { path: '/', selector: '#tutorial-tinder-save-btn', title: 'บันทึกคำศัพท์', text: 'ถ้าไม่อยากปัด ก็กดปุ่ม <span style="color:#4ade80;font-weight:900">Save</span> ได้เลย คำนี้จะถูกเพิ่มเข้า deck สำหรับทบทวน', position: 'top' },
-  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'เปิด Flashcards', text: 'นี่คือ deck flashcard ของคุณ แตะการ์ดตรงกลางเพื่อเปิดคำตอบและรายละเอียดการเรียนรู้', position: 'top' },
-  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'ดูคำแปล', text: 'แตะการ์ดอีกครั้งเพื่อดูคำแปลไทยและปุ่มให้คะแนนความจำ', position: 'top' },
-  { path: '/purge', selector: '#tutorial-word-today', title: 'เปิดพจนานุกรมด่วน', text: 'แตะคำในประโยคตัวอย่าง เช่น <span style="color:#facc15;font-weight:900">today</span> เพื่อเปิด popup ความหมายแบบเร็ว', position: 'top' },
-  { path: '/purge', selector: '#tutorial-tooltip-info-container', title: 'ดูรายละเอียดและฟังเสียง', text: 'อ่านความหมายแบบเร็ว หรือแตะปุ่มลำโพงเพื่อฟังเสียงออกเสียง แล้วไปขั้นตอนถัดไป', position: 'bottom', padding: 12 },
-  { path: '/purge', selector: '#tutorial-tooltip-add-btn', title: 'เพิ่มคำจาก Lookup', text: 'แตะ <span style="color:#facc15;font-weight:900">Add to Deck</span> เพื่อเก็บคำนั้นเข้า deck ของคุณ', position: 'bottom' },
-  { path: '/purge', selector: '#tutorial-flashcard-card', title: 'ให้คะแนนความจำ', text: 'Mem-eng จะนัดทบทวนตามความจำของคุณ ปัดได้ 4 ทิศทาง:<br/>- <span style="color:#3b82f6;font-weight:800">ขวา = Easy</span><br/>- <span style="color:#10b981;font-weight:800">ขึ้น = Normal</span><br/>- <span style="color:#f97316;font-weight:800">ลง = Hard</span><br/>- <span style="color:#ef4444;font-weight:800">ซ้าย = Again</span>', position: 'top', padding: 6, showSwipeDemo: true },
-  { path: '/purge', selector: '#tutorial-srs-buttons', title: 'ใช้ปุ่มให้คะแนน', text: 'ถ้าไม่อยากปัด สามารถกดปุ่มคะแนนด้านล่างได้ แต่ละตัวเลือกจะเปลี่ยนเวลาทบทวนครั้งต่อไป', position: 'top', padding: 6 },
-  { path: '/profile', selector: '#tutorial-profile-curriculum', title: 'เลือกชุดคำศัพท์', text: 'แตะชื่อหลักสูตรเพื่อเลือกชุดคำ เช่น Oxford, TOEIC หรือ Self-Study', position: 'bottom', padding: 4 },
-  { path: '/profile', selector: '#tutorial-profile-curriculum-modal-content', title: 'เลือกโฟกัสการเรียน', text: 'เลือกชุดคำที่อยากฝึก ใช้ <span style="color:#facc15;font-weight:900">Self-Study</span> ถ้าอยากสร้าง deck เอง', position: 'top', padding: 10 },
-  { path: '/profile', selector: '#tutorial-profile-srs', title: 'ดูระดับความจำ', text: 'แตะระดับความจำ เช่น Learning หรือ Mastered เพื่อดูคำในกลุ่มนั้น', position: 'top', padding: 6 },
-  { path: '/profile', selector: null, title: 'พร้อมใช้งานแล้ว', text: 'จบทัวร์แล้ว คุณสามารถแปลคำ บันทึกคำ และทบทวนด้วย spaced repetition ได้เลย', position: 'top' }
-];
-const PremiumFingerPointer = ({ direction = 'down' }) => {
-  let rotateDeg = 0;
-  if (direction === 'up') rotateDeg = 0; // 👆
-  if (direction === 'down') rotateDeg = 180; // 👇
-  if (direction === 'left') rotateDeg = -90; // 👈
-  if (direction === 'right') rotateDeg = 90; // 👉
 
-  return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {/* Radar pulse ripple effect */}
-      <div 
-        style={{
-          position: 'absolute',
-          width: '32px',
-          height: '32px',
-          borderRadius: '50%',
-          border: '2px solid rgba(255, 255, 255, 0.75)',
-          boxShadow: '0 0 10px rgba(255,255,255,0.3)',
-          animation: 'radarPulse 1.4s infinite ease-out',
-          top: '-4px',
-          left: '-2px',
-          pointerEvents: 'none'
-        }}
-      />
-      <svg
-        width="34"
-        height="34"
-        viewBox="0 0 24 24"
-        fill="rgba(255, 255, 255, 0.18)"
-        stroke="white"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{
-          transform: `rotate(${rotateDeg}deg)`,
-          filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.65))',
-          pointerEvents: 'none'
-        }}
-      >
-        <path d="M10 14V6.5C10 5.67 10.67 5 11.5 5C12.33 5 13 5.67 13 6.5V12M13 12V8.5C13 7.67 13.67 7 14.5 7C15.33 7 16 7.67 16 8.5V12M16 12V9.5C16 8.67 16.67 8 17.5 8C18.33 8 19 8.67 19 9.5V15C19 18.31 16.31 21 13 21H11.5C9.01 21 7 18.99 7 16.5V13.62C7 13.06 7.45 12.6 8.01 12.62C8.52 12.64 8.93 13.06 8.95 13.57L9 14" />
-      </svg>
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes radarPulse {
-          0% {
-            transform: scale(0.5);
-            opacity: 1;
-            border-width: 3px;
-          }
-          100% {
-            transform: scale(1.7);
-            opacity: 0;
-            border-width: 1px;
-          }
-        }
-      `}} />
-    </div>
-  );
+const COPY = {
+  en: { choose: 'Choose guide language', chooseHint: 'The same tour is available in Thai or English.', thai: 'ภาษาไทย', english: 'English', cancel: 'Not now', back: 'Back', next: 'Next', finish: 'Finish', close: 'Close guide', missing: 'This control appears when the related content is available.', live: 'This is the real app. You may try the highlighted control. The guide never saves, removes, resets, or rates your cards.' },
+  th: { choose: 'เลือกภาษาของ Guide', chooseHint: 'เนื้อหาเหมือนกัน เลือกคำอธิบายภาษาไทยหรืออังกฤษได้', thai: 'ภาษาไทย', english: 'English', cancel: 'ไว้ทีหลัง', back: 'ย้อนกลับ', next: 'ถัดไป', finish: 'เสร็จสิ้น', close: 'ปิด Guide', missing: 'ปุ่มนี้จะแสดงเมื่อมีเนื้อหาที่เกี่ยวข้อง', live: 'นี่คือหน้าจอจริง ลองแตะจุดที่ไฮไลต์ได้ตามต้องการ Guide นี้จะไม่บันทึก ลบ รีเซ็ต หรือให้คะแนนการ์ดของคุณ' },
 };
 
 export const Tutorial = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme } = useTheme();
-  const { user } = useAuth();
-  const { clearDeckAndResetStats, setActiveCurriculum } = useVocab();
-  
   const [active, setActive] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
+  const [language, setLanguage] = useState(() => localStorage.getItem('memeng_tutorial_language') || 'en');
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightRect, setHighlightRect] = useState(null);
-  const [viewportRect, setViewportRect] = useState(null);
-  const [speakBtnRect, setSpeakBtnRect] = useState(null);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [showOptIn, setShowOptIn] = useState(false);
-  const [tutorialLanguage, setTutorialLanguage] = useState(() => {
-    try {
-      return localStorage.getItem('memeng_tutorial_language') || 'en';
-    } catch (e) {
-      return 'en';
-    }
-  });
-  const TUTORIAL_STEPS = useMemo(() => tutorialLanguage === 'th' ? TUTORIAL_STEPS_TH : TUTORIAL_STEPS_EN, [tutorialLanguage]);
-  const tutorialCopy = tutorialLanguage === 'th'
-    ? {
-      skip: 'ข้าม',
-      next: 'ถัดไป',
-      finish: 'เสร็จ',
-      openPage: 'เปิดหน้าถัดไป',
-      useNav: (label) => 'ใช้แถบนำทางด้านล่างเพื่อเปิดหน้า ' + label + ' แล้วเรียนต่อ',
-      chooseTitle: 'เลือกภาษาของ Guide',
-      chooseText: 'อยากให้ทัวร์สอนเป็นภาษาไหน?',
-      thai: 'สอนภาษาไทย',
-      english: 'Teach in English',
-      later: 'ไว้ทีหลัง'
-    }
-    : {
-      skip: 'Skip',
-      next: 'Next',
-      finish: 'Finish',
-      openPage: 'Open the next page',
-      useNav: (label) => 'Use the bottom navigation bar to open ' + label + ' and continue the guide.',
-      chooseTitle: 'Choose guide language',
-      chooseText: 'How do you want the tour to explain each step?',
-      thai: 'สอนภาษาไทย',
-      english: 'Teach in English',
-      later: 'Maybe later'
-    };
-  const autoMinimizeTimerRef = useRef(null);
+  const [targetFound, setTargetFound] = useState(false);
+  const guideCardRef = useRef(null);
+  const locationPathRef = useRef(location.pathname);
 
-  const hasInitializedRef = useRef(false);
-  const handleCloseRef = useRef(null);
+  const step = STEPS[currentStep];
+  const words = COPY[language] || COPY.en;
+  const content = step?.[language] || step?.en;
 
-  const handleClose = useCallback(async () => {
+  const closeGuide = useCallback((completed = false) => {
     setActive(false);
-    localStorage.setItem('memeng_tutorial_done', 'true');
-    localStorage.removeItem('memeng_tutorial_started');
-    // Ensure all modals are closed when exiting tutorial
-    window.dispatchEvent(new Event('tutorial-close-modals'));
-    window.dispatchEvent(new Event('exit-study-session'));
-    window.dispatchEvent(new Event('tutorial-reset'));
-    
-    // Always revert curriculum back to Self-Study default after tutorial finish
-    try {
-      setActiveCurriculum('Self-Study only');
-      localStorage.setItem('chatgpt_anki_curriculum', 'Self-Study only');
-    } catch (err) {
-      console.error("Failed to reset curriculum default on finish:", err);
-    }
-
-    try {
-      await clearDeckAndResetStats();
-    } catch (err) {
-      console.error("Failed to clear deck on tutorial complete:", err);
-    }
-    
-    // Clean hard redirect to home screen to unmount all pages and boot cleanly
-    window.location.href = '/';
-  }, [clearDeckAndResetStats, setActiveCurriculum]);
+    setShowLanguage(false);
+    localStorage.removeItem('memeng_tutorial_running');
+    if (completed) localStorage.setItem('memeng_tutorial_done', 'true');
+    window.dispatchEvent(new Event('tutorial-close-collections'));
+    window.dispatchEvent(new Event('tutorial-close-menu'));
+    window.dispatchEvent(new CustomEvent('tutorial-active-change', { detail: false }));
+  }, []);
 
   useEffect(() => {
-    handleCloseRef.current = handleClose;
-  }, [handleClose]);
-
-  // Show opt-in popup for new users visiting /purge (no auto-start)
-  useEffect(() => {
-    if (!user) {
-      hasInitializedRef.current = false;
-      setActive(false);
-      setShowOptIn(false);
-      return;
-    }
-
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    const isOffered = localStorage.getItem('memeng_tutorial_offered') === 'true';
-    if (!isDone && !isOffered && location.pathname === '/purge' && !hasInitializedRef.current && !active) {
-      hasInitializedRef.current = true;
-      setShowOptIn(true);
-    }
-  }, [user, location.pathname, active]);
-
-  // Listen to hamburger trigger
-  useEffect(() => {
-    const handleTrigger = () => {
-      if (!user) return;
-      localStorage.setItem('memeng_tutorial_done', 'false');
-      setActive(false);
+    const open = () => {
+      closeGuide(false);
       setCurrentStep(0);
-      setShowOptIn(true);
+      setShowLanguage(true);
     };
-    window.addEventListener('trigger-tutorial', handleTrigger);
-    return () => window.removeEventListener('trigger-tutorial', handleTrigger);
-  }, [user, navigate]);
-
-  // Dispatch custom event to notify pages of step transitions (e.g. to programmatically reveal cards)
-  useEffect(() => {
-    if (active) {
-      window.dispatchEvent(new CustomEvent('tutorial-step-changed', { detail: { step: currentStep } }));
-    }
-  }, [currentStep, active]);
-
-  // Sync active status changes with App.jsx
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('tutorial-active-change', { detail: active }));
-  }, [active]);
-
-  // Listen to exit-tutorial event from settings drawer
-  useEffect(() => {
-    const handleExit = () => {
-      if (handleCloseRef.current) handleCloseRef.current();
-    };
-    window.addEventListener('exit-tutorial', handleExit);
-    return () => window.removeEventListener('exit-tutorial', handleExit);
-  }, []);
-
-  const [completedSteps, setCompletedSteps] = useState(() => new Array(TUTORIAL_STEPS.length).fill(false));
-
-  // Reset completedSteps when tutorial restarts
-  useEffect(() => {
-    if (active) {
-      setCompletedSteps(new Array(TUTORIAL_STEPS.length).fill(false));
-    }
-  }, [active]);
-
-  // Scroll tracker for Step 2 (Explore AI Card)
-  useEffect(() => {
-    if (!active || currentStep !== 2) return;
-
-    let scrollContainer = document.querySelector('.scrollable-content');
-    
-    const findAndAttach = () => {
-      scrollContainer = document.querySelector('.scrollable-content');
-      if (scrollContainer) {
-        const handleScroll = () => {
-          if (scrollContainer.scrollTop > 150) {
-            setCompletedSteps(prev => {
-              const next = [...prev];
-              next[2] = true;
-              return next;
-            });
-          }
-        };
-        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-        return () => {
-          if (scrollContainer) {
-            scrollContainer.removeEventListener('scroll', handleScroll);
-          }
-        };
-      }
-    };
-
-    const cleanup = findAndAttach();
-    const timer = setTimeout(findAndAttach, 500);
-
+    const exit = () => closeGuide(false);
+    window.addEventListener('trigger-tutorial', open);
+    window.addEventListener('exit-tutorial', exit);
     return () => {
-      if (cleanup) cleanup();
-      clearTimeout(timer);
+      window.removeEventListener('trigger-tutorial', open);
+      window.removeEventListener('exit-tutorial', exit);
     };
-  }, [active, currentStep]);
+  }, [closeGuide]);
 
-  // Listen to interactive events to auto-advance steps and mark completed
   useEffect(() => {
-    if (!active) return;
+    locationPathRef.current = location.pathname;
+  }, [location.pathname]);
 
-    const handleTypedHello = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[0] = true;
-        return next;
-      });
-      // REMOVED auto-advance to let user manually click the gold-bordered Next button
-    };
-
-    const handleTranslated = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[1] = true;
-        return next;
-      });
-      if (currentStep === 1) {
-        setTimeout(() => {
-          setCurrentStep(2);
-        }, 800);
-      }
-    };
-
-    const handleWordSaved = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[4] = true;
-        return next;
-      });
-      if (currentStep === 4) {
-        setTimeout(() => {
-          setCurrentStep(5);
-          navigate('/purge');
-        }, 800);
-      }
-    };
-
-    const handleCardRevealed = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[5] = true;
-        return next;
-      });
-      if (currentStep === 5) {
-        setTimeout(() => {
-          setCurrentStep(6);
-        }, 800);
-      }
-    };
-
-    const handleCardFullyRevealed = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[6] = true;
-        return next;
-      });
-      if (currentStep === 6) {
-        setTimeout(() => {
-          setCurrentStep(7);
-        }, 800);
-      }
-    };
-
-    const handleTooltipOpened = (e) => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[7] = true;
-        return next;
-      });
-      if (currentStep === 7) {
-        setTimeout(() => {
-          setCurrentStep(8);
-        }, 1500);
-      }
-    };
-
-    const handleTooltipSpoken = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[8] = true;
-        return next;
-      });
-      if (currentStep === 8) {
-        setTimeout(() => {
-          setCurrentStep(9);
-        }, 1000);
-      }
-    };
-
-    const handleTooltipSaved = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[9] = true;
-        return next;
-      });
-      if (currentStep === 9) {
-        setTimeout(() => {
-          setCurrentStep(10);
-        }, 800);
-      }
-    };
-
-    const handleSrsClicked = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[11] = true;
-        return next;
-      });
-      if (currentStep === 11) {
-        setTimeout(() => {
-          setCurrentStep(12);
-          navigate('/profile');
-        }, 800);
-      }
-    };
-
-    const handleCurriculumOpened = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[12] = true;
-        return next;
-      });
-      if (currentStep === 12) {
-        setTimeout(() => {
-          setCurrentStep(13);
-        }, 300);
-      }
-    };
-
-    const handleCurriculumSelected = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[13] = true;
-        return next;
-      });
-      if (currentStep === 13) {
-        setTimeout(() => {
-          setCurrentStep(14);
-        }, 800);
-      }
-    };
-
-    const handleSrsModalOpened = () => {
-      setCompletedSteps(prev => {
-        const next = [...prev];
-        next[14] = true;
-        return next;
-      });
-      if (currentStep === 14) {
-        setTimeout(() => {
-          setCurrentStep(15);
-        }, 400);
-      }
-    };
-
-    window.addEventListener('tutorial-typed-hello', handleTypedHello);
-    window.addEventListener('tutorial-translated', handleTranslated);
-    window.addEventListener('tutorial-word-saved', handleWordSaved);
-    window.addEventListener('tutorial-card-revealed', handleCardRevealed);
-    window.addEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
-    window.addEventListener('tutorial-tooltip-opened', handleTooltipOpened);
-    window.addEventListener('tutorial-tooltip-spoken', handleTooltipSpoken);
-    window.addEventListener('tutorial-tooltip-saved', handleTooltipSaved);
-    window.addEventListener('tutorial-srs-clicked', handleSrsClicked);
-    window.addEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
-    window.addEventListener('tutorial-curriculum-selected', handleCurriculumSelected);
-    window.addEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
-
-    return () => {
-      window.removeEventListener('tutorial-typed-hello', handleTypedHello);
-      window.removeEventListener('tutorial-translated', handleTranslated);
-      window.removeEventListener('tutorial-word-saved', handleWordSaved);
-      window.removeEventListener('tutorial-card-revealed', handleCardRevealed);
-      window.removeEventListener('tutorial-card-fully-revealed', handleCardFullyRevealed);
-      window.removeEventListener('tutorial-tooltip-opened', handleTooltipOpened);
-      window.removeEventListener('tutorial-tooltip-spoken', handleTooltipSpoken);
-      window.removeEventListener('tutorial-tooltip-saved', handleTooltipSaved);
-      window.removeEventListener('tutorial-srs-clicked', handleSrsClicked);
-      window.removeEventListener('tutorial-curriculum-opened', handleCurriculumOpened);
-      window.removeEventListener('tutorial-curriculum-selected', handleCurriculumSelected);
-      window.removeEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
-    };
-  }, [active, currentStep]);
-
-  // Auto-complete Swipe Gestures Demo steps after 5 seconds to change 'Skip' to 'Next'
-  useEffect(() => {
-    if (!active) return;
-    if (currentStep === 3 || currentStep === 10) {
-      const timer = setTimeout(() => {
-        setCompletedSteps(prev => {
-          const next = [...prev];
-          next[currentStep] = true;
-          return next;
-        });
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStep, active]);
-
-  // Close modals on step 16 (Profile Summary) to show the main profile stats
-  useEffect(() => {
-    if (!active) return;
-    if (currentStep === 15) {
-      window.dispatchEvent(new Event('tutorial-close-modals'));
-    }
-  }, [currentStep, active]);
-
-  // Recalculate target position on step or location change
-  useEffect(() => {
-    if (!active) return;
-    
-    const stepConf = TUTORIAL_STEPS[currentStep];
-    if (!stepConf) return;
-
-    // Clear previous highlight while path switches
-    if (location.pathname !== stepConf.path) {
-      setHighlightRect(null);
-      setViewportRect(null);
-      return;
-    }
-
-    let frameId;
-    let timerId;
-
-    const runUpdate = () => {
-      const el = document.querySelector(stepConf.selector);
-      const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
-      
-      if (el && containerEl) {
-        const rect = el.getBoundingClientRect();
-        const containerRect = containerEl.getBoundingClientRect();
-        
-        if (rect.width > 0 && rect.height > 0) {
-          const pad = stepConf.padding || 0;
-          setHighlightRect({
-            top: rect.top - containerRect.top - pad,
-            left: rect.left - containerRect.left - pad,
-            width: rect.width + (pad * 2),
-            height: rect.height + (pad * 2)
-          });
-          setViewportRect({
-            top: rect.top - pad,
-            left: rect.left - pad,
-            width: rect.width + (pad * 2),
-            height: rect.height + (pad * 2),
-            bottom: rect.bottom + pad,
-            right: rect.right + pad
-          });
-        }
-      } else {
-        setHighlightRect(null);
-        setViewportRect(null);
-      }
-
-      // Track speaker button separately for finger indicator pointer during Step 8 (Sound)
-      if (currentStep === 8 && containerEl) {
-        const speakEl = document.getElementById('tutorial-tooltip-speak-btn');
-        if (speakEl) {
-          const sRect = speakEl.getBoundingClientRect();
-          const containerRect = containerEl.getBoundingClientRect();
-          setSpeakBtnRect({
-            top: sRect.top - containerRect.top,
-            left: sRect.left - containerRect.left,
-            width: sRect.width,
-            height: sRect.height
-          });
-        } else {
-          setSpeakBtnRect(null);
-        }
-      } else {
-        setSpeakBtnRect(null);
-      }
-    };
-
-    window.addEventListener('resize', runUpdate);
-
-    // Wait for slide transitions to complete before measuring/observing
-    timerId = setTimeout(() => {
-      const startTime = Date.now();
-      const duration = 1200; // Poll for 1.2s to track final position shifts
-
-      const updatePosition = () => {
-        runUpdate();
-        if (Date.now() - startTime < duration) {
-          frameId = requestAnimationFrame(updatePosition);
-        }
-      };
-
-      // Run initial check and start frame loop
-      updatePosition();
-
-      // Smooth scroll showcase behavior
-      if (currentStep === 2) {
-        const scrollContainer = document.querySelector('.scrollable-content');
-        if (scrollContainer) {
-          scrollContainer.scrollTo({ top: 300, behavior: 'smooth' });
-          setTimeout(() => {
-            scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 1800);
-        }
-      } else {
-        const el = document.querySelector(stepConf.selector);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
-    }, 450);
-
-    return () => {
-      window.removeEventListener('resize', runUpdate);
-      if (timerId) clearTimeout(timerId);
-      if (frameId) cancelAnimationFrame(frameId);
-    };
-  }, [currentStep, location.pathname, active]);
-
-  // Reset minimized state when step changes
-  useEffect(() => {
-    if (active) {
-      setIsMinimized(false);
-    }
-  }, [currentStep]);
-
-  const handleMinimize = useCallback(() => {
-    setIsMinimized(true);
-  }, []);
-
-  const handleExpand = useCallback(() => {
-    setIsMinimized(false);
-  }, []);
-
-  // Opt-in popup handlers
-  const handleOptInAccept = (language) => {
-    const nextLanguage = language || tutorialLanguage || 'en';
-    setTutorialLanguage(nextLanguage);
+  const startGuide = (nextLanguage) => {
+    setLanguage(nextLanguage);
     localStorage.setItem('memeng_tutorial_language', nextLanguage);
-    localStorage.setItem('memeng_tutorial_offered', 'true');
-    localStorage.setItem('memeng_tutorial_done', 'false');
-    localStorage.setItem('memeng_tutorial_started', 'true');
-    setShowOptIn(false);
-    setActive(true);
-    setCurrentStep(0);
-    navigate('/');
-  };
-
-  const handleOptInDismiss = () => {
-    localStorage.setItem('memeng_tutorial_offered', 'true');
-    localStorage.setItem('memeng_tutorial_done', 'true');
     localStorage.removeItem('memeng_tutorial_started');
-    setShowOptIn(false);
-    // Notify Purge.jsx to immediately drop the mock card and load the real (empty) queue
-    window.dispatchEvent(new Event('tutorial-reset'));
+    localStorage.setItem('memeng_tutorial_running', 'true');
+    setShowLanguage(false);
+    window.dispatchEvent(new Event('tutorial-close-menu'));
+    setCurrentStep(0);
+    setActive(true);
+    window.dispatchEvent(new CustomEvent('tutorial-active-change', { detail: true }));
   };
 
-  if (!active && !showOptIn) return null;
+  useEffect(() => {
+    if (!active || !step) return undefined;
 
-  // Render opt-in popup when not active but showOptIn is true
-  if (!active && showOptIn) {
-    return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.85, y: 20 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-          className="glass-panel"
-          style={{
-            width: '88%',
-            maxWidth: '320px',
-            padding: '1.5rem 1.3rem',
-            borderRadius: '24px',
-            background: 'rgba(15, 23, 42, 0.95)',
-            border: '1px solid rgba(251, 191, 36, 0.3)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 20px rgba(251, 191, 36, 0.1)',
-            textAlign: 'center'
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', marginBottom: '0.5rem', color: '#facc15', fontWeight: 900, letterSpacing: '0.12em' }}>GUIDE TOUR</div>
-          <h3 style={{ margin: '0 0 0.4rem 0', color: 'white', fontWeight: 800, fontSize: '1.1rem' }}>{tutorialCopy.chooseTitle}</h3>
-          <p style={{ margin: '0 0 1.2rem 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.6' }}>{tutorialCopy.chooseText}</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button
-              onClick={() => handleOptInAccept('th')}
-              className="glass-button primary"
-              style={{
-                width: '100%',
-                padding: '0.6rem 1rem',
-                borderRadius: '14px',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                border: 'none'
-              }}
-            >
-              {tutorialCopy.thai}
-            </button>
-            <button
-              onClick={() => handleOptInAccept('en')}
-              style={{
-                width: '100%',
-                padding: '0.6rem 1rem',
-                borderRadius: '14px',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: '#e2e8f0'
-              }}
-            >
-              {tutorialCopy.english}
-            </button>
-            <button
-              onClick={handleOptInDismiss}
-              style={{
-                width: '100%',
-                padding: '0.55rem 1rem',
-                borderRadius: '14px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.55)'
-              }}
-            >
-              {tutorialCopy.later}
-            </button>
-          </div></motion.div>
-      </div>
-    );
-  }
+    if (locationPathRef.current !== step.path) navigate(step.path);
+    const timer = window.setTimeout(() => {
+      if (step.action === 'openCollections') window.dispatchEvent(new Event('tutorial-open-collections'));
+      else window.dispatchEvent(new Event('tutorial-close-collections'));
 
-  const stepConf = TUTORIAL_STEPS[currentStep];
-  const isWrongPath = stepConf && location.pathname !== stepConf.path;
-  const handleNext = () => {
-    // If the step was already completed by the user manually, just advance directly without running fallback simulations
-    if (completedSteps[currentStep]) {
-      if (currentStep < TUTORIAL_STEPS.length - 1) {
-        const nextStep = currentStep + 1;
-        setCurrentStep(nextStep);
-        if (TUTORIAL_STEPS[nextStep].path !== location.pathname) {
-          navigate(TUTORIAL_STEPS[nextStep].path);
-        }
-      } else {
-        handleClose();
-      }
+      if (step.action === 'openMenu') window.dispatchEvent(new Event('tutorial-open-menu'));
+      else window.dispatchEvent(new Event('tutorial-close-menu'));
+    }, locationPathRef.current === step.path ? 60 : 320);
+
+    return () => window.clearTimeout(timer);
+  // Navigate only when the guide changes step. A learner may use the highlighted
+  // navigation control without the tour immediately pulling them back.
+  }, [active, currentStep, navigate, step]);
+
+  const updateHighlight = useCallback(() => {
+    if (!active || !step?.selector) {
+      setHighlightRect(null);
+      setTargetFound(false);
       return;
     }
 
-    // Robust fallbacks for each step to simulate the target interaction if skipped/clicked manually
-    if (currentStep === 0) {
-      // Simulate typing "hello"
-      window.dispatchEvent(new CustomEvent('tutorial-type-word', { detail: { word: 'hello' } }));
-      setTimeout(() => {
-        setCurrentStep(1);
-      }, 150);
+    const target = document.querySelector(step.selector);
+    if (!target) {
+      setHighlightRect(null);
+      setTargetFound(false);
       return;
     }
 
-    if (currentStep === 1) {
-      // Trigger translate submit
-      const form = document.querySelector('#tutorial-translate-input form');
-      if (form) {
-        form.requestSubmit();
-      } else {
-        // Fallback: Direct advance if element not found
-        setCurrentStep(2);
-      }
-      return;
+    let rect = target.getBoundingClientRect();
+    if (rect.bottom < 70 || rect.top > window.innerHeight - 70) {
+      target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+      rect = target.getBoundingClientRect();
     }
 
-    if (currentStep === 2) {
-      // Move to Step 3: Swipe Gestures Demo (NEW)
-      setCurrentStep(3);
-      return;
-    }
+    const padding = 8;
+    setHighlightRect({
+      top: Math.max(6, rect.top - padding),
+      left: Math.max(6, rect.left - padding),
+      width: Math.min(window.innerWidth - 12, rect.width + padding * 2),
+      height: Math.min(window.innerHeight - 12, rect.height + padding * 2),
+    });
+    setTargetFound(true);
+  }, [active, step]);
 
-    if (currentStep === 3) {
-      // Move to Step 4: Swipe or Tap to Save
-      setCurrentStep(4);
-      return;
-    }
-
-    if (currentStep === 4) {
-      // Simulate Save click or swipe
-      const saveBtn = document.getElementById('tutorial-tinder-save-btn');
-      if (saveBtn) {
-        saveBtn.click();
-      } else {
-        // Direct fallback: trigger the custom save event manually
-        window.dispatchEvent(new Event('tutorial-word-saved'));
-      }
-      return;
-    }
-
-    if (currentStep === 5) {
-      // Simulate reveal front card click
-      window.dispatchEvent(new Event('tutorial-card-revealed'));
-      setCurrentStep(6);
-      return;
-    }
-
-    if (currentStep === 6) {
-      // Simulate reveal back card click
-      window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
-      setCurrentStep(7);
-      return;
-    }
-
-    if (currentStep === 7) {
-      // Simulate clicking the "today" word
-      const todaySpan = document.getElementById('tutorial-word-today') || document.getElementById('tutorial-word-greeting');
-      if (todaySpan) {
-        todaySpan.click();
-      } else {
-        window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: 'today' } }));
-      }
-      return;
-    }
-
-    if (currentStep === 8) {
-      // Play pronunciation and advance to Add to Deck step
-      const speakBtn = document.getElementById('tutorial-tooltip-speak-btn');
-      if (speakBtn) speakBtn.click();
-      setCurrentStep(9);
-      return;
-    }
-
-    if (currentStep === 9) {
-      // Simulate clicking Add to Deck inside the dictionary modal
-      const addBtn = document.getElementById('tutorial-tooltip-add-btn');
-      if (addBtn) {
-        addBtn.click();
-      } else {
-        window.dispatchEvent(new Event('tutorial-tooltip-saved'));
-      }
-      return;
-    }
-
-    if (currentStep === 10) {
-      // Swipe Gestures: manual next step, just advance to SRS Memory Rating (step 11)
-      setCurrentStep(11);
-      return;
-    }
-
-    if (currentStep === 11) {
-      // Simulate SRS memory button click
-      const easyBtn = document.querySelector('#tutorial-srs-buttons button:last-child');
-      if (easyBtn) {
-        easyBtn.click();
-      } else {
-        window.dispatchEvent(new Event('tutorial-srs-clicked'));
-      }
-      return;
-    }
-
-    if (currentStep === 12) {
-      // Simulate curriculum switcher click
-      const switcherBtn = document.getElementById('tutorial-profile-curriculum');
-      if (switcherBtn) {
-        switcherBtn.click();
-      } else {
-        window.dispatchEvent(new Event('tutorial-curriculum-opened'));
-      }
-      return;
-    }
-
-    if (currentStep === 13) {
-      // Simulate selecting Self-Study option
-      const selfStudyBtn = document.getElementById('tutorial-curriculum-option-self-study');
-      if (selfStudyBtn) {
-        selfStudyBtn.click();
-      } else {
-        window.dispatchEvent(new CustomEvent('tutorial-curriculum-selected', { detail: { id: 'Self-Study only' } }));
-      }
-      return;
-    }
-
-    if (currentStep === 14) {
-      // Simulate SRS stage detail open
-      window.dispatchEvent(new Event('tutorial-srs-modal-opened'));
-      return;
-    }
-
-    if (currentStep < TUTORIAL_STEPS.length - 1) {
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
-      if (TUTORIAL_STEPS[nextStep].path !== location.pathname) {
-        navigate(TUTORIAL_STEPS[nextStep].path);
-      }
-    } else {
-      handleClose();
-    }
-  };
-  const getTooltipStyle = () => {
-
-    // For SRS Rating Buttons (step 11) in Purge: place above the buttons to avoid covering them
-    if (currentStep === 11) {
-      return {
-        position: 'fixed',
-        bottom: '195px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '92%',
-        maxWidth: '340px',
-        zIndex: 100004
-      };
-    }
-
-    // Keep tip at the bottom of the viewport for profile modal switcher steps (steps 13-14)
-    if (currentStep === 13 || currentStep === 14) {
-      return {
-        position: 'fixed',
-        bottom: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '90%',
-        maxWidth: '320px',
-        zIndex: 100004
-      };
-    }
-
-    if (!highlightRect || isWrongPath) {
-      return {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '90%',
-        maxWidth: '320px',
-        zIndex: 100004
-      };
-    }
-
-    const { top, left, width, height } = highlightRect;
-    const isTop = stepConf.position === 'top';
-    
-    // Get container dimensions to constrain tooltip within the app frame boundaries
-    const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
-    const containerWidth = containerEl ? containerEl.clientWidth : window.innerWidth;
-    const containerHeight = containerEl ? containerEl.clientHeight : window.innerHeight;
-    
-    const calculatedTop = isTop 
-      ? Math.max(10, top - (currentStep === 3 ? 220 : currentStep === 4 ? 245 : 180)) 
-      : (top + height + 15);
-
-    // If bottom positioning would overflow the visible viewport/container
-    if (!isTop && calculatedTop + 180 > containerHeight) {
-      return {
-        position: 'absolute',
-        left: `${Math.max(10, Math.min(containerWidth - 310, left + width / 2 - 150))}px`,
-        bottom: '90px',
-        width: '300px',
-        zIndex: 100004,
-      };
-    }
-    
-    return {
-      position: 'absolute',
-      left: `${Math.max(10, Math.min(containerWidth - 310, left + width / 2 - 150))}px`,
-      top: `${calculatedTop}px`,
-      width: '300px',
-      zIndex: 100004,
+  useEffect(() => {
+    if (!active) return undefined;
+    const timers = [60, 260, 650].map((delay) => window.setTimeout(updateHighlight, delay));
+    const refresh = () => window.requestAnimationFrame(updateHighlight);
+    window.addEventListener('resize', refresh);
+    window.addEventListener('scroll', refresh, true);
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener('resize', refresh);
+      window.removeEventListener('scroll', refresh, true);
     };
+  }, [active, currentStep, location.pathname, updateHighlight]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closeGuide(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.setTimeout(() => guideCardRef.current?.focus(), 0);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [active, closeGuide]);
+
+  // The spotlight intentionally leaves the highlighted control usable.
+  // Users can try the real control while the tour never writes tutorial data.
+  useEffect(() => {
+    if (!active || !step?.selector) return undefined;
+    const target = document.querySelector(step.selector);
+    if (!target) return undefined;
+    const refresh = () => window.requestAnimationFrame(updateHighlight);
+    target.addEventListener('click', refresh);
+    target.addEventListener('input', refresh);
+    return () => {
+      target.removeEventListener('click', refresh);
+      target.removeEventListener('input', refresh);
+    };
+  }, [active, step, updateHighlight]);
+
+  const goBack = () => setCurrentStep((value) => Math.max(0, value - 1));
+  const goNext = () => {
+    if (currentStep >= STEPS.length - 1) {
+      closeGuide(true);
+      return;
+    }
+    setCurrentStep((value) => value + 1);
   };
 
-  const isSwipeStep = currentStep === 3;
-  const backdropPointerEvents = isSwipeStep ? 'none' : 'auto';
+  const guidePosition = useMemo(() => {
+    if (!targetFound || step?.placement === 'center') {
+      return { top: '50%', transform: 'translate(-50%, -50%)' };
+    }
+    if (step?.placement === 'top') return { top: 'max(76px, env(safe-area-inset-top))', transform: 'translateX(-50%)' };
+    return { bottom: 'max(82px, calc(env(safe-area-inset-bottom) + 70px))', transform: 'translateX(-50%)' };
+  }, [step?.placement, targetFound]);
 
-  return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 99999, pointerEvents: 'none' }}>
-      <AnimatePresence mode="wait">
-        {isMinimized ? (
-          /* ===== MINIMIZED PILL ===== */
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <>
+      <AnimatePresence>
+        {showLanguage && (
           <motion.div
-            key="minimized-pill"
-            drag
-            dragConstraints={{ left: 0, right: window.innerWidth - 200, top: 0, bottom: window.innerHeight - 100 }}
-            dragElastic={0.1}
-            dragMomentum={false}
-            initial={{ opacity: 0, x: -50, y: 0, scale: 0.8 }}
-            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -50, scale: 0.8 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            onClick={(e) => {
-              // Only expand if the user tapped, not dragged
-              handleExpand();
-            }}
-            style={{
-              position: 'fixed',
-              top: '45%',
-              left: '16px',
-              zIndex: 100010,
-              pointerEvents: 'auto',
-              cursor: 'grab',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              borderRadius: '24px',
-              background: 'rgba(15, 23, 42, 0.92)',
-              border: '1.5px solid rgba(251, 191, 36, 0.4)',
-              backdropFilter: 'blur(15px)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 191, 36, 0.15)',
-              whiteSpace: 'nowrap',
-              touchAction: 'none' // Essential for mobile drag support
-            }}
-            whileTap={{ cursor: 'grabbing' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 2147483500, background: 'rgba(0,0,0,0.78)', display: 'grid', placeItems: 'center', padding: '20px' }}
           >
             <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-              style={{ display: 'flex', alignItems: 'center' }}
+              initial={{ opacity: 0, y: 12, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.97 }}
+              role="dialog" aria-modal="true" aria-label="Choose guide language" style={{ width: 'min(100%, 360px)', borderRadius: '18px', padding: '22px', background: '#15161b', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 24px 80px rgba(0,0,0,0.65)', color: '#fff' }}
             >
-              <HelpCircle size={14} color="#facc15" />
-            </motion.div>
-            <span style={{ fontSize: '0.7rem', color: '#facc15', fontWeight: 800 }}>
-              Step {currentStep + 1}/{TUTORIAL_STEPS.length}
-            </span>
-            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {stepConf.title}
-            </span>
-            <Maximize2 size={12} color="rgba(255,255,255,0.4)" />
-          </motion.div>
-        ) : (
-          /* ===== EXPANDED FULL TUTORIAL ===== */
-          <motion.div
-            key="expanded-tutorial"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* Dark Spotlight Backdrop Overlay */}
-            {highlightRect && !isWrongPath ? (
-              <>
-                {/* Spotlight Backdrop Panels relative to app-container */}
-                <div 
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: `${Math.max(0, highlightRect.top)}px`,
-                    background: 'rgba(0, 0, 0, 0.75)',
-                    zIndex: 100000,
-                    pointerEvents: backdropPointerEvents
-                  }}
-                />
-                <div 
-                  style={{
-                    position: 'absolute',
-                    top: `${highlightRect.top + highlightRect.height}px`,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.75)',
-                    zIndex: 100000,
-                    pointerEvents: backdropPointerEvents
-                  }}
-                />
-                <div 
-                  style={{
-                    position: 'absolute',
-                    top: `${highlightRect.top}px`,
-                    left: 0,
-                    width: `${Math.max(0, highlightRect.left)}px`,
-                    height: `${highlightRect.height}px`,
-                    background: 'rgba(0, 0, 0, 0.75)',
-                    zIndex: 100000,
-                    pointerEvents: backdropPointerEvents
-                  }}
-                />
-                <div 
-                  style={{
-                    position: 'absolute',
-                    top: `${highlightRect.top}px`,
-                    left: `${highlightRect.left + highlightRect.width}px`,
-                    right: 0,
-                    height: `${highlightRect.height}px`,
-                    background: 'rgba(0, 0, 0, 0.75)',
-                    zIndex: 100000,
-                    pointerEvents: backdropPointerEvents
-                  }}
-                />
-              </>
-            ) : (
-              <div 
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'rgba(0, 0, 0, 0.75)',
-                  zIndex: 100000,
-                  pointerEvents: backdropPointerEvents
-                }}
-              />
-            )}
-
-            {/* Spotlight highlight border around targeted element */}
-            {highlightRect && !isWrongPath && (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                style={{
-                  position: 'absolute',
-                  top: highlightRect.top - 6,
-                  left: highlightRect.left - 6,
-                  width: highlightRect.width + 12,
-                  height: highlightRect.height + 12,
-                  borderRadius: '16px',
-                  border: (() => {
-                    const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
-                    const containerWidth = containerEl ? containerEl.clientWidth : window.innerWidth;
-                    const isFullWidth = highlightRect.width >= (containerWidth - 24);
-                    return isFullWidth ? 'none' : '3px solid #fbbf24';
-                  })(),
-                  boxShadow: (() => {
-                    const containerEl = document.querySelector('.app-container') || document.querySelector('#root');
-                    const containerWidth = containerEl ? containerEl.clientWidth : window.innerWidth;
-                    const isFullWidth = highlightRect.width >= (containerWidth - 24);
-                    return isFullWidth ? 'none' : '0 0 20px #fbbf2460';
-                  })(),
-                  zIndex: 100003,
-                  pointerEvents: 'none'
-                }}
-              />
-            )}
-
-            {/* Finger pointers for other steps to click/tap targets */}
-            {highlightRect && !isWrongPath && (
-              currentStep === 0 || 
-              currentStep === 1 || 
-              currentStep === 4 || 
-              currentStep === 7 || 
-              currentStep === 9 || 
-              currentStep === 11 || 
-              currentStep === 12 ||
-              currentStep === 13 ||
-              currentStep === 14
-            ) && (
-              <motion.div
-                animate={{ y: [0, -8, 0] }}
-                transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
-                style={{
-                  position: 'absolute',
-                  top: highlightRect.top - 48,
-                  left: highlightRect.left + (highlightRect.width / 2) - 17,
-                  zIndex: 100005,
-                  pointerEvents: 'none'
-                }}
-              >
-                <PremiumFingerPointer direction="down" />
-              </motion.div>
-            )}
-
-            {/* Finger tap animation inside the middle of target for card reveal steps */}
-            {highlightRect && !isWrongPath && (currentStep === 5 || currentStep === 6) && (
-              <motion.div
-                animate={{ scale: [1, 1.12, 1], opacity: [0.95, 1, 0.95] }}
-                transition={{ repeat: Infinity, duration: 1.0, ease: "easeInOut" }}
-                style={{
-                  position: 'absolute',
-                  top: highlightRect.top + (highlightRect.height / 2) - 20,
-                  left: highlightRect.left + (highlightRect.width / 2) - 17,
-                  zIndex: 100005,
-                  pointerEvents: 'none'
-                }}
-              >
-                <PremiumFingerPointer direction="up" />
-              </motion.div>
-            )}
-
-            {/* Finger pointer for Step 8 (Sound) pointing at the speaker icon */}
-            {speakBtnRect && currentStep === 8 && (
-              <motion.div
-                animate={{ x: [0, -6, 0] }}
-                transition={{ repeat: Infinity, duration: 0.8, ease: "easeInOut" }}
-                style={{
-                  position: 'absolute',
-                  top: speakBtnRect.top + (speakBtnRect.height / 2) - 18,
-                  left: speakBtnRect.left + speakBtnRect.width + 6,
-                  zIndex: 100008,
-                  pointerEvents: 'none'
-                }}
-              >
-                <PremiumFingerPointer direction="left" />
-              </motion.div>
-            )}
-
-            {/* Tooltip Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{ ...getTooltipStyle(), pointerEvents: 'auto' }}
-            >
-              <div 
-                className="glass-panel" 
-                style={{ 
-                  padding: '1rem 1rem 0.8rem', 
-                  borderRadius: '20px', 
-                  background: 'rgba(15, 23, 42, 0.95)',
-                  border: '1px solid rgba(251, 191, 36, 0.3)',
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                  boxSizing: 'border-box',
-                  position: 'relative'
-                }}
-              >
-                {/* Visual Arrow Indicator pointing to highlight */}
-                {highlightRect && !isWrongPath && (
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 0,
-                    height: 0,
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    zIndex: 100006,
-                    ...(TUTORIAL_STEPS[currentStep]?.position === 'bottom' ? {
-                      top: '-8px',
-                      borderBottom: '8px solid rgba(15, 23, 42, 0.98)'
-                    } : {
-                      bottom: '-8px',
-                      borderTop: '8px solid rgba(15, 23, 42, 0.98)'
-                    })
-                  }} />
-                )}
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.6rem', background: '#facc1520', color: '#facc15', padding: '0.12rem 0.45rem', borderRadius: '6px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <HelpCircle size={9} /> STEP {currentStep + 1} OF {TUTORIAL_STEPS.length}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <button 
-                      onClick={handleMinimize}
-                      style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '2px' }}
-                      title="Minimize tutorial"
-                    >
-                      <Minimize2 size={13} />
-                    </button>
-                    <button 
-                      onClick={handleClose} 
-                      style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '2px' }}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Guide Text */}
-                {isWrongPath ? (
-                  <div>
-                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>{tutorialCopy.openPage}</h4><p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }}>{tutorialCopy.useNav(stepConf.path === '/purge' ? 'Flashcards' : (stepConf.path === '/profile' ? 'My Profile' : 'Translate'))}</p></div>) : (
-                  <div>
-                    <h4 style={{ margin: '0 0 0.3rem 0', color: 'white', fontWeight: 800, fontSize: '0.88rem' }}>
-                      {stepConf.title}
-                    </h4>
-                     <p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1', lineHeight: '1.55' }} dangerouslySetInnerHTML={{ __html: stepConf.text }} />
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.7rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                  <button 
-                    onClick={handleClose}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700 }}
-                  >{tutorialCopy.skip}</button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {currentStep < TUTORIAL_STEPS.length - 1 ? (
-                      <button 
-                        onClick={handleNext}
-                        className="glass-button animate-scale"
-                        style={completedSteps[currentStep] ? { 
-                          padding: '0.35rem 0.75rem', 
-                          borderRadius: '10px', 
-                          fontSize: '0.72rem', 
-                          fontWeight: 900,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          border: '2.5px solid #facc15',
-                          background: 'rgba(250, 204, 21, 0.18)',
-                          color: '#facc15',
-                          boxShadow: '0 0 15px rgba(250, 204, 21, 0.35)',
-                          cursor: 'pointer'
-                        } : {
-                          padding: '0.3rem 0.65rem', 
-                          borderRadius: '8px', 
-                          fontSize: '0.7rem', 
-                          fontWeight: 700,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '2px',
-                          border: '1.5px solid rgba(255,255,255,0.15)',
-                          background: 'rgba(255,255,255,0.04)',
-                          color: 'rgba(255,255,255,0.7)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <span>{tutorialCopy.next}</span>
-                        <ChevronRight size={11} />
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handleNext}
-                        className="glass-button primary animate-scale"
-                        style={{ 
-                          padding: '0.35rem 0.75rem', 
-                          borderRadius: '10px', 
-                          fontSize: '0.72rem', 
-                          fontWeight: 900,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          border: '2.5px solid #facc15',
-                          background: 'rgba(250, 204, 21, 0.18)',
-                          color: '#facc15',
-                          boxShadow: '0 0 15px rgba(250, 204, 21, 0.35)'
-                        }}
-                      >
-                        <span>{tutorialCopy.finish}</span>
-                        <ChevronRight size={11} />
-                      </button>
-                    )}
-                  </div>
-                </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, display: 'grid', placeItems: 'center', marginBottom: 14, background: 'rgba(167,139,250,0.14)', border: '1px solid rgba(167,139,250,0.28)', color: '#a78bfa' }}><Globe2 size={22} /></div>
+              <h2 style={{ margin: '0 0 6px', fontSize: '1.15rem' }}>{COPY.th.choose}</h2>
+              <p style={{ margin: '0 0 18px', color: '#9ca3af', fontSize: '0.8rem', lineHeight: 1.5 }}>{COPY.th.chooseHint}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button type="button" onClick={() => startGuide('th')} style={languageButtonStyle}>ภาษาไทย</button>
+                <button type="button" onClick={() => startGuide('en')} style={languageButtonStyle}>English</button>
               </div>
+              <button type="button" onClick={() => setShowLanguage(false)} style={{ width: '100%', marginTop: 12, padding: 9, border: 0, background: 'transparent', color: '#8b93a7', cursor: 'pointer', fontWeight: 700 }}>Not now</button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+
+      <AnimatePresence>
+        {active && step && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, zIndex: 2147483400, pointerEvents: 'none' }}>
+            {highlightRect ? (
+              <div style={{ position: 'fixed', ...highlightRect, borderRadius: 14, border: '2px solid #facc15', boxShadow: '0 0 0 9999px rgba(0,0,0,0.72), 0 0 24px rgba(250,204,21,0.4)', transition: 'top 180ms ease, left 180ms ease, width 180ms ease, height 180ms ease' }} />
+            ) : (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)' }} />
+            )}
+
+            <div style={{ position: 'fixed', left: '50%', width: 'min(calc(100% - 24px), 370px)', zIndex: 2147483402, pointerEvents: 'auto', ...guidePosition }}>
+              <motion.div
+                ref={guideCardRef}
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
+                key={`${language}-${currentStep}`}
+                initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                style={{ borderRadius: 16, padding: '16px', background: 'rgba(18,19,24,0.98)', border: '1px solid rgba(255,255,255,0.13)', boxShadow: '0 18px 60px rgba(0,0,0,0.62)', color: '#fff' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#facc15', fontSize: '0.66rem', fontWeight: 900, textTransform: 'uppercase' }}><HelpCircle size={13} /> {step.section} · {currentStep + 1}/{STEPS.length}</span>
+                  <button type="button" aria-label={words.close} onClick={() => closeGuide(false)} style={iconButtonStyle}><X size={17} /></button>
+                </div>
+                <div style={{ height: 3, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)', marginBottom: 13 }}>
+                  <div style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%`, height: '100%', background: '#facc15', transition: 'width 180ms ease' }} />
+                </div>
+                <h3 style={{ margin: '0 0 7px', fontSize: '1rem', lineHeight: 1.25 }}>{content[0]}</h3>
+                <p style={{ margin: 0, color: '#c5cad5', fontSize: '0.78rem', lineHeight: 1.55 }}>{content[1]}</p>
+                <p style={{ margin: '10px 0 0', padding: '8px 9px', borderRadius: 9, color: '#b7c1d7', background: 'rgba(255,255,255,0.045)', fontSize: '0.68rem', lineHeight: 1.45 }}>{words.live}</p>
+                {!targetFound && step.selector && <p style={{ margin: '9px 0 0', color: '#facc15', fontSize: '0.68rem', lineHeight: 1.4 }}>{words.missing}</p>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 15 }}>
+                  <button type="button" onClick={goBack} disabled={currentStep === 0} style={{ ...secondaryButtonStyle, opacity: currentStep === 0 ? 0.35 : 1 }}><ChevronLeft size={15} /> {words.back}</button>
+                  <button type="button" onClick={goNext} style={primaryButtonStyle}>{currentStep === STEPS.length - 1 ? <CheckCircle2 size={15} /> : null}{currentStep === STEPS.length - 1 ? words.finish : words.next}{currentStep < STEPS.length - 1 ? <ChevronRight size={15} /> : null}</button>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>,
+    document.body,
   );
 };
+
+const languageButtonStyle = { padding: '12px 10px', borderRadius: 11, border: '1px solid rgba(167,139,250,0.32)', background: 'rgba(167,139,250,0.12)', color: '#fff', cursor: 'pointer', fontWeight: 850 };
+const iconButtonStyle = { width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#b8bfce', cursor: 'pointer' };
+const secondaryButtonStyle = { minHeight: 36, padding: '8px 11px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: 'rgba(255,255,255,0.035)', color: '#c5cad5', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 800, fontSize: '0.74rem' };
+const primaryButtonStyle = { minHeight: 36, padding: '8px 13px', borderRadius: 9, border: '1px solid rgba(250,204,21,0.38)', background: 'rgba(250,204,21,0.14)', color: '#facc15', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 900, fontSize: '0.74rem' };
