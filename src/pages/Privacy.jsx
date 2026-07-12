@@ -22,10 +22,10 @@ const Privacy = () => {
           <h1 style={{ fontSize: '1.55rem', margin: '0 0 0.35rem', fontWeight: 950 }}>Privacy Policy</h1>
           <p style={{ margin: '0 0 1.4rem', color: '#94a3b8', fontSize: '0.76rem' }}>Effective July 11, 2026</p>
           <Section title="What we collect">Memeng may store account details, saved vocabulary, review progress, settings, and basic usage records needed to run the app. When you request a new word or image, the request may be processed by learning-content and image services.</Section>
-          <Section title="Guest mode">A guest receives a temporary account so a deck can work across a session. Guest accounts that have not signed in for 30 days are scheduled for deletion. Linking an email or Google account keeps the same deck.</Section>
+          <Section title="Guest mode">A guest receives a temporary account so a deck can work across a session. Guest accounts that have not signed in for 30 days are deleted by a scheduled cleanup job. Linking an email or Google account keeps the same deck.</Section>
           <Section title="How we use it">We use this information to sync your deck, calculate review timing, prevent abuse, keep the app reliable, and improve learning quality. We do not sell personal data.</Section>
           <Section title="Services we rely on">Memeng uses Supabase for accounts and storage, Cloudflare Pages for web hosting, and third-party learning-content or image providers when needed.</Section>
-          <Section title="Your choices">You can reset a deck, delete a guest account, or delete an account and its data from the app menu. Deletion is permanent.</Section>
+          <Section title="Your choices">You can reset a deck. Signed-in users can also delete their account and its data from the app menu. Deletion is permanent. Do not upload sensitive personal images to learning cards.</Section>
         </div>
       </div>
     </div>

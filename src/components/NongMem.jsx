@@ -7,7 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini API client
-const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const geminiApiKey = localStorage.getItem('memeng_gemini_key') || '';
 let genAI = null;
 if (geminiApiKey) {
   genAI = new GoogleGenerativeAI(geminiApiKey);
@@ -235,6 +235,8 @@ export default function NongMem() {
     return () => {
       window.removeEventListener('nongmem-comment', handleCommentEvent);
     };
+  // The listener is intentionally re-bound on mute changes only; triggerBubble is declared below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMuted]);
 
   const triggerBubble = (text, newMood = 'mocking', duration = 4000) => {

@@ -4,9 +4,19 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Securely handles word translation and analysis with 3-tier server-side fallback:
 // Gemini (Primary) ➔ Groq (Backup 1) ➔ Cerebras (Backup 2)
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const configuredOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'https://mem-eng.pages.dev,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:5173,http://localhost:5174')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const getCorsHeaders = (req: Request) => {
+  const origin = req.headers.get('Origin') || '';
+  const allowOrigin = configuredOrigins.includes(origin) ? origin : configuredOrigins[0];
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
 };
 
 const cleanWordCandidate = (value) => {
@@ -84,6 +94,7 @@ const fetchLexicalReferences = async (word) => {
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -112,6 +123,41 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
+    const rawWord = typeof word === 'string' ? word.trim() : '';
+    if (!rawWord || rawWord.length > 80) {
+      return new Response(JSON.stringify({ error: 'Enter a word or a short phrase.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Cache hits are free: do not spend a generation quota or call an AI provider.
+    const cacheKey = cleanWordCandidate(rawWord);
+    if (!forceValid && cacheKey) {
+      const { data: cached } = await admin
+        .from('global_dictionary')
+        .select('id, rich_data')
+        .eq('word', cacheKey)
+        .maybeSingle();
+      if (cached?.rich_data) {
+        try {
+          const cachedDetails = typeof cached.rich_data === 'string'
+            ? JSON.parse(cached.rich_data)
+            : cached.rich_data;
+          if (cachedDetails && typeof cachedDetails === 'object') {
+            return new Response(JSON.stringify({
+              ...cachedDetails,
+              _provider: cachedDetails?._provider || 'DB Cache',
+              _dictionaryId: cached.id
+            }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        } catch (cacheError) {
+          // A malformed legacy cache row must not block a fresh verified generation.
+          console.warn('Ignoring malformed dictionary cache row:', cacheError);
+        }
+      }
+    }
+
     const { data: quota, error: quotaError } = await admin.rpc('consume_word_generation_quota', {
       p_user_id: user.id,
       p_is_anonymous: Boolean(user.is_anonymous)
@@ -122,15 +168,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-    
-    if (!word) {
-      return new Response(JSON.stringify({ error: "Missing required 'word' parameter" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
 
-    const lexicalReferences = await fetchLexicalReferences(word);
+    const lexicalReferences = await fetchLexicalReferences(rawWord);
 
     const prompt = `
 Analyze the input "${word}". Note: If the input is in Thai, first translate it to the most appropriate, common, single English vocabulary word (semantically, NOT a phonetic transliteration or karaoke representation, e.g. for "สาม" translate to "three" NOT "sam", for "สวัสดี" translate to "hello" NOT "sawatdee", for "มือ" translate to "hand" NOT "mua"), and then analyze and return the details FOR THAT ENGLISH WORD (and make sure the "word" property in the returned JSON is this English word in lowercase). If the input is in English, analyze it directly.
@@ -356,17 +395,41 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
       )
     };
 
-    // Cache server-generated data centrally. Existing entries are never overwritten here.
-    await admin
-      .from('global_dictionary')
-      .upsert({
-        word: String(word).trim().toLowerCase(),
-        pos: parsed.pos || 'n.',
-        meaning: JSON.stringify(parsed),
-        rich_data: parsed,
-        cefr_level: parsed.cefrLevel || 'Unranked'
-      }, { onConflict: 'word', ignoreDuplicates: true });
-    return new Response(JSON.stringify(parsed), {
+    // Only server-generated details are allowed into the shared dictionary.
+    const dictionaryWord = cleanWordCandidate(parsed.word) || cacheKey;
+    let dictionaryId: string | null = null;
+    if (dictionaryWord) {
+      const { data: stored, error: storeError } = await admin
+        .from('global_dictionary')
+        .upsert({
+          word: dictionaryWord,
+          pos: parsed.pos || 'n.',
+          meaning: JSON.stringify(parsed),
+          rich_data: parsed,
+          cefr_level: parsed.cefrLevel || 'Unranked'
+        }, { onConflict: 'word', ignoreDuplicates: true })
+        .select('id')
+        .maybeSingle();
+      if (storeError) console.error('Could not store verified dictionary details:', storeError);
+      dictionaryId = stored?.id || null;
+      if (!dictionaryId) {
+        const { data: existing } = await admin
+          .from('global_dictionary')
+          .select('id')
+          .eq('word', dictionaryWord)
+          .maybeSingle();
+        dictionaryId = existing?.id || null;
+      }
+    }
+
+    if (!dictionaryId) {
+      return new Response(JSON.stringify({ error: 'The word could not be saved safely. Please try again.' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({ ...parsed, _dictionaryId: dictionaryId }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

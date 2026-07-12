@@ -168,6 +168,8 @@ export const VocabProvider = ({ children }) => {
     if (user) {
       syncData(user.id);
     }
+    // Sync only when the authenticated identity changes; syncData is intentionally not memoized.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const syncData = async (userId) => {
@@ -200,34 +202,12 @@ export const VocabProvider = ({ children }) => {
       // 1. Upload unsynced local decks
       const localCards = vocab.filter(item => typeof item.id === 'string' && item.id.startsWith('local-'));
       for (const card of localCards) {
-        // Insert into global dictionary if missing
-        let wordId = null;
-        const { data: existingWord } = await supabase
-          .from('global_dictionary')
-          .select('id')
-          .eq('word', card.word.toLowerCase())
-          .maybeSingle();
-
-        if (existingWord) {
-          wordId = existingWord.id;
-        } else {
-          const richDetails = typeof card.meaning === 'string' ? JSON.parse(card.meaning) : card.meaning;
-          const { data: newWord, error: wordError } = await supabase
-            .from('global_dictionary')
-            .insert({
-              word: card.word.toLowerCase(),
-              pos: card.pos || 'n.',
-              meaning: typeof card.meaning === 'string' ? card.meaning : JSON.stringify(card.meaning),
-              rich_data: richDetails,
-              cefr_level: card.cefrLevel || 'Unranked'
-            })
-            .select('id')
-            .single();
-
-          if (!wordError && newWord) {
-            wordId = newWord.id;
-          }
-        }
+        // Shared dictionary entries must originate from the verified Edge Function.
+        const wordId = await resolveDictionaryId(card.word);
+        let privateMeaning = card.meaning;
+        try {
+          if (typeof privateMeaning === 'string') privateMeaning = JSON.parse(privateMeaning);
+        } catch (err) {}
 
         if (wordId) {
           // Insert into user_decks
@@ -236,6 +216,9 @@ export const VocabProvider = ({ children }) => {
             .insert({
               user_id: userId,
               word_id: wordId,
+              custom_word: card.word,
+              custom_meaning: privateMeaning,
+              custom_video_url: card.videoUrl || null,
               srs_level: card.srsLevel,
               repetition: card.repetition,
               interval: card.interval,
@@ -608,42 +591,7 @@ export const VocabProvider = ({ children }) => {
     // Push to Supabase if logged in
     if (user) {
       try {
-        let wordId = null;
-        const { data: existingWord } = await supabase
-          .from('global_dictionary')
-          .select('id, rich_data')
-          .eq('word', normalizedWord)
-          .maybeSingle();
-
-        if (existingWord) {
-          wordId = existingWord.id;
-          // If the cached global_dictionary record doesn't have an image, update it
-          const cachedRichData = existingWord.rich_data ? (typeof existingWord.rich_data === 'string' ? JSON.parse(existingWord.rich_data) : existingWord.rich_data) : null;
-          if (cachedRichData && (!cachedRichData.savedSceneImages || !cachedRichData.savedSceneImages[0]) && imgUrl) {
-            if (!cachedRichData.savedSceneImages) cachedRichData.savedSceneImages = [];
-            cachedRichData.savedSceneImages[0] = imgUrl;
-            await supabase
-              .from('global_dictionary')
-              .update({
-                meaning: JSON.stringify(cachedRichData),
-                rich_data: cachedRichData
-              })
-              .eq('id', wordId);
-          }
-        } else {
-          const { data: newWord, error: wordError } = await supabase
-            .from('global_dictionary')
-            .insert({
-              word: normalizedWord,
-              pos: richDetails.pos || 'n.',
-              meaning: typeof richDetails === 'object' ? JSON.stringify(richDetails) : richDetails,
-              rich_data: richDetails,
-              cefr_level: richDetails.cefrLevel || 'Unranked'
-            })
-            .select('id')
-            .single();
-          if (!wordError && newWord) wordId = newWord.id;
-        }
+        const wordId = await resolveDictionaryId(normalizedWord, richDetails);
 
         if (wordId) {
           const { data: userDeckRecord, error: deckError } = await supabase
@@ -651,6 +599,8 @@ export const VocabProvider = ({ children }) => {
             .insert({
               user_id: user.id,
               word_id: wordId,
+              custom_meaning: richDetails,
+              custom_video_url: imgUrl || null,
               srs_level: newCard.srsLevel,
               repetition: newCard.repetition,
               interval: newCard.interval,
@@ -769,32 +719,36 @@ export const VocabProvider = ({ children }) => {
     }
   };
 
-  // Upload an image file to Supabase storage bucket user-card-images
+  // Upload a small image to a path owned by the current user.
+  // The matching storage policy enforces the same extension and size limits server-side.
   const uploadUserCardImage = async (file, cardId) => {
     if (!user || !file) return null;
+    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+    const fileExt = String(file.name || '').split('.').pop()?.toLowerCase() || '';
+    const isImage = typeof file.type === 'string' && file.type.startsWith('image/');
+    if (!isImage || !allowedExtensions.has(fileExt) || file.size > 5 * 1024 * 1024) {
+      console.warn('Rejected unsafe or oversized image upload.');
+      return null;
+    }
+
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${cardId}/${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
+      const safeCardId = String(cardId || 'manual').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'manual';
+      const fileName = user.id + '/' + safeCardId + '/' + Date.now() + '.' + fileExt;
+      const { error } = await supabase.storage
         .from('user-card-images')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
+        .upload(fileName, file, { cacheControl: '3600', upsert: true, contentType: file.type });
 
       if (error) {
-        console.error("Supabase storage upload error:", error);
+        console.error('Supabase storage upload error:', error);
         return null;
       }
 
       const { data: publicUrlData } = supabase.storage
         .from('user-card-images')
         .getPublicUrl(fileName);
-
       return publicUrlData?.publicUrl || null;
     } catch (err) {
-      console.error("Error in uploadUserCardImage:", err);
+      console.error('Error in uploadUserCardImage:', err);
       return null;
     }
   };
@@ -820,27 +774,6 @@ export const VocabProvider = ({ children }) => {
       return { success: false, error: 'All words in this curriculum are already in your deck!' };
     }
     
-    // Prioritization check: find which unadded words are pre-cached in global_dictionary with images
-    const cachedWithImages = new Set();
-    try {
-      const unaddedWordNames = unadded.map(w => w.word.toLowerCase().trim());
-      const { data: cachedList } = await supabase
-        .from('global_dictionary')
-        .select('word, rich_data')
-        .in('word', unaddedWordNames);
-
-      if (cachedList) {
-        for (const row of cachedList) {
-          const rich = row.rich_data ? (typeof row.rich_data === 'string' ? JSON.parse(row.rich_data) : row.rich_data) : null;
-          if (rich && rich.savedSceneImages && rich.savedSceneImages[0]) {
-            cachedWithImages.add(row.word.toLowerCase().trim());
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Could not check global_dictionary cache:", e);
-    }
-
     const getRandomFloat = () => {
       if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
         const values = new Uint32Array(1);
@@ -884,25 +817,10 @@ export const VocabProvider = ({ children }) => {
       return diversified;
     };
 
-    // Split unadded words into pre-cached (fully loaded) and uncached
-    const cachedGroup = unadded.filter(w => cachedWithImages.has(w.word.toLowerCase().trim()));
-    const uncachedGroup = unadded.filter(w => !cachedWithImages.has(w.word.toLowerCase().trim()));
+    // Every batch is randomized and diversified by CEFR/POS. Cached details still
+    // make loading faster later, but never decide which words a learner receives.
+    const targetWords = diversifyWords(unadded).slice(0, count);
 
-    // Prefer ready cached cards, but keep one wider-pool slot when possible so new guests do not keep seeing the same tiny cached set.
-    const diverseCached = diversifyWords(cachedGroup);
-    const diverseUncached = diversifyWords(uncachedGroup);
-    
-    const targetWords = [];
-    const cachedArr = [...diverseCached];
-    const uncachedArr = [...diverseUncached];
-    
-    while (targetWords.length < count && (cachedArr.length > 0 || uncachedArr.length > 0)) {
-      if (uncachedArr.length > 0 && (targetWords.length % 2 === 1 || cachedArr.length === 0)) {
-        targetWords.push(uncachedArr.shift());
-      } else if (cachedArr.length > 0) {
-        targetWords.push(cachedArr.shift());
-      }
-    }
     const addedCardsList = [];
     let lastError = null;
     
@@ -932,48 +850,7 @@ export const VocabProvider = ({ children }) => {
           if (curriculumName.startsWith('TOEIC')) category = 'Business';
           else if (curriculumName.startsWith('IELTS')) category = 'Academic';
 
-          let wordId = null;
-          
-          if (user) {
-            const { data: existingWord } = await supabase
-              .from('global_dictionary')
-              .select('id, rich_data')
-              .eq('word', item.word.toLowerCase().trim())
-              .maybeSingle();
-              
-            if (existingWord) {
-              wordId = existingWord.id;
-              // If the cached global_dictionary record doesn't have an image, update it
-              const cachedRichData = existingWord.rich_data ? (typeof existingWord.rich_data === 'string' ? JSON.parse(existingWord.rich_data) : existingWord.rich_data) : null;
-              if (cachedRichData && (!cachedRichData.savedSceneImages || !cachedRichData.savedSceneImages[0]) && imgUrl) {
-                if (!cachedRichData.savedSceneImages) cachedRichData.savedSceneImages = [];
-                cachedRichData.savedSceneImages[0] = imgUrl;
-                await supabase
-                  .from('global_dictionary')
-                  .update({
-                    meaning: JSON.stringify(cachedRichData),
-                    rich_data: cachedRichData
-                  })
-                  .eq('id', wordId);
-              }
-            } else {
-              const { data: newWord, error: wordErr } = await supabase
-                .from('global_dictionary')
-                .insert({
-                  word: item.word.toLowerCase().trim(),
-                  pos: item.pos,
-                  meaning: typeof details === 'object' ? JSON.stringify(details) : details,
-                  rich_data: details,
-                  cefr_level: item.cefr_level || 'B2'
-                })
-                .select('id')
-                .single();
-                
-              if (!wordErr && newWord) {
-                wordId = newWord.id;
-              }
-            }
-          }
+          const wordId = user ? await resolveDictionaryId(item.word, details) : null;
 
           const newCard = {
             id: user ? null : Date.now() + Math.random().toString(36).substr(2, 9),
@@ -1004,6 +881,8 @@ export const VocabProvider = ({ children }) => {
               .insert({
                 user_id: user.id,
                 word_id: wordId,
+                custom_meaning: details,
+                custom_video_url: imgUrl || null,
                 srs_level: 'Learning',
                 stability: 1.0,
                 difficulty: 5.0,
@@ -1291,7 +1170,7 @@ export const VocabProvider = ({ children }) => {
       try {
         const { data: existingWord, error: fetchErr } = await supabase
           .from('global_dictionary')
-          .select('rich_data')
+          .select('id, rich_data')
           .eq('word', normalizedWord)
           .maybeSingle();
 
@@ -1305,7 +1184,7 @@ export const VocabProvider = ({ children }) => {
           if (parsed && !parsed._provider) {
             parsed._provider = 'DB Cache';
           }
-          return parsed;
+          return { ...parsed, _dictionaryId: existingWord.id };
         }
       } catch (cacheErr) {
         console.warn('⚠️ global_dictionary cache lookup failed, falling back to AI:', cacheErr);
@@ -1354,6 +1233,29 @@ export const VocabProvider = ({ children }) => {
       console.error("❌ Failed to process AI response:", details, jsonErr);
       return { error: `Failed to process AI response: ${jsonErr.message}` };
     }
+  };
+
+  // Resolve a shared dictionary id without letting the browser write shared data.
+  const resolveDictionaryId = async (word, knownDetails = null) => {
+    if (knownDetails?._dictionaryId) return knownDetails._dictionaryId;
+    const normalizedWord = typeof word === 'string' ? word.trim().toLowerCase() : '';
+    if (!normalizedWord) return null;
+
+    const lookup = async () => {
+      const { data } = await supabase
+        .from('global_dictionary')
+        .select('id')
+        .eq('word', normalizedWord)
+        .maybeSingle();
+      return data?.id || null;
+    };
+
+    const existingId = await lookup();
+    if (existingId) return existingId;
+
+    const generated = await getAiWordRichDetails(normalizedWord);
+    if (generated?._dictionaryId) return generated._dictionaryId;
+    return lookup();
   };
 
   // Stub functions for components needing signature matching

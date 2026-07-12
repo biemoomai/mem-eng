@@ -7,10 +7,10 @@ const Dev = () => {
   const { providerStatus, resetCooldowns } = useVocab();
 
   // Local storage API keys state (falling back to env variables for display)
-  const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('memeng_pexels_key') || import.meta.env.VITE_PEXELS_API_KEY || '');
-  const [pixabayKey, setPixabayKey] = useState(localStorage.getItem('memeng_pixabay_key') || import.meta.env.VITE_PIXABAY_API_KEY || '');
-  const [hfKey, setHfKey] = useState(localStorage.getItem('memeng_huggingface_key') || import.meta.env.VITE_HUGGINGFACE_API_KEY || '');
-  const [falKey, setFalKey] = useState(localStorage.getItem('memeng_fal_key') || import.meta.env.VITE_FAL_API_KEY || '');
+  const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('memeng_pexels_key') || '');
+  const [pixabayKey, setPixabayKey] = useState(localStorage.getItem('memeng_pixabay_key') || '');
+  const [hfKey, setHfKey] = useState(localStorage.getItem('memeng_huggingface_key') || '');
+  const [falKey, setFalKey] = useState(localStorage.getItem('memeng_fal_key') || '');
   
   const [pexelsTestStatus, setPexelsTestStatus] = useState('');
   const [pixabayTestStatus, setPixabayTestStatus] = useState('');
