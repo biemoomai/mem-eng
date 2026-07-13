@@ -4,19 +4,20 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Securely handles word translation and analysis with 3-tier server-side fallback:
 // Gemini (Primary) ➔ Groq (Backup 1) ➔ Cerebras (Backup 2)
 
-const configuredOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'https://mem-eng.pages.dev,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:5173,http://localhost:5174')
+const configuredOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'https://mem-eng.pages.dev,capacitor://localhost,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:5173,http://localhost:5174')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
 const getCorsHeaders = (req: Request) => {
   const origin = req.headers.get('Origin') || '';
-  const allowOrigin = configuredOrigins.includes(origin) ? origin : configuredOrigins[0];
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
+  if (configuredOrigins.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
 };
 
 const cleanWordCandidate = (value) => {
@@ -24,6 +25,49 @@ const cleanWordCandidate = (value) => {
   const cleaned = value.toLowerCase().replace(/[^a-z\s-]/g, '').trim();
   if (!cleaned || cleaned.length > 28 || cleaned.split(/\s+/).length > 3) return null;
   return cleaned;
+};
+
+const isSupportedInput = (value: string) => {
+  const trimmed = value.trim();
+  const english = /^[a-z][a-z' -]{0,63}$/i.test(trimmed) && trimmed.split(/\s+/).length <= 3;
+  const thai = /^[\u0E00-\u0E7F\s-]{1,64}$/.test(trimmed) && trimmed.split(/\s+/).length <= 5;
+  return english || thai;
+};
+
+const hashClientIdentity = async (req: Request) => {
+  const pepper = Deno.env.get('QUOTA_HASH_PEPPER');
+  if (!pepper) throw new Error('Quota protection is not configured');
+  const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const address = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || forwarded || 'unknown';
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${pepper}:${address}`));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+};
+
+const validateGeneratedDetails = (parsed: any, cacheKey: string | null) => {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid provider response');
+  const dictionaryWord = cleanWordCandidate(parsed.word) || cacheKey;
+  if (!dictionaryWord) throw new Error('Missing normalized English word');
+  if (cacheKey && dictionaryWord !== cacheKey) throw new Error('Generated word does not match the requested word');
+
+  const definition = parsed.englishExplanation?.definition;
+  if (typeof definition !== 'string' || !definition.trim() || definition.length > 160) throw new Error('Invalid definition');
+  if (typeof parsed.pos !== 'string' || parsed.pos.length > 32) throw new Error('Invalid part of speech');
+  if (!['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(parsed.cefrLevel)) throw new Error('Invalid CEFR level');
+  if (!Array.isArray(parsed.scenes) || parsed.scenes.length !== 2) throw new Error('Exactly two learning scenes are required');
+  for (const scene of parsed.scenes) {
+    if (!scene || typeof scene.dialogue !== 'string' || !scene.dialogue.trim() || scene.dialogue.length > 240) throw new Error('Invalid scene dialogue');
+    if (typeof scene.meaning !== 'string' || scene.meaning.length > 500) throw new Error('Invalid scene meaning');
+    if (typeof scene.imageTag !== 'string' || scene.imageTag.length > 80) throw new Error('Invalid scene image tag');
+  }
+
+  for (const key of ['synonyms', 'nearWords', 'wordFamily']) {
+    parsed[key] = uniqueWords(Array.isArray(parsed[key]) ? parsed[key] : [], 5);
+  }
+  parsed.moreContexts = Array.isArray(parsed.moreContexts)
+    ? parsed.moreContexts.filter((item: any) => item && typeof item.sentence === 'string' && item.sentence.length <= 240).slice(0, 3)
+    : [];
+  parsed.word = dictionaryWord;
+  return dictionaryWord;
 };
 
 const uniqueWords = (items, max = 8) => {
@@ -40,7 +84,7 @@ const uniqueWords = (items, max = 8) => {
 };
 
 const fetchDatamuseWords = async (query) => {
-  const res = await fetch(`https://api.datamuse.com/words?${query}`);
+  const res = await fetch(`https://api.datamuse.com/words?${query}`, { signal: AbortSignal.timeout(8000) });
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data : [];
@@ -94,14 +138,27 @@ const fetchLexicalReferences = async (word) => {
 };
 
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get('Origin') || '';
+  if (requestOrigin && !configuredOrigins.includes(requestOrigin)) {
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', 'Vary': 'Origin' }
+    });
+  }
   const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 
   try {
-    const { word, forceValid } = await req.json();
+    const { word } = await req.json();
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -124,7 +181,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
     const rawWord = typeof word === 'string' ? word.trim() : '';
-    if (!rawWord || rawWord.length > 80) {
+    if (!rawWord || !isSupportedInput(rawWord)) {
       return new Response(JSON.stringify({ error: 'Enter a word or a short phrase.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -133,18 +190,19 @@ Deno.serve(async (req) => {
 
     // Cache hits are free: do not spend a generation quota or call an AI provider.
     const cacheKey = cleanWordCandidate(rawWord);
-    if (!forceValid && cacheKey) {
+    if (cacheKey) {
       const { data: cached } = await admin
         .from('global_dictionary')
-        .select('id, rich_data')
+        .select('id, rich_data, verification_status')
         .eq('word', cacheKey)
         .maybeSingle();
-      if (cached?.rich_data) {
+      if (cached?.rich_data && ['server_verified', 'legacy_structural'].includes(cached.verification_status)) {
         try {
           const cachedDetails = typeof cached.rich_data === 'string'
             ? JSON.parse(cached.rich_data)
             : cached.rich_data;
           if (cachedDetails && typeof cachedDetails === 'object') {
+            validateGeneratedDetails(cachedDetails, cacheKey);
             return new Response(JSON.stringify({
               ...cachedDetails,
               _provider: cachedDetails?._provider || 'DB Cache',
@@ -158,9 +216,11 @@ Deno.serve(async (req) => {
       }
     }
 
+    const clientHash = await hashClientIdentity(req);
     const { data: quota, error: quotaError } = await admin.rpc('consume_word_generation_quota', {
       p_user_id: user.id,
-      p_is_anonymous: Boolean(user.is_anonymous)
+      p_is_anonymous: Boolean(user.is_anonymous),
+      p_client_hash: clientHash
     });
     if (quotaError || !quota?.allowed) {
       return new Response(JSON.stringify({ error: 'Daily generation limit reached. Please try again tomorrow.' }), {
@@ -212,6 +272,7 @@ CRITICAL INSTRUCTIONS FOR LEXICAL RELATIONS:
 
 Return a JSON object with this exact structure:
 {
+  "word": "The normalized lowercase English word being explained.",
   "validation": {
     "isInvalid": false, // true ONLY if "${word}" is a typo, spelling mistake, or complete gibberish. false if it is a correct English word/phrase (or valid Thai word/phrase).
     "suggestion": "Closest spelling suggestion if isInvalid is true, else null.",
@@ -271,7 +332,7 @@ Return a JSON object with this exact structure:
 }
 
 Do NOT wrap the JSON in markdown code blocks. Return ONLY the raw JSON string.
-${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "isInvalid" MUST be false.` : ''}
+
 `;
 
     let textResponse = '';
@@ -287,6 +348,7 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
+            signal: AbortSignal.timeout(18000),
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
@@ -316,6 +378,7 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
         console.log(`🚀 Querying Groq (llama-3.3-70b-versatile) for "${word}"...`);
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
+          signal: AbortSignal.timeout(18000),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${groqKey}`
@@ -349,6 +412,7 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
         console.log(`⚡ Querying Cerebras (gpt-oss-120b) for "${word}"...`);
         const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
           method: 'POST',
+          signal: AbortSignal.timeout(18000),
           headers: {
             'Authorization': `Bearer ${cerebrasKey}`,
             'Content-Type': 'application/json'
@@ -385,7 +449,14 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
     }
     // Parse the text to ensure it's valid JSON
     const parsed = JSON.parse(textResponse.trim());
-    parsed._provider = usedProvider; // Add provider metadata
+    if (parsed?.validation?.isInvalid === true) {
+      return new Response(JSON.stringify({ ...parsed, _provider: usedProvider }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const dictionaryWord = validateGeneratedDetails(parsed, cacheKey);
+    parsed._provider = usedProvider;
     parsed._referenceSources = {
       lexical: lexicalReferences.source,
       lexicalReferenceUsed: Boolean(
@@ -396,7 +467,6 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
     };
 
     // Only server-generated details are allowed into the shared dictionary.
-    const dictionaryWord = cleanWordCandidate(parsed.word) || cacheKey;
     let dictionaryId: string | null = null;
     if (dictionaryWord) {
       const { data: stored, error: storeError } = await admin
@@ -406,8 +476,10 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
           pos: parsed.pos || 'n.',
           meaning: JSON.stringify(parsed),
           rich_data: parsed,
-          cefr_level: parsed.cefrLevel || 'Unranked'
-        }, { onConflict: 'word', ignoreDuplicates: true })
+          cefr_level: parsed.cefrLevel || 'Unranked',
+          verification_status: 'server_verified',
+          verified_at: new Date().toISOString()
+        }, { onConflict: 'word' })
         .select('id')
         .maybeSingle();
       if (storeError) console.error('Could not store verified dictionary details:', storeError);

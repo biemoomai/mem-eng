@@ -6,9 +6,9 @@ const required = (value, needle, label) => assert(value.includes(needle), label)
 
 const wordFunction = read('../supabase/functions/get-word-details/index.ts');
 const saveFunction = read('../supabase/functions/save-dictionary-card/index.ts');
-const dictionaryMigration = read('../supabase/migrations/20260711_secure_dictionary_writes.sql');
-const guestMigration = read('../supabase/migrations/20260711_guest_lifecycle.sql');
-const imagePolicyMigration = read('../supabase/migrations/20260711_user_image_upload_policy.sql');
+const dictionaryMigration = read('../supabase/migrations/20260711101000_secure_dictionary_writes.sql');
+const guestMigration = read('../supabase/migrations/20260711103000_guest_lifecycle.sql');
+const imagePolicyMigration = read('../supabase/migrations/20260711104000_user_image_upload_policy.sql');
 const vocabContext = read('../src/context/VocabContext.jsx');
 const purge = read('../src/pages/Purge.jsx');
 const tutorial = read('../src/components/Tutorial.jsx');
@@ -18,7 +18,7 @@ const imageHelper = read('../src/utils/imageHelper.js');
 const devPage = read('../src/pages/Dev.jsx');
 const nongMem = read('../src/components/NongMem.jsx');
 
-required(wordFunction, "'Access-Control-Allow-Origin': allowOrigin", 'Edge function must use an origin allow-list.');
+required(wordFunction, "Origin not allowed", 'Edge function must reject unknown origins.');
 assert(!wordFunction.includes("'Access-Control-Allow-Origin': '*'"), 'Edge function must not use wildcard CORS.');
 assert(wordFunction.indexOf('Cache hits are free') < wordFunction.indexOf('consume_word_generation_quota'), 'Dictionary cache must be checked before quota is consumed.');
 required(wordFunction, 'p_is_anonymous: Boolean(user.is_anonymous)', 'Generation quota must distinguish guest accounts.');
@@ -26,7 +26,7 @@ required(saveFunction, 'Generate verified details before saving a card.', 'Legac
 assert(!saveFunction.includes('richData'), 'Legacy save endpoint must not accept richData.');
 required(dictionaryMigration, 'revoke insert, update, delete on public.global_dictionary from anon, authenticated;', 'Dictionary writes must be revoked from browser roles.');
 required(dictionaryMigration, 'App can read verified dictionary entries', 'Dictionary reads must remain available.');
-required(guestMigration, 'coalesce(last_sign_in_at, created_at)', 'Guest cleanup must use last sign-in activity.');
+required(guestMigration, 'profile.last_active_at', 'Guest cleanup must use application activity.');
 required(guestMigration, "interval '30 days'", 'Guest cleanup must use the 30-day retention window.');
 required(imagePolicyMigration, "Users upload their own small image cards", 'Image upload policy must be owner-scoped.');
 required(imagePolicyMigration, "Users update their own small image cards", 'Image updates must remain owner-scoped.');

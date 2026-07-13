@@ -1,20 +1,30 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const configuredOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'https://mem-eng.pages.dev,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:5173,http://localhost:5174')
+const configuredOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'https://mem-eng.pages.dev,capacitor://localhost,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:5173,http://localhost:5174')
   .split(',').map((origin) => origin.trim()).filter(Boolean);
 const corsHeaders = (req: Request) => {
   const origin = req.headers.get('Origin') || '';
-  return {
-    'Access-Control-Allow-Origin': configuredOrigins.includes(origin) ? origin : configuredOrigins[0],
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
+  if (configuredOrigins.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
 };
 
 // Kept for backwards compatibility. It no longer accepts browser-supplied rich data.
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get('Origin') || '';
+  if (requestOrigin && !configuredOrigins.includes(requestOrigin)) {
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', 'Vary': 'Origin' }
+    });
+  }
   const headers = corsHeaders(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
+  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { ...headers, 'Content-Type': 'application/json' } });
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });

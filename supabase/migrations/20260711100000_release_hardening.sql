@@ -5,6 +5,7 @@ alter table public.user_decks add column if not exists elapsed_days integer not 
 alter table public.user_decks add column if not exists learning_steps integer not null default 0;
 alter table public.user_decks add column if not exists last_review_date timestamptz;
 alter table public.user_decks add column if not exists mastered_at timestamptz;
+alter table public.user_decks enable row level security;
 
 -- Cards are private to their owner. This replaces the incomplete original policy.
 drop policy if exists "Users control their own decks" on public.user_decks;
@@ -53,17 +54,14 @@ $$;
 revoke all on function public.consume_word_generation_quota(uuid, boolean) from public, anon, authenticated;
 grant execute on function public.consume_word_generation_quota(uuid, boolean) to service_role;
 
-insert into storage.buckets (id, name, public)
-values ('user-card-images', 'user-card-images', true)
-on conflict (id) do nothing;
-
-create policy "Users upload their own card images"
-  on storage.objects for insert to authenticated
-  with check (bucket_id = 'user-card-images' and (storage.foldername(name))[1] = auth.uid()::text);
-create policy "Users update their own card images"
-  on storage.objects for update to authenticated
-  using (bucket_id = 'user-card-images' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'user-card-images' and (storage.foldername(name))[1] = auth.uid()::text);
-create policy "Users delete their own card images"
-  on storage.objects for delete to authenticated
-  using (bucket_id = 'user-card-images' and (storage.foldername(name))[1] = auth.uid()::text);
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'user-card-images',
+  'user-card-images',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+set file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
