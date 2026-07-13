@@ -597,7 +597,11 @@ const Purge = () => {
   const touchActiveRef = useRef(false);
   const masterPressTimerRef = useRef(null);
   const masterGlowTimerRef = useRef(null);
+  const masterCompletionTimerRef = useRef(null);
   const masterLongPressTriggeredRef = useRef(false);
+  const ratingTransitionTimerRef = useRef(null);
+  const ratingInFlightRef = useRef(false);
+  const deckRatingIdsRef = useRef(new Set());
 
   const startPress = (e, isTouch) => {
     e.stopPropagation();
@@ -682,6 +686,10 @@ const Purge = () => {
     }
 
     clearMasterPress();
+    if (masterCompletionTimerRef.current) {
+      clearTimeout(masterCompletionTimerRef.current);
+      masterCompletionTimerRef.current = null;
+    }
     masterLongPressTriggeredRef.current = false;
 
     // 1. Delay the visual glow by 250ms to prevent flickering on normal taps
@@ -691,33 +699,37 @@ const Purge = () => {
 
     // 2. Start the master transition timer (1.0 second total)
     masterPressTimerRef.current = setTimeout(() => {
+      masterPressTimerRef.current = null;
       masterLongPressTriggeredRef.current = true;
       setIsMasterHolding(false);
-      playMasterSound();
-      
+
       if (navigator.vibrate) {
         try {
           navigator.vibrate([80, 50, 120]);
         } catch (err) {}
       }
-      
-      // Show the MASTERED stamp overlay
+
       setFlickSelection({
         label: 'MASTERED',
         interval: 'Retired',
         count: 4
       });
 
-      // Delay going to the next card by 1 second so the user can enjoy the stamp
-      setTimeout(() => {
-        handleSrsChoice('master');
-        setFlickSelection(null);
+      masterCompletionTimerRef.current = setTimeout(() => {
+        masterCompletionTimerRef.current = null;
+        void handleSrsChoice('master').finally(() => setFlickSelection(null));
       }, 1000);
     }, 1000);
   };
 
   useEffect(() => {
-    return () => clearMasterPress();
+    return () => {
+      clearMasterPress();
+      if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+      if (masterCompletionTimerRef.current) clearTimeout(masterCompletionTimerRef.current);
+      if (ratingTransitionTimerRef.current) clearTimeout(ratingTransitionTimerRef.current);
+      ratingInFlightRef.current = false;
+    };
   }, []);
 
   const highlightThaiTranslation = (sentence, translation) => {
@@ -759,6 +771,22 @@ const Purge = () => {
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
+  };
+
+  const handleDeckSrsChoice = async (item, choice) => {
+    if (!item || deckRatingIdsRef.current.has(item.id)) return;
+    deckRatingIdsRef.current.add(item.id);
+    try {
+      const result = await updateWordSrs(item.id, choice);
+      if (!result?.success) showToast(result?.error || 'Review could not be saved. Please try again.');
+      return result;
+    } catch (error) {
+      console.error('Could not save deck review:', error);
+      showToast('Review could not be saved. Please try again.');
+      return { success: false, error: error?.message };
+    } finally {
+      deckRatingIdsRef.current.delete(item.id);
+    }
   };
 
   const currentTooltip = tooltipStack[tooltipStack.length - 1];
@@ -1877,7 +1905,7 @@ const Purge = () => {
                                             isOpen: true,
                                             message: `ต้องการดึงคำว่า "${item.word}" กลับเข้าสู่คิวเรียนปกติเพื่อทวนใหม่หรือไม่?`,
                                             onConfirm: () => {
-                                              updateWordSrs(item.id, 'again');
+                                              void handleDeckSrsChoice(item, 'again');
                                             }
                                           });
                                         }}
@@ -2097,7 +2125,7 @@ const Purge = () => {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      updateWordSrs(item.id, 'again');
+                                      void handleDeckSrsChoice(item, 'again');
                                     }}
                                     className="glass-button"
                                     style={{ 
@@ -2116,7 +2144,7 @@ const Purge = () => {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      updateWordSrs(item.id, 'hard');
+                                      void handleDeckSrsChoice(item, 'hard');
                                     }}
                                     className="glass-button"
                                     style={{ 
@@ -2135,7 +2163,7 @@ const Purge = () => {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      updateWordSrs(item.id, 'normal');
+                                      void handleDeckSrsChoice(item, 'normal');
                                     }}
                                     className="glass-button"
                                     style={{ 
@@ -2154,7 +2182,7 @@ const Purge = () => {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      updateWordSrs(item.id, 'easy');
+                                      void handleDeckSrsChoice(item, 'easy');
                                     }}
                                     className="glass-button"
                                     style={{ 
@@ -3346,24 +3374,37 @@ const Purge = () => {
   };
 
 
-  const handleSrsChoice = (choice) => {
-    if (!wordObj) return;
-    
+  const handleSrsChoice = async (choice) => {
+    if (!wordObj || ratingInFlightRef.current) return { success: false, error: 'Review already in progress.' };
+    ratingInFlightRef.current = true;
+
     let durationMs = 1500;
     if (revealTimeRef.current) {
       durationMs = Math.round(performance.now() - revealTimeRef.current);
     }
     revealTimeRef.current = null;
-    
-    if (choice === 'again') {
-      playAgainSound();
-    } else {
-      playSuccessSound();
-    }
-    
-    // Save FSRS backend calculations.
-    updateWordSrs(wordObj.id, choice, durationMs);
 
+    let persistenceResult;
+    try {
+      persistenceResult = await updateWordSrs(wordObj.id, choice, durationMs);
+    } catch (error) {
+      console.error('Could not persist review:', error);
+      persistenceResult = { success: false, error: error?.message };
+    }
+
+    if (!persistenceResult?.success) {
+      ratingInFlightRef.current = false;
+      setFlickSelection(null);
+      x.set(0);
+      y.set(0);
+      setExitDirection(0);
+      showToast(persistenceResult?.error || 'Review could not be saved. Please try again.');
+      return persistenceResult;
+    }
+
+    if (choice === 'again') playAgainSound();
+    else if (choice === 'master') playMasterSound();
+    else playSuccessSound();
       // Update Nong Mem Stats
       const richCardData = parseMeaningField(wordObj.meaning);
       let verbForms = undefined;
@@ -3445,29 +3486,22 @@ const Purge = () => {
       }));
     }
 
-    setTimeout(() => {
+    if (ratingTransitionTimerRef.current) clearTimeout(ratingTransitionTimerRef.current);
+    ratingTransitionTimerRef.current = setTimeout(() => {
+      ratingTransitionTimerRef.current = null;
       setRevealStep(0);
-      x.set(0); 
+      x.set(0);
       y.set(0);
       setExitDirection(0);
-
-      if (choice === 'again') {
-        // Rotate failed cards to the end of the session queue so they practice again
-        setSessionQueue(prev => {
-          const [current, ...rest] = prev;
-          return [...rest, current];
-        });
-      } else {
-        setSessionQueue(prev => {
-          if (prev.length === 0) return prev;
-          const [current, ...rest] = prev;
-          if (rest.length === 0) {
-            setIsStudying(false);
-          }
-          return rest;
-        });
-      }
+      setSessionQueue(prev => {
+        if (prev.length === 0) return prev;
+        const [, ...rest] = prev;
+        if (rest.length === 0) setIsStudying(false);
+        return rest;
+      });
+      ratingInFlightRef.current = false;
     }, 250);
+    return persistenceResult;
   };
 
   const handleDragEnd = (event, info) => {

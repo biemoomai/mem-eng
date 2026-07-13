@@ -111,10 +111,6 @@ const toFsrsCard = (card, now = new Date()) => {
   return fsrsCard;
 };
 
-const getDaysUntil = (date, now = new Date()) => {
-  return Math.max(0, Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-};
-
 const formatReviewInterval = (date, now = new Date()) => {
   const minutes = Math.max(0, Math.round((date.getTime() - now.getTime()) / (1000 * 60)));
   if (minutes < 60) return `${Math.max(1, minutes)}m`;
@@ -132,28 +128,100 @@ const getLevelFromFsrs = (fsrsCard, rating) => {
   if (rating === Rating.Easy) return 'Easy';
   return 'Normal';
 };
+
+const getRestoredSrsLevel = (card) => {
+  if (card?.archivedSrsLevel && card.archivedSrsLevel !== 'Mastered') {
+    return card.archivedSrsLevel;
+  }
+
+  const state = typeof card?.state === 'number' ? card.state : State.New;
+  return state === State.Review ? 'Normal' : 'Learning';
+};
+
+const normalizeStoredDeck = (deck) => {
+  if (!Array.isArray(deck)) return [];
+
+  return deck.filter(item => item && item.word).map(item => {
+    const reps = typeof item.reps === 'number' ? item.reps : (item.repetition || 0);
+    const easeFactor = typeof item.easeFactor === 'number' ? item.easeFactor : 2.5;
+    const stability = typeof item.stability === 'number' ? item.stability : (item.interval || 1.0);
+    const difficulty = typeof item.difficulty === 'number'
+      ? item.difficulty
+      : Math.min(10, Math.max(1, 10 - (easeFactor - 1.3) * 7.5));
+    const state = typeof item.state === 'number' ? item.state : (reps > 0 ? State.Review : State.New);
+    const normalized = {
+      ...item,
+      word: typeof item.word === 'string' ? item.word.toLowerCase() : String(item.word || '').toLowerCase(),
+      stability,
+      difficulty,
+      reps,
+      lapses: typeof item.lapses === 'number' ? item.lapses : 0,
+      state,
+      scheduled_days: typeof item.scheduled_days === 'number' ? item.scheduled_days : (item.interval || 0),
+      elapsed_days: typeof item.elapsed_days === 'number' ? item.elapsed_days : 0,
+      learning_steps: typeof item.learning_steps === 'number' ? item.learning_steps : 0,
+      lastReviewDate: item.lastReviewDate || null,
+      masteredAt: item.masteredAt || null,
+    };
+
+    if (normalized.srsLevel === 'Mastered' && !normalized.archivedSrsLevel) {
+      normalized.archivedSrsLevel = getRestoredSrsLevel(normalized);
+    }
+    return normalized;
+  });
+};
+
+const loadLocalDeck = () => {
+  try {
+    const saved = localStorage.getItem('chatgpt_anki_deck');
+    return saved ? normalizeStoredDeck(JSON.parse(saved)) : [];
+  } catch (error) {
+    console.error('Failed to parse local deck', error);
+    return [];
+  }
+};
+
+const loadLocalReviewLogs = () => {
+  try {
+    const saved = localStorage.getItem('vocab_review_logs');
+    const parsed = saved ? JSON.parse(saved) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const createLocalCardId = () => {
+  if (globalThis.crypto?.randomUUID) return `local-${globalThis.crypto.randomUUID()}`;
+  if (globalThis.crypto?.getRandomValues) {
+    const values = new Uint32Array(4);
+    globalThis.crypto.getRandomValues(values);
+    return `local-${Array.from(values, value => value.toString(16).padStart(8, '0')).join('')}`;
+  }
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+const isRemoteDeckId = (cardId) => {
+  return typeof cardId === 'string'
+    && !cardId.startsWith('local-')
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cardId);
+};
+
 const VocabContext = createContext();
 
 export const useVocab = () => useContext(VocabContext);
 
 export const VocabProvider = ({ children }) => {
-  const [vocab, setVocab] = useState([]);
-  const [streak, setStreak] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [reviewLogs, setReviewLogs] = useState(() => {
+  const [vocab, setVocab] = useState(loadLocalDeck);
+  const [streak, setStreak] = useState(() => {
     try {
-      const saved = localStorage.getItem('vocab_review_logs');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-      return [];
-    } catch (e) {
-      return [];
+      return parseInt(localStorage.getItem('chatgpt_anki_streak') || '1', 10) || 1;
+    } catch (error) {
+      return 1;
     }
   });
+  const [loading, setLoading] = useState(true);
+  const [reviewLogs, setReviewLogs] = useState(loadLocalReviewLogs);
 
   const saveLogsToLocal = (logs) => {
     try {
@@ -176,7 +244,11 @@ export const VocabProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      // Fetch user profile stats (Streak)
+      const localDeckSnapshot = loadLocalDeck();
+      const localCards = localDeckSnapshot.filter(item => (
+        typeof item.id === 'string' && item.id.startsWith('local-')
+      ));
+
       const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('streak_days')
@@ -185,7 +257,6 @@ export const VocabProvider = ({ children }) => {
 
       if (!profileError && userProfile) {
         const remoteStreak = userProfile.streak_days || 1;
-
         const localStreakVal = parseInt(localStorage.getItem('chatgpt_anki_streak') || '1', 10);
         const finalStreak = Math.max(remoteStreak, localStreakVal);
         setStreak(finalStreak);
@@ -199,19 +270,17 @@ export const VocabProvider = ({ children }) => {
         }
       }
 
-      // 1. Upload unsynced local decks
-      const localCards = vocab.filter(item => typeof item.id === 'string' && item.id.startsWith('local-'));
       for (const card of localCards) {
-        // Shared dictionary entries must originate from the verified Edge Function.
-        const wordId = await resolveDictionaryId(card.word);
-        let privateMeaning = card.meaning;
         try {
-          if (typeof privateMeaning === 'string') privateMeaning = JSON.parse(privateMeaning);
-        } catch (err) {}
+          const wordId = await resolveDictionaryId(card.word);
+          if (!wordId) continue;
 
-        if (wordId) {
-          // Insert into user_decks
-          await supabase
+          let privateMeaning = card.meaning;
+          try {
+            if (typeof privateMeaning === 'string') privateMeaning = JSON.parse(privateMeaning);
+          } catch (error) {}
+
+          const { error: uploadError } = await supabase
             .from('user_decks')
             .insert({
               user_id: userId,
@@ -219,47 +288,31 @@ export const VocabProvider = ({ children }) => {
               custom_word: card.word,
               custom_meaning: privateMeaning,
               custom_video_url: card.videoUrl || null,
-              srs_level: card.srsLevel,
+              srs_level: card.masteredAt ? getRestoredSrsLevel(card) : card.srsLevel,
               repetition: card.repetition,
               interval: card.interval,
               ease_factor: card.easeFactor,
               next_review_date: card.nextReviewDate,
-              stability: card.stability || 0.1,
-              difficulty: card.difficulty || 3.0,
-              reps: card.reps || 0,
-              lapses: card.lapses || 0,
-              state: card.state || 0,
-              scheduled_days: card.scheduled_days || 0,
-              elapsed_days: card.elapsed_days || 0,
-              learning_steps: card.learning_steps || 0,
+              stability: card.stability ?? 0.1,
+              difficulty: card.difficulty ?? 3.0,
+              reps: card.reps ?? 0,
+              lapses: card.lapses ?? 0,
+              state: card.state ?? State.New,
+              scheduled_days: card.scheduled_days ?? 0,
+              elapsed_days: card.elapsed_days ?? 0,
+              learning_steps: card.learning_steps ?? 0,
               last_review_date: card.lastReviewDate || null,
               mastered_at: card.masteredAt || null
             });
+
+          if (uploadError) {
+            console.error(`Failed to upload local card "${card.word}":`, uploadError);
+          }
+        } catch (error) {
+          console.error(`Failed to prepare local card "${card.word}" for sync:`, error);
         }
       }
 
-      // 2. Upload unsynced review logs
-      if (reviewLogs.length > 0) {
-        const { error: logsError } = await supabase
-          .from('user_review_logs')
-          .insert(
-            reviewLogs.map(log => ({
-              user_id: userId,
-              word: log.word,
-              rating: log.rating,
-              response_time_ms: log.response_time_ms,
-              stability_before: log.stability_before,
-              stability_after: log.stability_after,
-              review_date: log.review_date
-            }))
-          );
-        if (!logsError) {
-          setReviewLogs([]);
-          localStorage.removeItem('vocab_review_logs');
-        }
-      }
-
-      // 3. Fetch all decks from Supabase (source of truth)
       const { data: remoteDecks, error: fetchError } = await supabase
         .from('user_decks')
         .select(`
@@ -268,21 +321,23 @@ export const VocabProvider = ({ children }) => {
         `)
         .eq('user_id', userId);
 
-      if (!fetchError && remoteDecks) {
-        const merged = remoteDecks
-          .filter(ud => ud.global_dictionary)
-          .map(ud => {
-            let parsedMeaning = ud.global_dictionary.meaning;
-            let parsedRichData = ud.global_dictionary.rich_data;
+      if (fetchError) throw fetchError;
+
+      const remoteCards = (remoteDecks || [])
+        .filter(ud => ud.global_dictionary)
+        .map(ud => {
+          let parsedMeaning = ud.global_dictionary.meaning;
+          let parsedRichData = ud.global_dictionary.rich_data;
           try {
             if (typeof parsedMeaning === 'string') parsedMeaning = JSON.parse(parsedMeaning);
-          } catch (e) {}
+          } catch (error) {}
           try {
             if (typeof parsedRichData === 'string') parsedRichData = JSON.parse(parsedRichData);
-          } catch (e) {}
+          } catch (error) {}
 
           const customMeaning = ud.custom_meaning || null;
           const effectiveMeaning = customMeaning || parsedRichData || parsedMeaning;
+          const restoredSrsLevel = ud.srs_level === 'Mastered' ? getRestoredSrsLevel(ud) : ud.srs_level;
 
           return {
             id: ud.id,
@@ -295,7 +350,8 @@ export const VocabProvider = ({ children }) => {
             customVideoUrl: ud.custom_video_url,
             videoUrl: ud.custom_video_url || effectiveMeaning?.savedSceneImages?.[0] || parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
             curriculum: parsedRichData?.curriculum || parsedMeaning?.curriculum || 'Self-Study only',
-            srsLevel: ud.srs_level,
+            srsLevel: ud.mastered_at ? 'Mastered' : restoredSrsLevel,
+            archivedSrsLevel: ud.mastered_at ? restoredSrsLevel : null,
             repetition: ud.repetition,
             interval: ud.interval,
             easeFactor: ud.ease_factor,
@@ -313,8 +369,42 @@ export const VocabProvider = ({ children }) => {
             created_at: ud.created_at
           };
         });
-        setVocab(merged);
-        saveDeckToLocal(merged);
+
+      const remoteWords = new Set(remoteCards.map(card => card.word.toLowerCase().trim()));
+      const remainingLocalCards = localCards.filter(card => !remoteWords.has(card.word.toLowerCase().trim()));
+      const merged = [...remoteCards, ...remainingLocalCards];
+      setVocab(merged);
+      saveDeckToLocal(merged);
+
+      const pendingLogs = loadLocalReviewLogs();
+      if (pendingLogs.length > 0) {
+        const unsyncedLocalWords = new Set(remainingLocalCards.map(card => card.word.toLowerCase().trim()));
+        const logsToUpload = pendingLogs.filter(log => !unsyncedLocalWords.has(String(log.word || '').toLowerCase().trim()));
+
+        if (logsToUpload.length > 0) {
+          const { error: logsError } = await supabase
+            .from('user_review_logs')
+            .insert(logsToUpload.map(log => ({
+              user_id: userId,
+              word: log.word,
+              rating: log.rating,
+              response_time_ms: log.response_time_ms,
+              stability_before: log.stability_before,
+              stability_after: log.stability_after,
+              review_date: log.review_date
+            })));
+
+          if (!logsError) {
+            const getLogKey = log => log.id || `${log.word}:${log.rating}:${log.review_date}`;
+            const uploadedLogKeys = new Set(logsToUpload.map(getLogKey));
+            setReviewLogs(prevLogs => {
+              const remainingLogs = prevLogs.filter(log => !uploadedLogKeys.has(getLogKey(log)));
+              if (remainingLogs.length > 0) saveLogsToLocal(remainingLogs);
+              else localStorage.removeItem('vocab_review_logs');
+              return remainingLogs;
+            });
+          }
+        }
       }
     } catch (err) {
       console.error("Error in syncData:", err);
@@ -472,48 +562,9 @@ export const VocabProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [providerStatus]);
   
-  // Initialize state from LocalStorage on mount
   useEffect(() => {
-    const localDeck = localStorage.getItem('chatgpt_anki_deck');
-    if (localDeck) {
-      try {
-        const parsed = JSON.parse(localDeck);
-        // Normalize all existing cards to lowercase and inject FSRS fields if missing
-        const normalized = Array.isArray(parsed) ? parsed.filter(item => item && item.word).map(item => {
-          const reps = typeof item.reps === 'number' ? item.reps : (item.repetition || 0);
-          const easeFactor = typeof item.easeFactor === 'number' ? item.easeFactor : 2.5;
-          const stability = typeof item.stability === 'number' ? item.stability : (item.interval || 1.0);
-          const difficulty = typeof item.difficulty === 'number' ? item.difficulty : Math.min(10, Math.max(1, 10 - (easeFactor - 1.3) * 7.5));
-          const state = typeof item.state === 'number' ? item.state : (reps > 0 ? 2 : 0);
-          return {
-            ...item,
-            word: typeof item.word === 'string' ? item.word.toLowerCase() : String(item.word || '').toLowerCase(),
-            stability,
-            difficulty,
-            reps,
-            lapses: typeof item.lapses === 'number' ? item.lapses : 0,
-            state: state,
-            scheduled_days: typeof item.scheduled_days === 'number' ? item.scheduled_days : (item.interval || 0),
-            elapsed_days: typeof item.elapsed_days === 'number' ? item.elapsed_days : 0,
-            learning_steps: typeof item.learning_steps === 'number' ? item.learning_steps : 0,
-            lastReviewDate: item.lastReviewDate || null,
-            masteredAt: item.masteredAt || null
-          };
-        }) : [];
-        setVocab(normalized);
-        localStorage.setItem('chatgpt_anki_deck', JSON.stringify(normalized));
-      } catch (e) {
-        console.error("Failed to parse local deck", e);
-      }
-    }
-    
-    const localStreak = localStorage.getItem('chatgpt_anki_streak');
-    if (localStreak) {
-      setStreak(parseInt(localStreak, 10) || 1);
-    }
-    
-    setLoading(false);
-  }, []);
+    if (!user) setLoading(false);
+  }, [user]);
 
   const saveDeckToLocal = (newVocab) => {
     localStorage.setItem('chatgpt_anki_deck', JSON.stringify(newVocab));
@@ -561,7 +612,7 @@ export const VocabProvider = ({ children }) => {
     }
 
     const newCard = {
-      id: `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: createLocalCardId(),
       word: normalizedWord,
       pos: richDetails.pos || 'n.',
       meaning: JSON.stringify(richDetails), // Keep string format for compatibility
@@ -755,25 +806,47 @@ export const VocabProvider = ({ children }) => {
 
   // Add new words from selected curriculum to the user's local deck
   const addNewCurriculumWords = async (curriculumName, count = 5, onWordAdded) => {
-    // Fallback Self-Study to Oxford 5000 so the checkmark always works in every mode
     const targetCurriculum = (!curriculumName || curriculumName === 'Self-Study only') ? 'Oxford 5000' : curriculumName;
-    const { data: dbWords, error: dbError } = await supabase
-      .from('curriculum_words')
-      .select('word, pos, cefr_level')
-      .eq('curriculum_name', targetCurriculum);
-      
-    if (dbError || !dbWords) {
-      console.error("Failed to fetch curriculum words:", dbError);
-      return { success: false, error: 'Failed to load curriculum from database.' };
+    const requestedCount = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 5;
+    if (requestedCount === 0) {
+      return { success: true, count: 0, requestedCount: 0, addedWords: [], failures: [], exhausted: false };
     }
 
-    const existingWords = new Set(vocab.map(w => w.word.toLowerCase().trim()));
-    const unadded = dbWords.filter(w => !existingWords.has(w.word.toLowerCase().trim()));
-    
-    if (unadded.length === 0) {
-      return { success: false, error: 'All words in this curriculum are already in your deck!' };
+    const dbWords = [];
+    const pageSize = 1000;
+    let startRow = 0;
+    while (true) {
+      const { data: page, error: dbError } = await supabase
+        .from('curriculum_words')
+        .select('id, word, pos, cefr_level')
+        .eq('curriculum_name', targetCurriculum)
+        .order('id', { ascending: true })
+        .range(startRow, startRow + pageSize - 1);
+
+      if (dbError) {
+        console.error('Failed to fetch curriculum words:', dbError);
+        return { success: false, error: 'Failed to load curriculum from database.', failures: [] };
+      }
+      if (!page || page.length === 0) break;
+      dbWords.push(...page);
+      if (page.length < pageSize) break;
+      startRow += pageSize;
     }
-    
+
+    const existingWords = new Set(vocab.map(item => String(item?.word || '').toLowerCase().trim()).filter(Boolean));
+    const uniqueCandidates = new Map();
+    for (const item of dbWords) {
+      const normalizedWord = String(item?.word || '').toLowerCase().trim();
+      if (normalizedWord && !existingWords.has(normalizedWord) && !uniqueCandidates.has(normalizedWord)) {
+        uniqueCandidates.set(normalizedWord, item);
+      }
+    }
+    const unadded = Array.from(uniqueCandidates.values());
+
+    if (unadded.length === 0) {
+      return { success: false, error: 'All words in this curriculum are already in your deck!', failures: [], exhausted: true };
+    }
+
     const getRandomFloat = () => {
       if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
         const values = new Uint32Array(1);
@@ -817,117 +890,149 @@ export const VocabProvider = ({ children }) => {
       return diversified;
     };
 
-    // Every batch is randomized and diversified by CEFR/POS. Cached details still
-    // make loading faster later, but never decide which words a learner receives.
     const targetWords = diversifyWords(unadded).slice(0, count);
-
+    const targetWordNames = new Set(targetWords.map(item => item.word.toLowerCase().trim()));
+    const replacementWords = diversifyWords(unadded.filter(item => !targetWordNames.has(item.word.toLowerCase().trim())));
+    const candidates = [...targetWords, ...replacementWords];
     const addedCardsList = [];
+    const failures = [];
     let lastError = null;
-    
-    for (const item of targetWords) {
+    let attempted = 0;
+
+    for (const item of candidates) {
+      if (addedCardsList.length >= requestedCount) break;
+      attempted += 1;
+
       try {
         const details = await getAiWordRichDetails(item.word);
-        if (details && !details.error) {
-          // Fetch auto-image if not present
-          let imgUrl = details?.savedSceneImages?.[0] || '';
-          if (!imgUrl) {
-            const firstImagePrompt = details?.imagePrompts && details.imagePrompts[0]
-              ? details.imagePrompts[0]
-              : item.word;
-            try {
-              const imageRes = await fetchVocabImage(firstImagePrompt, 'photo');
-              imgUrl = imageRes.url || '';
-              if (imgUrl) {
-                if (!details.savedSceneImages) details.savedSceneImages = [];
-                details.savedSceneImages[0] = imgUrl;
-              }
-            } catch (err) {
-              console.error("Failed to fetch auto-image for curriculum word:", item.word, err);
-            }
-          }
-
-          let category = 'Daily Life';
-          if (curriculumName.startsWith('TOEIC')) category = 'Business';
-          else if (curriculumName.startsWith('IELTS')) category = 'Academic';
-
-          const wordId = user ? await resolveDictionaryId(item.word, details) : null;
-
-          const newCard = {
-            id: user ? null : Date.now() + Math.random().toString(36).substr(2, 9),
-            word: item.word.toLowerCase().trim(),
-            meaning: typeof details === 'object' ? JSON.stringify(details) : details,
-            pos: item.pos,
-            cefrLevel: item.cefr_level || 'B2',
-            category: category,
-            curriculum: curriculumName,
-            videoUrl: imgUrl,
-            srsLevel: 'Learning',
-            nextReviewDate: new Date(Date.now() - 60000).toISOString(),
-            stability: 1.0,
-            difficulty: 5.0,
-            reps: 0,
-            lapses: 0,
-            state: 0,
-            scheduled_days: 0,
-            elapsed_days: 0,
-            learning_steps: 0,
-            lastReviewDate: null,
-            masteredAt: null
-          };
-
-          if (user && wordId) {
-            const { data: ud, error: udErr } = await supabase
-              .from('user_decks')
-              .insert({
-                user_id: user.id,
-                word_id: wordId,
-                custom_meaning: details,
-                custom_video_url: imgUrl || null,
-                srs_level: 'Learning',
-                stability: 1.0,
-                difficulty: 5.0,
-                reps: 0,
-                lapses: 0,
-                state: 0,
-                scheduled_days: 0,
-                elapsed_days: 0,
-                learning_steps: 0,
-                last_review_date: null,
-                mastered_at: null,
-                next_review_date: newCard.nextReviewDate
-              })
-              .select('id')
-              .single();
-              
-            if (!udErr && ud) {
-              newCard.id = ud.id;
-            }
-          }
-          
-          setVocab(prev => {
-            const updated = [newCard, ...prev];
-            localStorage.setItem('chatgpt_anki_deck', JSON.stringify(updated));
-            return updated;
-          });
-          
-          addedCardsList.push(newCard);
-          if (typeof onWordAdded === 'function') {
-            onWordAdded(addedCardsList.length);
-          }
-        } else {
+        if (!details || details.error) {
           lastError = details?.error || 'Empty response from translation provider';
+          failures.push({ word: item.word, stage: 'generation', error: String(lastError) });
+          continue;
         }
-      } catch (e) {
-        lastError = e.message;
-        console.error(`Failed to automatically import "${item.word}":`, e);
+
+        let imgUrl = details.savedSceneImages?.[0] || '';
+        if (!imgUrl) {
+          const firstImagePrompt = details.imagePrompts?.[0] || item.word;
+          try {
+            const imageRes = await fetchVocabImage(firstImagePrompt, 'photo');
+            imgUrl = imageRes.url || '';
+            if (imgUrl) {
+              if (!details.savedSceneImages) details.savedSceneImages = [];
+              details.savedSceneImages[0] = imgUrl;
+            }
+          } catch (error) {
+            console.error('Failed to fetch auto-image for curriculum word:', item.word, error);
+          }
+        }
+
+        let category = 'Daily Life';
+        if (String(curriculumName || '').startsWith('TOEIC')) category = 'Business';
+        else if (String(curriculumName || '').startsWith('IELTS')) category = 'Academic';
+
+        const newCard = {
+          id: createLocalCardId(),
+          word: item.word.toLowerCase().trim(),
+          meaning: JSON.stringify(details),
+          pos: item.pos,
+          cefrLevel: item.cefr_level || 'B2',
+          category,
+          curriculum: curriculumName || 'Self-Study only',
+          videoUrl: imgUrl,
+          srsLevel: 'Learning',
+          repetition: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          nextReviewDate: new Date(Date.now() - 60000).toISOString(),
+          stability: 1.0,
+          difficulty: 5.0,
+          reps: 0,
+          lapses: 0,
+          state: State.New,
+          scheduled_days: 0,
+          elapsed_days: 0,
+          learning_steps: 0,
+          lastReviewDate: null,
+          masteredAt: null
+        };
+
+        if (user) {
+          const wordId = await resolveDictionaryId(item.word, details);
+          if (!wordId) {
+            lastError = 'Could not create a verified dictionary entry.';
+            failures.push({ word: item.word, stage: 'dictionary', error: lastError });
+            continue;
+          }
+
+          const { data: userDeckRecord, error: insertError } = await supabase
+            .from('user_decks')
+            .insert({
+              user_id: user.id,
+              word_id: wordId,
+              custom_meaning: details,
+              custom_video_url: imgUrl || null,
+              srs_level: newCard.srsLevel,
+              repetition: newCard.repetition,
+              interval: newCard.interval,
+              ease_factor: newCard.easeFactor,
+              next_review_date: newCard.nextReviewDate,
+              stability: newCard.stability,
+              difficulty: newCard.difficulty,
+              reps: newCard.reps,
+              lapses: newCard.lapses,
+              state: newCard.state,
+              scheduled_days: newCard.scheduled_days,
+              elapsed_days: newCard.elapsed_days,
+              learning_steps: newCard.learning_steps,
+              last_review_date: null,
+              mastered_at: null
+            })
+            .select('id')
+            .single();
+
+          if (insertError || !userDeckRecord?.id) {
+            lastError = insertError?.message || 'Remote card insert returned no id.';
+            failures.push({ word: item.word, stage: 'remote_insert', error: lastError });
+            continue;
+          }
+          newCard.id = userDeckRecord.id;
+        }
+
+        setVocab(prev => {
+          const updated = [newCard, ...prev];
+          saveDeckToLocal(updated);
+          return updated;
+        });
+        addedCardsList.push(newCard);
+        if (typeof onWordAdded === 'function') onWordAdded(addedCardsList.length);
+      } catch (error) {
+        lastError = error?.message || String(error);
+        failures.push({ word: item.word, stage: 'import', error: lastError });
+        console.error(`Failed to automatically import "${item.word}":`, error);
       }
     }
-    
+
+    const exhausted = addedCardsList.length < requestedCount && attempted >= candidates.length;
     if (addedCardsList.length > 0) {
-      return { success: true, count: addedCardsList.length, addedWords: addedCardsList };
+      return {
+        success: true,
+        count: addedCardsList.length,
+        requestedCount,
+        addedWords: addedCardsList,
+        failures,
+        exhausted
+      };
     }
-    
-    return { success: false, error: lastError || 'Could not fetch details for any new words at this time.' };
+
+    return {
+      success: false,
+      error: lastError || 'Could not fetch details for any new words at this time.',
+      count: 0,
+      requestedCount,
+      addedWords: [],
+      failures,
+      exhausted
+    };
   };
 
   // Update a card's image in the database dynamically
@@ -986,89 +1091,136 @@ export const VocabProvider = ({ children }) => {
   };
 
   // Manual Master archives a word without corrupting its FSRS memory state.
-  const updateWordSrs = (cardId, actionOrLevel, responseTimeMs) => {
+  const updateWordSrs = async (cardId, actionOrLevel, responseTimeMs) => {
     const itemToUpdate = vocab.find(item => item.id === cardId);
-    if (!itemToUpdate) return;
+    if (!itemToUpdate) return { success: false, error: 'Card not found.' };
 
-    const now = new Date();
-    const isMaster = actionOrLevel === 'master';
-    const isRelearningMastered = !isMaster && itemToUpdate.srsLevel === 'Mastered';
-    let nextReviewDate = new Date(now);
-    let stability = typeof itemToUpdate.stability === 'number' ? itemToUpdate.stability : 0;
-    let difficulty = typeof itemToUpdate.difficulty === 'number' ? itemToUpdate.difficulty : 0;
-    let reps = typeof itemToUpdate.reps === 'number' ? itemToUpdate.reps : (itemToUpdate.repetition || 0);
-    let lapses = typeof itemToUpdate.lapses === 'number' ? itemToUpdate.lapses : 0;
-    let state = typeof itemToUpdate.state === 'number' ? itemToUpdate.state : (reps > 0 ? State.Review : State.New);
-    let scheduledDays = typeof itemToUpdate.scheduled_days === 'number' ? itemToUpdate.scheduled_days : (itemToUpdate.interval || 0);
-    let elapsedDays = typeof itemToUpdate.elapsed_days === 'number' ? itemToUpdate.elapsed_days : 0;
-    let learningSteps = typeof itemToUpdate.learning_steps === 'number' ? itemToUpdate.learning_steps : 0;
-    let newSrsLevel = itemToUpdate.srsLevel || 'Learning';
-    let newInterval = Math.max(0, scheduledDays);
-    let masteredAt = itemToUpdate.masteredAt || null;
-
-    if (isMaster) {
-      newSrsLevel = 'Mastered';
-      scheduledDays = 36500;
-      newInterval = scheduledDays;
-      nextReviewDate.setFullYear(nextReviewDate.getFullYear() + 100);
-      masteredAt = now.toISOString();
-    } else if (isRelearningMastered) {
-      stability = 0;
-      difficulty = 0;
-      reps = 0;
-      lapses = 0;
-      state = State.New;
-      scheduledDays = 0;
-      elapsedDays = 0;
-      learningSteps = 0;
-      newSrsLevel = 'Learning';
-      newInterval = 0;
-      nextReviewDate = new Date(now);
-      masteredAt = null;
-    } else {
-      const rating = reviewRatingMap[actionOrLevel] || Rating.Good;
-      const fsrsCard = toFsrsCard(itemToUpdate, now);
-      const result = fsrsScheduler.next(fsrsCard, now, rating);
-      const nextCard = result.card;
-
-      stability = nextCard.stability;
-      difficulty = nextCard.difficulty;
-      reps = nextCard.reps;
-      lapses = nextCard.lapses;
-      state = nextCard.state;
-      scheduledDays = nextCard.scheduled_days;
-      elapsedDays = nextCard.elapsed_days;
-      learningSteps = nextCard.learning_steps;
-      nextReviewDate = nextCard.due;
-      newInterval = Math.max(0, getDaysUntil(nextReviewDate, now));
-      newSrsLevel = getLevelFromFsrs(nextCard, rating);
+    const isRemoteBacked = isRemoteDeckId(cardId);
+    if (isRemoteBacked && !user) {
+      return { success: false, error: 'Sign in again before saving this review.' };
     }
 
+    const commitCardPatch = (patch) => {
+      const updatedCard = { ...itemToUpdate, ...patch };
+      setVocab(prevVocab => {
+        const updated = prevVocab.map(item => item.id === cardId ? { ...item, ...patch } : item);
+        saveDeckToLocal(updated);
+        return updated;
+      });
+      return updatedCard;
+    };
+
+    if (actionOrLevel === 'master') {
+      if (itemToUpdate.masteredAt || itemToUpdate.srsLevel === 'Mastered') {
+        return { success: true, card: itemToUpdate };
+      }
+
+      const masteredAt = new Date().toISOString();
+      if (isRemoteBacked) {
+        const { error } = await supabase
+          .from('user_decks')
+          .update({ mastered_at: masteredAt })
+          .eq('id', cardId);
+        if (error) {
+          console.error('Error archiving remote card:', error);
+          return { success: false, error: error.message || 'Could not archive this card.' };
+        }
+      }
+
+      const updatedCard = commitCardPatch({
+        srsLevel: 'Mastered',
+        archivedSrsLevel: itemToUpdate.srsLevel || getRestoredSrsLevel(itemToUpdate),
+        masteredAt
+      });
+      return { success: true, card: updatedCard };
+    }
+
+    if (itemToUpdate.masteredAt || itemToUpdate.srsLevel === 'Mastered') {
+      const restoredSrsLevel = getRestoredSrsLevel(itemToUpdate);
+      if (isRemoteBacked) {
+        const remotePatch = { mastered_at: null };
+        if (!itemToUpdate.archivedSrsLevel || itemToUpdate.archivedSrsLevel === 'Mastered') {
+          remotePatch.srs_level = restoredSrsLevel;
+        }
+        const { error } = await supabase
+          .from('user_decks')
+          .update(remotePatch)
+          .eq('id', cardId);
+        if (error) {
+          console.error('Error restoring remote card:', error);
+          return { success: false, error: error.message || 'Could not restore this card.' };
+        }
+      }
+
+      const updatedCard = commitCardPatch({
+        srsLevel: restoredSrsLevel,
+        archivedSrsLevel: null,
+        masteredAt: null
+      });
+      return { success: true, card: updatedCard };
+    }
+
+    const rating = reviewRatingMap[actionOrLevel];
+    if (!rating) return { success: false, error: 'Unknown review rating.' };
+
+    const now = new Date();
+    const fsrsCard = toFsrsCard(itemToUpdate, now);
+    const result = fsrsScheduler.next(fsrsCard, now, rating);
+    const nextCard = result.card;
+    const stability = nextCard.stability;
+    const difficulty = nextCard.difficulty;
+    const reps = nextCard.reps;
+    const lapses = nextCard.lapses;
+    const state = nextCard.state;
+    const scheduledDays = nextCard.scheduled_days;
+    const elapsedDays = nextCard.elapsed_days;
+    const learningSteps = nextCard.learning_steps;
+    const nextReviewDate = nextCard.due;
+    const newInterval = Math.max(0, scheduledDays);
+    const newSrsLevel = getLevelFromFsrs(nextCard, rating);
     const newRepetition = reps;
     const newEaseFactor = Math.max(1.3, Math.min(2.5, 1.3 + (10 - difficulty) * (1.2 / 10)));
+    const responseTime = typeof responseTimeMs === 'number' ? responseTimeMs : 1500;
+    const lastReviewDate = now.toISOString();
+    const stabilityBefore = itemToUpdate.stability || 0;
 
-    const newLog = {
-      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2),
-      word: itemToUpdate.word,
-      rating: actionOrLevel,
-      response_time_ms: typeof responseTimeMs === 'number' ? responseTimeMs : 1500,
-      stability_before: itemToUpdate.stability || 0,
-      stability_after: stability,
-      review_date: now.toISOString()
-    };
-    const updatedLogs = [...reviewLogs, newLog];
-    setReviewLogs(updatedLogs);
-    saveLogsToLocal(updatedLogs);
+    if (isRemoteBacked) {
+      const { error } = await supabase.rpc('record_fsrs_review', {
+        p_deck_id: cardId,
+        p_srs_level: newSrsLevel,
+        p_repetition: newRepetition,
+        p_interval: newInterval,
+        p_ease_factor: newEaseFactor,
+        p_next_review_date: nextReviewDate.toISOString(),
+        p_stability: stability,
+        p_difficulty: difficulty,
+        p_reps: reps,
+        p_lapses: lapses,
+        p_state: state,
+        p_scheduled_days: scheduledDays,
+        p_elapsed_days: elapsedDays,
+        p_learning_steps: learningSteps,
+        p_last_review_date: lastReviewDate,
+        p_word: itemToUpdate.word,
+        p_rating: actionOrLevel,
+        p_response_time_ms: responseTime,
+        p_stability_before: stabilityBefore,
+        p_stability_after: stability
+      });
 
-    const updated = vocab.map(item => item.id === cardId ? {
-      ...item,
+      if (error) {
+        console.error('Error recording FSRS review:', error);
+        return { success: false, error: error.message || 'Could not save this review.' };
+      }
+    }
+
+    const updatedCard = commitCardPatch({
       srsLevel: newSrsLevel,
       repetition: newRepetition,
       interval: newInterval,
       easeFactor: newEaseFactor,
       nextReviewDate: nextReviewDate.toISOString(),
-      lastReviewDate: now.toISOString(),
-      masteredAt,
+      lastReviewDate,
       stability,
       difficulty,
       reps,
@@ -1077,56 +1229,26 @@ export const VocabProvider = ({ children }) => {
       scheduled_days: scheduledDays,
       elapsed_days: elapsedDays,
       learning_steps: learningSteps
-    } : item);
+    });
 
-    setVocab(updated);
-    saveDeckToLocal(updated);
-
-    if (user) {
-      const isLocalId = typeof cardId === 'string' && cardId.startsWith('local-');
-      if (!isLocalId) {
-        supabase
-          .from('user_decks')
-          .update({
-            srs_level: newSrsLevel,
-            repetition: newRepetition,
-            interval: newInterval,
-            ease_factor: newEaseFactor,
-            next_review_date: nextReviewDate.toISOString(),
-            stability,
-            difficulty,
-            reps,
-            lapses,
-            state,
-            scheduled_days: scheduledDays,
-            elapsed_days: elapsedDays,
-            learning_steps: learningSteps,
-            last_review_date: now.toISOString(),
-            mastered_at: masteredAt
-          })
-          .eq('id', cardId)
-          .then(({ error }) => {
-            if (error) console.error('Error updating remote deck:', error);
-          });
-      }
-
-      supabase
-        .from('user_review_logs')
-        .insert({
-          user_id: user.id,
-          word: itemToUpdate.word,
-          rating: actionOrLevel,
-          response_time_ms: typeof responseTimeMs === 'number' ? responseTimeMs : 1500,
-          stability_before: itemToUpdate.stability || 0,
-          stability_after: stability,
-          review_date: now.toISOString()
-        })
-        .then(({ error }) => {
-          if (!error) {
-            setReviewLogs(prev => prev.filter(log => log.word !== itemToUpdate.word || log.review_date !== newLog.review_date));
-          }
-        });
+    if (!isRemoteBacked) {
+      const newLog = {
+        id: globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : Math.random().toString(36).substring(2),
+        word: itemToUpdate.word,
+        rating: actionOrLevel,
+        response_time_ms: responseTime,
+        stability_before: stabilityBefore,
+        stability_after: stability,
+        review_date: lastReviewDate
+      };
+      setReviewLogs(prevLogs => {
+        const updatedLogs = [...prevLogs, newLog];
+        saveLogsToLocal(updatedLogs);
+        return updatedLogs;
+      });
     }
+
+    return { success: true, card: updatedCard };
   };
 
   const getSrsCounts = (deck = vocab) => {
@@ -1148,90 +1270,64 @@ export const VocabProvider = ({ children }) => {
     ]);
   };
 
-  // Helper to query Gemini API via Supabase Edge Function
-  const queryGemini = async (word, forceValid = false) => {
-    console.log(`🔮 Invoking Supabase Edge Function for "${word}"...`);
+  // Query the server with only the normalized word; validation authority stays server-side.
+  const queryGemini = async (word) => {
+    console.log(`Invoking Supabase Edge Function for "${word}"...`);
     const { data, error } = await supabase.functions.invoke('get-word-details', {
-      body: { word, forceValid }
+      body: { word }
     });
 
     if (error) throw new Error(`Edge Function error: ${error.message}`);
-    if (!data) throw new Error(`Edge Function returned empty response`);
-    
+    if (!data) throw new Error('Edge Function returned empty response');
+
     return data;
   };
 
-  // Retrieve rich card details using Edge Function with 3-tier server-side fallback
-  const getAiWordRichDetails = async (word, forceValid = false) => {
-    const normalizedWord = word.toLowerCase().trim();
-    
-    // 1. Check if word exists in global_dictionary cache (if not forcing validation)
-    if (!forceValid) {
-      try {
-        const { data: existingWord, error: fetchErr } = await supabase
-          .from('global_dictionary')
-          .select('id, rich_data')
-          .eq('word', normalizedWord)
-          .maybeSingle();
+  // Suggested spellings are looked up as their own normalized words by the caller.
+  const getAiWordRichDetails = async (word) => {
+    const normalizedWord = typeof word === 'string' ? word.toLowerCase().trim() : '';
+    if (!normalizedWord) return { error: 'A word is required.' };
 
-        if (!fetchErr && existingWord && existingWord.rich_data) {
-          console.log(`✅ Rich card data loaded from DB cache for "${word}"`);
-          const parsed = typeof existingWord.rich_data === 'string'
-            ? JSON.parse(existingWord.rich_data)
-            : existingWord.rich_data;
-          
-          // Ensure it has a _provider metadata tag
-          if (parsed && !parsed._provider) {
-            parsed._provider = 'DB Cache';
-          }
-          return { ...parsed, _dictionaryId: existingWord.id };
-        }
-      } catch (cacheErr) {
-        console.warn('⚠️ global_dictionary cache lookup failed, falling back to AI:', cacheErr);
+    try {
+      const { data: existingWord, error: fetchErr } = await supabase
+        .from('global_dictionary')
+        .select('id, rich_data')
+        .eq('word', normalizedWord)
+        .maybeSingle();
+
+      if (!fetchErr && existingWord?.rich_data) {
+        console.log(`Rich card data loaded from DB cache for "${normalizedWord}"`);
+        const parsed = typeof existingWord.rich_data === 'string'
+          ? JSON.parse(existingWord.rich_data)
+          : existingWord.rich_data;
+
+        if (parsed && !parsed._provider) parsed._provider = 'DB Cache';
+        return { ...parsed, _dictionaryId: existingWord.id };
       }
+    } catch (cacheError) {
+      console.warn('global_dictionary cache lookup failed, falling back to AI:', cacheError);
     }
 
-    let details = null;
+    let details;
     try {
-      console.log(`🔮 Requesting word translation via Edge Function: "${word}" (forceValid: ${forceValid})...`);
-      details = await queryGemini(word, forceValid);
+      console.log(`Requesting word translation via Edge Function: "${normalizedWord}"...`);
+      details = await queryGemini(normalizedWord);
       if (!details || typeof details === 'string' || details.error) {
-        throw new Error(details?.error || (typeof details === 'string' ? details : "Empty response from server"));
+        throw new Error(details?.error || (typeof details === 'string' ? details : 'Empty response from server'));
       }
-    } catch (err) {
-      console.error('❌ Server-side translation failed:', err.message);
-      return { error: err.message };
+    } catch (error) {
+      console.error('Server-side translation failed:', error.message);
+      return { error: error.message };
     }
 
     try {
       const sanitized = sanitizeThaiInObject(details);
       const usedProvider = sanitized._provider || 'API Backend';
-      
-      // Override isInvalid to false if forceValid is true
-      if (forceValid) {
-        if (!sanitized.validation) {
-          sanitized.validation = {};
-        }
-        sanitized.validation.isInvalid = false;
-        sanitized.validation.suggestion = null;
-      }
-      
-      // Programmatic Safeguard:
-      // If the suggestion is exactly the same as the queried word, it is NOT invalid!
-      if (sanitized.validation && sanitized.validation.isInvalid && sanitized.validation.suggestion) {
-        const cleanSugg = sanitized.validation.suggestion.toLowerCase().trim();
-        const cleanWord = word.toLowerCase().trim();
-        if (cleanSugg === cleanWord && !forceValid) {
-          console.log(`⚠️ AI false-positive typo detected for "${word}". Retrying with forceValid = true...`);
-          return await getAiWordRichDetails(word, true);
-        }
-      }
-      
-      console.log(`✅ Rich card data generated for "${word}" using ${usedProvider}:`, sanitized);
+      console.log(`Rich card data generated for "${normalizedWord}" using ${usedProvider}:`, sanitized);
       return sanitized;
-    } catch (jsonErr) {
-      console.error("❌ Failed to process AI response:", details, jsonErr);
-      return { error: `Failed to process AI response: ${jsonErr.message}` };
+    } catch (jsonError) {
+      console.error('Failed to process AI response:', details, jsonError);
+      return { error: `Failed to process AI response: ${jsonError.message}` };
     }
   };
 
