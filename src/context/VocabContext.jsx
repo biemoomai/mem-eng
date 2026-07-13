@@ -207,6 +207,30 @@ const isRemoteDeckId = (cardId) => {
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cardId);
 };
 
+const ACTIVITY_TOUCH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+const touchUserActivity = (userId) => {
+  if (!userId) return;
+
+  const storageKey = `memeng_last_activity_touch_${userId}`;
+  const now = Date.now();
+  try {
+    const lastTouch = Number(localStorage.getItem(storageKey) || 0);
+    if (lastTouch > 0 && now >= lastTouch && now - lastTouch < ACTIVITY_TOUCH_INTERVAL_MS) return;
+    localStorage.setItem(storageKey, String(now));
+  } catch (error) {
+    console.warn('Could not persist the activity heartbeat guard:', error);
+  }
+
+  void supabase.rpc('touch_user_activity')
+    .then(({ error }) => {
+      if (error) console.warn('Could not update user activity:', error);
+    })
+    .catch(error => {
+      console.warn('Could not update user activity:', error);
+    });
+};
+
 const VocabContext = createContext();
 
 export const useVocab = () => useContext(VocabContext);
@@ -269,6 +293,8 @@ export const VocabProvider = ({ children }) => {
             .eq('id', userId);
         }
       }
+
+      touchUserActivity(userId);
 
       for (const card of localCards) {
         try {
@@ -770,36 +796,42 @@ export const VocabProvider = ({ children }) => {
     }
   };
 
-  // Upload a small image to a path owned by the current user.
-  // The matching storage policy enforces the same extension and size limits server-side.
+  // Upload a small image to a single bounded cover path owned by the current user.
   const uploadUserCardImage = async (file, cardId) => {
-    if (!user || !file) return null;
+    if (!user || !file || cardId === null || cardId === undefined) return null;
     const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
-    const fileExt = String(file.name || '').split('.').pop()?.toLowerCase() || '';
+    const ext = String(file.name || '').split('.').pop()?.toLowerCase() || '';
+    const cardPathId = String(cardId);
     const isImage = typeof file.type === 'string' && file.type.startsWith('image/');
-    if (!isImage || !allowedExtensions.has(fileExt) || file.size > 5 * 1024 * 1024) {
+    const isSafeCardPath = /^[a-zA-Z0-9_-]{1,64}$/.test(cardPathId);
+    if (!isImage || !isSafeCardPath || !allowedExtensions.has(ext) || file.size > 5 * 1024 * 1024) {
       console.warn('Rejected unsafe or oversized image upload.');
       return null;
     }
 
     try {
-      const safeCardId = String(cardId || 'manual').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'manual';
-      const fileName = user.id + '/' + safeCardId + '/' + Date.now() + '.' + fileExt;
-      const { error } = await supabase.storage
-        .from('user-card-images')
-        .upload(fileName, file, { cacheControl: '3600', upsert: true, contentType: file.type });
-
-      if (error) {
-        console.error('Supabase storage upload error:', error);
+      const bucket = supabase.storage.from('user-card-images');
+      const fileName = `${user.id}/${cardId}/cover.${ext}`;
+      const otherCoverPaths = Array.from(allowedExtensions)
+        .filter(extension => extension !== ext)
+        .map(extension => `${user.id}/${cardId}/cover.${extension}`);
+      const { error: cleanupError } = await bucket.remove(otherCoverPaths);
+      if (cleanupError) {
+        console.error('Supabase cover cleanup error:', cleanupError);
         return null;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from('user-card-images')
-        .getPublicUrl(fileName);
+      const { error: uploadError } = await bucket
+        .upload(fileName, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+      if (uploadError) {
+        console.error('Supabase storage upload error:', uploadError);
+        return null;
+      }
+
+      const { data: publicUrlData } = bucket.getPublicUrl(fileName);
       return publicUrlData?.publicUrl || null;
-    } catch (err) {
-      console.error('Error in uploadUserCardImage:', err);
+    } catch (error) {
+      console.error('Error in uploadUserCardImage:', error);
       return null;
     }
   };
