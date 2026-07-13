@@ -32,7 +32,7 @@ Current results:
 - +5 selects unused words from the current curriculum with cryptographic shuffle plus CEFR/POS diversification. It does not prioritize cached words, so new guests should not see a fixed first batch.
 - Movie, Music, and Business collections reappear after a review round. Their order and words are shuffled from curriculum_words; no static fixture remains.
 - Library edits are private per user through user_decks.custom_* fields and never overwrite the shared dictionary.
-- Interactive Guide Tour is a real Thai/English 18-step overlay. It highlights live UI, lets the learner try highlighted controls, and does not create, save, delete, reset, or rate cards itself.
+- Interactive Guide Tour is currently a Thai/English 13-step action-gated flow. It locks unrelated controls and requires a real Translate, Save, three reveal taps, one FSRS rating, Library search, and curriculum open action. Because it changes the learner's real deck and FSRS history, confirm this is the final product choice before production; commit `08c963c` contains this Guide version separately from the earlier explanatory Guide.
 
 ## Mandatory Supabase Deployment
 
@@ -90,7 +90,7 @@ Before scheduling, use only a deliberately created throwaway anonymous account o
 - Review through three reveal taps, then test Again / Hard / Normal / Easy.
 - Master a card and confirm it appears only in Library Mastered.
 - Edit a private Library card, change an image, and remove a test card. The confirmation dialog must center and dismiss cleanly.
-- Start Guide in Thai and English, try live navigation, then close it. No test word or card should appear.
+- Start Guide in Thai and English with a deliberate throwaway learning word. Complete every required action, confirm the saved/rated card is real and correct, then remove only that known test card through Library.
 - Link Google/email from guest and verify the deck remains present.
 - Check Browser DevTools and Supabase logs for errors.
 

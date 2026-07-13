@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mem-eng Launch Pilot"
+  short_description: "Ship beta, validate demand, and reach App Store"
+  default_prompt: "Use $mem-eng-launch-pilot to guide Mem-eng from release candidate through beta validation, monetization, domain, TestFlight, and App Store."
