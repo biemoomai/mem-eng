@@ -4320,7 +4320,6 @@ const Purge = () => {
   };
 
   const handleDragEnd = (event, info) => {
-    if (revealStep < 4) return;
     const dragX = info.offset.x;
     const dragY = info.offset.y;
     const velocityX = info.velocity.x;
