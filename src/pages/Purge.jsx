@@ -1155,6 +1155,10 @@ const Purge = () => {
   const collectionPrefetchRef = useRef(new Map());
   const collectionPrefetchingRef = useRef(new Set());
   const lowGraphics = false;
+  // Keep the glossy desktop treatment, but avoid continuously compositing blur
+  // and animated layers on touch devices where the Tap screen must stay instant.
+  const useMobilePerformanceStyle = typeof window !== 'undefined'
+    && window.matchMedia('(hover: none), (pointer: coarse)').matches;
   const [addedProgress, setAddedProgress] = useState(null);
   
   const [tooltipStack, setTooltipStack] = useState([]);
@@ -4469,7 +4473,7 @@ const Purge = () => {
         >
 
           {/* Premium Artsy Morphing Ambient Glow in Minimal Mode */}
-          {theme === 'theme-1' && !showStats && !lowGraphics && (
+          {theme === 'theme-1' && !showStats && !lowGraphics && !useMobilePerformanceStyle && (
             <motion.div 
               animate={{ 
                 borderRadius: ['42% 58% 70% 30% / 45% 45% 55% 55%', '70% 30% 52% 48% / 60% 40% 60% 40%', '42% 58% 70% 30% / 45% 45% 55% 55%'],
@@ -4546,8 +4550,8 @@ const Purge = () => {
                           : '0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.3)'),
                       borderRadius: theme === 'theme-3' ? '0px' : '24px',
                       padding: '1.5rem 2rem',
-                      backdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(35px)',
-                      WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics) ? 'none' : 'blur(35px)',
+                      backdropFilter: (theme === 'theme-3' || lowGraphics || useMobilePerformanceStyle) ? 'none' : 'blur(35px)',
+                      WebkitBackdropFilter: (theme === 'theme-3' || lowGraphics || useMobilePerformanceStyle) ? 'none' : 'blur(35px)',
                       position: 'relative',
                       overflow: 'hidden',
                       width: '240px',
@@ -4559,7 +4563,7 @@ const Purge = () => {
                     }}
                   >
                     {/* Diagonal Glass Shine Sweep Effect */}
-                    {theme !== 'theme-3' && !startHovered && (
+                    {theme !== 'theme-3' && !startHovered && !useMobilePerformanceStyle && (
                       <motion.div
                         animate={{ x: ['-120%', '240%'] }}
                         transition={{ repeat: Infinity, duration: 4.8, ease: 'linear', repeatDelay: 1.4 }}
