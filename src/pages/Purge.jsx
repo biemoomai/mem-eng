@@ -1147,6 +1147,9 @@ const Purge = () => {
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
   const collectionActiveMsRef = useRef(loadDiscoveryActiveMs());
   const collectionPromptDueRef = useRef(collectionActiveMsRef.current >= DISCOVERY_PROMPT_INTERVAL_MS);
+  // Collection cards are prepared off-screen so this prompt opens instantly.
+  const collectionPrefetchRef = useRef(new Map());
+  const collectionPrefetchingRef = useRef(new Set());
   const lowGraphics = false;
   const [addedProgress, setAddedProgress] = useState(null);
   
@@ -1618,16 +1621,13 @@ const Purge = () => {
     }
   };
 
-    const handleCloseUnlockedWords = (shouldStartStudy) => {
-    // Delete any words that the user unchecked
-    unlockedWords.forEach(w => {
-      const isSelected = selectedUnlockIds[w.id] !== false;
-      if (!isSelected) {
-        deleteWordFromDeck(w.id);
-      }
-    });
-
+  const handleCloseUnlockedWords = async (shouldStartStudy) => {
     const selectedWords = unlockedWords.filter(w => selectedUnlockIds[w.id] !== false);
+    const rejectedWords = unlockedWords.filter(w => selectedUnlockIds[w.id] === false);
+
+    // A card that is unticked must be removed before the learner can study.
+    await Promise.all(rejectedWords.map(word => deleteWordFromDeck(word.id)));
+
     setUnlockedWords([]);
     setSelectedUnlockIds({});
     setFlippedUnlockIds({});
@@ -1660,45 +1660,69 @@ const Purge = () => {
     }
   };
 
+  const buildCollectionPreview = async (colName) => {
+    const config = DISCOVERY_COLLECTIONS.find(item => item.name === colName);
+    const { data, error } = await supabase
+      .from('curriculum_words')
+      .select('word, pos, cefr_level')
+      .eq('curriculum_name', colName);
+    const sourceWords = !error && data?.length
+      ? data
+      : (config?.fallbackWords || []).map(word => ({ word, pos: 'word', cefr_level: 'B1' }));
+    const existingWords = new Set(rawVocab.filter(Boolean).map(item => item.word?.toLowerCase().trim()).filter(Boolean));
+    const candidates = shuffleItems(sourceWords)
+      .filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()))
+      .slice(0, 5);
+
+    const cards = [];
+    for (const item of candidates) {
+      const details = await getAiWordRichDetails(item.word);
+      if (!details || details.error) continue;
+      cards.push({
+        word: item.word.toLowerCase().trim(),
+        pos: details.pos || item.pos || 'word',
+        cefrLevel: details.cefrLevel || item.cefr_level || 'B1',
+        meaning: JSON.stringify({ ...details, curriculum: colName })
+      });
+    }
+    return cards;
+  };
+
+  const warmCollectionPreview = async (colName) => {
+    const cached = collectionPrefetchRef.current.get(colName);
+    if (cached?.length) return cached;
+    if (collectionPrefetchingRef.current.has(colName)) return [];
+
+    collectionPrefetchingRef.current.add(colName);
+    try {
+      const cards = await buildCollectionPreview(colName);
+      if (cards.length) collectionPrefetchRef.current.set(colName, cards);
+      return cards;
+    } finally {
+      collectionPrefetchingRef.current.delete(colName);
+    }
+  };
+
   const handleSelectCollection = async (colName) => {
     if (isCollectionLoading) return;
     setIsCollectionLoading(true);
     setSelectedCollection(colName);
     try {
-      const config = DISCOVERY_COLLECTIONS.find(item => item.name === colName);
-      const { data, error } = await supabase
-        .from('curriculum_words')
-        .select('word, pos, cefr_level')
-        .eq('curriculum_name', colName);
-      const sourceWords = !error && data?.length
-        ? data
-        : (config?.fallbackWords || []).map(word => ({ word, pos: 'word', cefr_level: 'B1' }));
       const existingWords = new Set(rawVocab.filter(Boolean).map(item => item.word?.toLowerCase().trim()).filter(Boolean));
-      const candidates = shuffleItems(sourceWords)
-        .filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()))
-        .slice(0, 5);
-      if (!candidates.length) {
+      let cards = (collectionPrefetchRef.current.get(colName) || [])
+        .filter(card => !existingWords.has(card.word.toLowerCase().trim()));
+
+      // This is normally already warm; retain a graceful fallback for a new session.
+      if (!cards.length) cards = await warmCollectionPreview(colName);
+      cards = cards.filter(card => !existingWords.has(card.word.toLowerCase().trim()));
+      if (!cards.length) {
         showToast(`You have already imported all words from "${colName}"!`);
         return;
       }
 
-      const cards = [];
-      for (const item of candidates) {
-        const details = await getAiWordRichDetails(item.word);
-        if (!details || details.error) continue;
-        cards.push({
-          word: item.word.toLowerCase().trim(),
-          pos: details.pos || item.pos || 'word',
-          cefrLevel: details.cefrLevel || item.cefr_level || 'B1',
-          meaning: JSON.stringify({ ...details, curriculum: colName })
-        });
-      }
-      if (!cards.length) {
-        showToast('Fresh words could not be loaded. Please try again.');
-        return;
-      }
       const defaultSelected = {};
       cards.forEach(card => { defaultSelected[card.word] = true; });
+      collectionPrefetchRef.current.delete(colName);
       setActiveCollectionWords(cards);
       setSelectedCollectionWords(defaultSelected);
       setFlippedCollectionWords({});
@@ -1711,7 +1735,6 @@ const Purge = () => {
       setIsCollectionLoading(false);
     }
   };
-
   const handleAddCollectionWords = async () => {
     if (!selectedCollection) return;
     const unadded = activeCollectionWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
@@ -2065,6 +2088,25 @@ const Purge = () => {
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Buffering is intentionally refreshed after deck changes.
   }, [activeCurriculum, loading, rawVocab.length]);
+
+  // Warm the three discovery choices while Flashcards is open, before a prompt is due.
+  useEffect(() => {
+    if (loading || localStorage.getItem('memeng_tutorial_running') === 'true') return undefined;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        for (const collection of shuffleItems(DISCOVERY_COLLECTIONS)) {
+          if (cancelled) return;
+          await warmCollectionPreview(collection.name);
+        }
+      })();
+    }, 3200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This is intentionally refreshed only when the deck changes.
+  }, [loading, rawVocab.length]);
 
   // Count only active, visible study time. A fresh random collection appears
   // after fifteen minutes, once the current review queue is finished.
@@ -4622,26 +4664,7 @@ const Purge = () => {
 
                   <h2 style={{ color: theme === 'theme-3' ? '#000000' : 'white', marginBottom: '0.2rem', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px' }}>All caught up!</h2>
                   <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontSize: '0.85rem' }}>You've reviewed all cards for today.</p>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setShowCollectionChoice(true);
-                    }}
-                    style={{
-                      marginTop: '0.4rem',
-                      padding: '0.42rem 0.72rem',
-                      borderRadius: '999px',
-                      border: '1px solid rgba(250, 204, 21, 0.3)',
-                      color: '#fde68a',
-                      background: 'rgba(250, 204, 21, 0.08)',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Browse word collections
-                  </button>
+
                 </motion.div>
               )}
             </AnimatePresence>
