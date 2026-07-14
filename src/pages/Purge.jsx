@@ -36,30 +36,6 @@ const wordsMatchForLookup = (a, b) => {
   return aCandidates.some(candidate => bCandidates.includes(candidate));
 };
 
-const TypewriterDefinition = ({ text, renderComplete }) => {
-  const safeText = String(text || '');
-  const [visibleLength, setVisibleLength] = useState(0);
-
-  useEffect(() => {
-    setVisibleLength(0);
-    if (!safeText) return undefined;
-    const duration = Math.min(1200, Math.max(420, safeText.length * 18));
-    const startedAt = performance.now();
-    let frameId = 0;
-    const reveal = (now) => {
-      const nextLength = Math.min(safeText.length, Math.ceil(((now - startedAt) / duration) * safeText.length));
-      setVisibleLength(previous => previous === nextLength ? previous : nextLength);
-      if (nextLength < safeText.length) frameId = requestAnimationFrame(reveal);
-    };
-    frameId = requestAnimationFrame(reveal);
-    return () => cancelAnimationFrame(frameId);
-  }, [safeText]);
-
-  if (!safeText) return null;
-  if (visibleLength >= safeText.length) return renderComplete();
-  return <>{safeText.slice(0, visibleLength)}<span style={{ opacity: 0.55 }}>|</span></>;
-};
-
 // Premium white minimal finger pointer SVG component for tutorial highlights
 const PremiumFingerPointer = ({ direction = 'down', scale = 1.0 }) => {
   let rotateDeg = 0;
@@ -1158,6 +1134,7 @@ const Purge = () => {
     );
   };
   const [unlockedWords, setUnlockedWords] = useState([]);
+  const [savingUnlockAction, setSavingUnlockAction] = useState(null);
   const [selectedUnlockIds, setSelectedUnlockIds] = useState({});
   const [flippedUnlockIds, setFlippedUnlockIds] = useState({});
   const [showInterestingModal, setShowInterestingModal] = useState(false);
@@ -1654,35 +1631,45 @@ const Purge = () => {
   };
 
   const handleCloseUnlockedWords = async (shouldStartStudy) => {
-    const selectedPreviews = unlockedWords.filter(word => selectedUnlockIds[word.id] !== false);
-    const savedWords = [];
+    if (savingUnlockAction) return;
+    setSavingUnlockAction(shouldStartStudy ? 'study' : 'close');
 
-    // These are previews. Only ticked cards are written to the learner's deck.
-    for (const preview of selectedPreviews) {
-      const richData = parseMeaningField(preview.meaning);
-      richData.curriculum = preview.curriculum || activeCurriculum || 'Self-Study only';
-      if (preview.videoUrl && !richData.savedSceneImages?.[0]) {
-        richData.savedSceneImages = [preview.videoUrl, ...(richData.savedSceneImages || []).slice(1)];
+    try {
+      const selectedPreviews = unlockedWords.filter(word => selectedUnlockIds[word.id] !== false);
+      const savedWords = [];
+
+      // Close and Start Study both save only checked previews. Start Study also opens that saved queue.
+      for (const preview of selectedPreviews) {
+        const richData = parseMeaningField(preview.meaning) || {};
+        richData.curriculum = preview.curriculum || activeCurriculum || 'Self-Study only';
+        if (preview.videoUrl && !richData.savedSceneImages?.[0]) {
+          richData.savedSceneImages = [preview.videoUrl, ...(richData.savedSceneImages || []).slice(1)];
+        }
+        const result = await addWordToDeck(preview.word, richData);
+        if (result.success && result.card) savedWords.push(result.card);
       }
-      const result = await addWordToDeck(preview.word, richData);
-      if (result.success && result.card) savedWords.push(result.card);
-    }
 
-    setUnlockedWords([]);
-    setSelectedUnlockIds({});
-    setFlippedUnlockIds({});
+      setUnlockedWords([]);
+      setSelectedUnlockIds({});
+      setFlippedUnlockIds({});
 
-    if (shouldStartStudy && savedWords.length > 0) {
-      setSessionQueue(savedWords);
-      setIsStudying(true);
-      setIsCustomSession(true);
-      setRevealStep(0);
-    } else {
-      const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
-      setSessionQueue(due);
+      if (shouldStartStudy && savedWords.length > 0) {
+        setSessionQueue(savedWords);
+        setIsStudying(true);
+        setIsCustomSession(true);
+        setRevealStep(0);
+      } else {
+        setSessionQueue([]);
+        setIsStudying(false);
+        setIsCustomSession(false);
+      }
+    } catch (error) {
+      console.error('Failed to save selected unlocked words:', error);
+      showToast('Could not save the selected words. Please try again.');
+    } finally {
+      setSavingUnlockAction(null);
     }
   };
-
   const handleAddInterestingWords = async () => {
     const unadded = TODAY_INTERESTING_WORDS.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
@@ -1861,6 +1848,12 @@ const Purge = () => {
 
   const scrollContainerRef = useRef(null);
   const isProgrammaticScrolling = false; // kept for inline handler guard (no-op)
+
+  useEffect(() => {
+    if (revealStep === 4 && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [revealStep]);
 
 
   const x = useMotionValue(0);
@@ -3496,6 +3489,7 @@ const Purge = () => {
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0, width: '100%', marginTop: '0.5rem' }}>
               <button
                 onClick={() => handleCloseUnlockedWords(false)}
+                disabled={!!savingUnlockAction}
                 className="glass-button animate-scale"
                 style={{
                   flex: 1,
@@ -3505,13 +3499,16 @@ const Purge = () => {
                   fontWeight: 800,
                   background: 'rgba(255, 255, 255, 0.02)',
                   borderColor: 'rgba(255, 255, 255, 0.06)',
-                  color: 'rgba(255, 255, 255, 0.75)'
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  opacity: savingUnlockAction ? 0.55 : 1,
+                  cursor: savingUnlockAction ? 'wait' : 'pointer'
                 }}
               >
-                Close
+                {savingUnlockAction === 'close' ? 'Saving...' : 'Close'}
               </button>
               <button
                 onClick={() => handleCloseUnlockedWords(true)}
+                disabled={!!savingUnlockAction}
                 className="glass-button primary animate-scale"
                 style={{
                   flex: 1.5,
@@ -3522,10 +3519,12 @@ const Purge = () => {
                   background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                   borderColor: 'transparent',
                   color: 'white',
-                  boxShadow: '0 4px 15px rgba(217, 119, 6, 0.35)'
+                  boxShadow: '0 4px 15px rgba(217, 119, 6, 0.35)',
+                  opacity: savingUnlockAction ? 0.55 : 1,
+                  cursor: savingUnlockAction ? 'wait' : 'pointer'
                 }}
               >
-                Start Study
+                {savingUnlockAction === 'study' ? 'Saving...' : 'Start Study'}
               </button>
             </div>
           </motion.div>
@@ -5852,10 +5851,10 @@ const Purge = () => {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -16 }}
                           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                          style={{ flex: revealStep === 2 ? 1 : 'none', display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: '30px' }}
+                          style={{ flex: revealStep < 4 ? 1 : 'none', display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: revealStep >= 4 ? '30px' : 0, minHeight: revealStep < 4 ? '100%' : 'auto' }}
                         >
                           {/* English word focus card */}
-                          {revealStep >= 2 && (
+                          {revealStep >= 2 && revealStep < 4 && (
                           <div className="glass-panel" style={{
                             flex: 1,
                             display: 'flex',
@@ -5899,10 +5898,7 @@ const Purge = () => {
                             </div>
                             <div style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.1)', borderRadius: '1px' }} />
                             <p style={{ margin: 0, fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.55, fontWeight: 400, maxWidth: '340px' }}>
-                              <TypewriterDefinition
-                                text={richCardData.englishExplanation?.definition}
-                                renderComplete={() => renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
-                              />
+                              {renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
                             </p>
                           </div>
                           )}
