@@ -2291,7 +2291,7 @@ const Purge = () => {
                       No cards found matching your query.
                     </div>
                   ) : (
-                    statusWords.map(item => {
+                    statusWords.map((item, index) => {
                       let parsedMeaning = parseMeaningField(item.meaning);
                       const definition = parsedMeaning?.englishExplanation?.definition || item.meaning;
                       const thaiTranslation = parsedMeaning?.thaiTranslation?.word || '';
@@ -4051,22 +4051,6 @@ const Purge = () => {
     playClickSound();
     setRevealStep(1);
 
-    // Track hesitation time (>8 seconds before revealing)
-    if (cardShowTimeRef.current) {
-      const timeToReveal = performance.now() - cardShowTimeRef.current;
-      if (timeToReveal > 8000) {
-        const insults = [
-          "คิดนานขนาดนี้ ไปนอนเหอะป่ะ 🙄",
-          "คิดนานจังนึกว่าหลับคาจอไปละ สภาพพพ",
-          "สมองปลาทองมาก หรือลืมคำนี้ไปแล้วจ๊ะ?",
-          "คำศัพท์แค่นี้คิดถึง 8 วิเลยเหรออออ"
-        ];
-        const pick = insults[Math.floor(Math.random() * insults.length)];
-        window.dispatchEvent(new CustomEvent('nongmem-comment', { 
-          detail: { text: pick, mood: 'mocking', duration: 4000 } 
-        }));
-      }
-    }
   };
 
 
@@ -4090,87 +4074,6 @@ const Purge = () => {
     const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (!isTutorialActive) {
       updateWordSrs(wordObj.id, choice, durationMs);
-
-      // Update Nong Mem Stats
-      const richCardData = parseMeaningField(wordObj.meaning);
-      let verbForms = undefined;
-      if (richCardData && 'verbForms' in richCardData) {
-        verbForms = richCardData.verbForms;
-      } else {
-        verbForms = getVerbForms(wordObj.word, wordObj.pos);
-      }
-
-      window.nongMemStats = window.nongMemStats || {
-        studiedCount: 0,
-        lastWord: '',
-        lastRating: '',
-        avgResponseTime: 0,
-        isHesitating: false,
-        responseTimes: [],
-        streak: 1
-      };
-      
-      window.nongMemStats.studiedCount = (window.nongMemStats.studiedCount || 0) + 1;
-      window.nongMemStats.lastWord = wordObj.word;
-      window.nongMemStats.lastRating = choice;
-      window.nongMemStats.lastWordTenses = (verbForms && verbForms.length >= 3) ? verbForms : null;
-      window.nongMemStats.streak = streak || 1;
-      
-      const rTimes = window.nongMemStats.responseTimes || [];
-      rTimes.push(durationMs);
-      window.nongMemStats.responseTimes = rTimes;
-      
-      const sum = rTimes.reduce((a, b) => a + b, 0);
-      window.nongMemStats.avgResponseTime = sum / rTimes.length;
-      window.nongMemStats.isHesitating = durationMs > 8000;
-
-      // Nong Mem comments on user rating choice
-      let comment = '';
-      let mood = 'mocking';
-
-      if (choice === 'again') {
-        const againComments = [
-          "ผิดอีกละเหรอออ ท่องกี่รอบก็ลืม น่าเห็นใจจัง 🤭",
-          "กระจอกจริง คำนี้ง่ายจะตายยังตอบผิด",
-          "สมองปลาทองเรียกพี่แล้วนาทีนี้ ผิดอีกละ",
-          "นึกว่าจะจำได้ซะอีก... หวังสูงไปสินะเรา"
-        ];
-        comment = againComments[Math.floor(Math.random() * againComments.length)];
-        mood = 'angry';
-      } else if (choice === 'easy') {
-        const easyComments = [
-          "แหม่ๆ กด Easy สลอนเลยนะ นึกว่าเก่งเหรอออ 😏",
-          "ทำเป็นบอกว่าง่ายยย เดี๋ยวเจอกลุ่มคำยากก็ร้อง",
-          "เก่งจริงปะเนี่ย หรือแอบโกงกดเล่นๆ หือออ",
-          "จ้าาา ง่ายจ้าาา เก่งที่สุดในสามโลก (ประชดนะ)"
-        ];
-        comment = easyComments[Math.floor(Math.random() * easyComments.length)];
-        mood = 'happy';
-      } else if (choice === 'hard') {
-        const hardComments = [
-          "กด Hard อีกละ สภาพพพ พยายามเข้าล่ะ",
-          "ยากมากปะล่ะ? สมน้ำหน้าไม่ยอมทบทวนบ่อยๆ",
-          "ทำหน้าเครียดทำไมล่ะ ท่องๆ ไปเหอะน่า",
-          "เกือบขิตนะคำนี้ แต่รอดมาได้เฉยๆ ย่ะ"
-        ];
-        comment = hardComments[Math.floor(Math.random() * hardComments.length)];
-        mood = 'mocking';
-      } else if (choice === 'normal') {
-        const normalComments = [
-          "ก็ยังดีที่ตอบถูกแบบ Normal สภาพพพ",
-          "ผ่านไปได้แบบเฉียดฉิวจ้าาา ยัยตัวดี",
-          "นึกว่าจะกด Again ซะแล้ว รอดตัวไปนะ",
-          "ทบทวนบ่อยๆ จะได้กด Easy กับเค้าบ้างนะย่ะ"
-        ];
-        comment = normalComments[Math.floor(Math.random() * normalComments.length)];
-        mood = 'idle';
-      }
-
-      if (comment) {
-        window.dispatchEvent(new CustomEvent('nongmem-comment', { 
-          detail: { text: comment, mood, duration: 4000 } 
-        }));
-      }
     }
 
     setTimeout(() => {
