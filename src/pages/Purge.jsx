@@ -1726,6 +1726,7 @@ const Purge = () => {
     if (wordObj && revealStep === 0) {
       cardShowTimeRef.current = performance.now();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [wordObj?.id, revealStep]);
 
   const scrollContainerRef = useRef(null);
@@ -1947,6 +1948,7 @@ const Purge = () => {
       window.removeEventListener('tutorial-step-changed', handleStepChanged);
       window.removeEventListener('tutorial-reset', handleResetEvent);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [vocab]);
 
   // Self-correcting mock card purge on mount/update if tutorial is finished
@@ -2030,6 +2032,7 @@ const Purge = () => {
     } else {
       setActiveReviewImageUrl(wordObj.videoUrl || '');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [wordObj?.id, wordObj?.isImageSaved, wordObj?.videoUrl]);
 
   const getStatusWords = () => {

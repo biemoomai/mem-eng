@@ -168,6 +168,7 @@ export const VocabProvider = ({ children }) => {
     if (user) {
       syncData(user.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [user]);
 
   const syncData = async (userId) => {

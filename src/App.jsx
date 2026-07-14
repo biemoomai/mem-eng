@@ -93,6 +93,7 @@ function AppContent() {
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, []);
 
   useEffect(() => {
@@ -141,6 +142,7 @@ function AppContent() {
     }, 450);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [selectedWord]);
 
   const handlePopupMouseDown = () => {
@@ -376,6 +378,7 @@ function AppContent() {
     return () => {
       document.removeEventListener('click', handleDocumentClick);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, []);
 
   // Theme is managed globally by ThemeContext now
