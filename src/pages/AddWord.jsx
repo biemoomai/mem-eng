@@ -930,7 +930,6 @@ const AddWord = () => {
       }, 1300);
     }
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [isFilling]);
 
   const currentIndex = useRef(0);
@@ -1153,7 +1152,6 @@ const AddWord = () => {
 
       return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [richCardData]);
 
   // Paging scroll logic for Mouse Wheel & Touch Swipes
@@ -1341,7 +1339,6 @@ const AddWord = () => {
       window.removeEventListener('tutorial-save-word', handleSaveWordEvent);
       window.removeEventListener('tutorial-reset', handleResetEvent);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [vocab, richCardData, sceneImages, selectedPrimaryImageIdx, isAlreadyInDeck, wordInput]);
 
   const handleClear = () => {

@@ -242,7 +242,6 @@ export const Tutorial = () => {
     if (active) {
       setCompletedSteps(new Array(TUTORIAL_STEPS.length).fill(false));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [active]);
 
   // Scroll tracker for Step 2 (Explore AI Card)
@@ -466,7 +465,6 @@ export const Tutorial = () => {
       window.removeEventListener('tutorial-curriculum-selected', handleCurriculumSelected);
       window.removeEventListener('tutorial-srs-modal-opened', handleSrsModalOpened);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [active, currentStep]);
 
   // Auto-complete Swipe Gestures Demo steps after 5 seconds to change 'Skip' to 'Next'
@@ -598,7 +596,6 @@ export const Tutorial = () => {
       if (timerId) clearTimeout(timerId);
       if (frameId) cancelAnimationFrame(frameId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [currentStep, location.pathname, active]);
 
   // Reset minimized state when step changes
@@ -606,7 +603,6 @@ export const Tutorial = () => {
     if (active) {
       setIsMinimized(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [currentStep]);
 
   const handleMinimize = useCallback(() => {

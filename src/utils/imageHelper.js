@@ -82,7 +82,7 @@ export const fetchOpenverseImage = async (keyword, excludeUrls = []) => {
  * Returns a direct GIF URL string, or null on failure.
  */
 export const fetchGiphyImage = async (keyword, excludeUrls = []) => {
-  const apiKey = localStorage.getItem('memeng_giphy_key') || '';
+  const apiKey = import.meta.env.VITE_GIPHY_API_KEY || '';
   if (!apiKey || !keyword) return null;
   try {
     const query = encodeURIComponent(keyword);
@@ -113,7 +113,7 @@ export const fetchGiphyImage = async (keyword, excludeUrls = []) => {
  * Uses localStorage key first, falls back to env variable.
  */
 export const fetchPexelsImage = async (keyword, excludeUrls = []) => {
-  const apiKey = localStorage.getItem('memeng_pexels_key') || '';
+  const apiKey = localStorage.getItem('memeng_pexels_key') || import.meta.env.VITE_PEXELS_API_KEY || '';
   if (!apiKey || !keyword) return null;
   try {
     const query = encodeURIComponent(keyword);
@@ -147,7 +147,7 @@ export const fetchPexelsImage = async (keyword, excludeUrls = []) => {
  * Uses localStorage key first, falls back to env variable.
  */
 export const fetchPixabayImage = async (keyword, excludeUrls = []) => {
-  const apiKey = localStorage.getItem('memeng_pixabay_key') || '';
+  const apiKey = localStorage.getItem('memeng_pixabay_key') || import.meta.env.VITE_PIXABAY_API_KEY || '';
   if (!apiKey || !keyword) return null;
   try {
     const query = encodeURIComponent(keyword);
@@ -210,7 +210,7 @@ export const fetchWikimediaImage = async (keyword, excludeUrls = []) => {
  * Returns an object URL (blob) or null on failure.
  */
 export const fetchHuggingFaceImage = async (keyword) => {
-  const apiKey = localStorage.getItem('memeng_huggingface_key') || '';
+  const apiKey = localStorage.getItem('memeng_huggingface_key') || import.meta.env.VITE_HUGGINGFACE_API_KEY || '';
   if (!apiKey || !keyword) return null;
   try {
     const prompt = `Vector illustration explaining the concept: "${keyword}". Flat design, simple, clean, vector art, educational graphic, white background, high contrast, comprehensible.`;
@@ -282,7 +282,7 @@ export const fetchVocabImage = async (keyword, mode = 'photo', excludeUrls = [])
  */
 export const getVocabImageUrl = (promptText, seed = 42, width = 500, height = 400) => {
   // Return Pollinations if key exists (may still work for some accounts)
-  const apiKey = localStorage.getItem('memeng_pollinations_key') || '';
+  const apiKey = import.meta.env.VITE_POLLINATIONS_API_KEY || '';
   if (apiKey) {
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(promptText)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}&key=${apiKey}`;
   }
@@ -294,7 +294,7 @@ export const getVocabImageUrl = (promptText, seed = 42, width = 500, height = 40
  * Returns the generated image URL string, or null on failure.
  */
 export const fetchFalImage = async (keyword) => {
-  const apiKey = localStorage.getItem('memeng_fal_key') || '';
+  const apiKey = localStorage.getItem('memeng_fal_key') || import.meta.env.VITE_FAL_API_KEY || '';
   if (!apiKey || !keyword) return null;
 
   try {
