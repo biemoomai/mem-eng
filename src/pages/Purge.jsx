@@ -1515,17 +1515,8 @@ const Purge = () => {
       if (interval) clearInterval(interval);
       setAddedProgress(null);
       if (apiResult && apiResult.success) {
-        if (isStudying) {
-          // If already studying, silently append the added words to sessionQueue
-          setSessionQueue(prev => {
-            const existingIds = new Set(prev.map(w => w.id));
-            const newDue = (apiResult.addedWords || []).filter(w => !existingIds.has(w.id));
-            return [...prev, ...newDue];
-          });
-        } else {
-          setUnlockedWords(apiResult.addedWords || []);
-          setIsCustomSession(true);
-        }
+        setUnlockedWords(apiResult.addedWords || []);
+        setIsCustomSession(true);
       } else {
         showToast((apiResult && apiResult.error) || 'ไม่มีคำใหม่ให้อิมพอร์ตแล้ว');
       }
@@ -1533,7 +1524,7 @@ const Purge = () => {
     };
 
     try {
-      const res = await addNewCurriculumWords(activeCurriculum, 5, onWordAdded);
+      const res = await addNewCurriculumWords(activeCurriculum, 5, onWordAdded, { previewOnly: true });
       apiResult = res;
       apiCompleted = true;
       actualLoadedCount = res.success ? (res.addedWords?.length || 0) : 0;
@@ -1649,18 +1640,26 @@ const Purge = () => {
   };
 
   const handleCloseUnlockedWords = async (shouldStartStudy) => {
-    const selectedWords = unlockedWords.filter(w => selectedUnlockIds[w.id] !== false);
-    const rejectedWords = unlockedWords.filter(w => selectedUnlockIds[w.id] === false);
+    const selectedPreviews = unlockedWords.filter(word => selectedUnlockIds[word.id] !== false);
+    const savedWords = [];
 
-    // A card that is unticked must be removed before the learner can study.
-    await Promise.all(rejectedWords.map(word => deleteWordFromDeck(word.id)));
+    // These are previews. Only ticked cards are written to the learner's deck.
+    for (const preview of selectedPreviews) {
+      const richData = parseMeaningField(preview.meaning);
+      richData.curriculum = preview.curriculum || activeCurriculum || 'Self-Study only';
+      if (preview.videoUrl && !richData.savedSceneImages?.[0]) {
+        richData.savedSceneImages = [preview.videoUrl, ...(richData.savedSceneImages || []).slice(1)];
+      }
+      const result = await addWordToDeck(preview.word, richData);
+      if (result.success && result.card) savedWords.push(result.card);
+    }
 
     setUnlockedWords([]);
     setSelectedUnlockIds({});
     setFlippedUnlockIds({});
 
-    if (shouldStartStudy && selectedWords.length > 0) {
-      setSessionQueue(selectedWords);
+    if (shouldStartStudy && savedWords.length > 0) {
+      setSessionQueue(savedWords);
       setIsStudying(true);
       setIsCustomSession(true);
       setRevealStep(0);
@@ -4289,6 +4288,7 @@ const Purge = () => {
   };
 
   const handleDragEnd = (event, info) => {
+    if (revealStep < 4) return;
     const dragX = info.offset.x;
     const dragY = info.offset.y;
     const velocityX = info.velocity.x;
@@ -5222,6 +5222,8 @@ const Purge = () => {
               setRevealStep(2);
             } else if (revealStep === 2) {
               setRevealStep(3);
+            } else if (revealStep === 3) {
+              setRevealStep(4);
               window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
             }
           }}
@@ -5686,7 +5688,7 @@ const Purge = () => {
               </div>
 
               {/* Sentence card — FIXED size, never shrinks */}
-              {revealStep >= 2 && (
+              {revealStep >= 3 && (
               <div style={{ flexShrink: 0, zIndex: 20, padding: '0.85rem 1rem 0 1rem' }}>
                 <div className="glass-panel" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', padding: '1rem 1.1rem' }}>
                   <p style={{ 
@@ -5711,7 +5713,7 @@ const Purge = () => {
                 style={{ 
                   flex: 1, 
                   overflowY: 'auto', 
-                  padding: `0.75rem 1rem ${revealStep >= 3 ? '150px' : '20px'} 1rem`,
+                  padding: `0.75rem 1rem ${revealStep >= 4 ? '150px' : '20px'} 1rem`,
                   zIndex: 10,
                   position: 'relative',
                   scrollbarWidth: 'none',
@@ -5820,7 +5822,7 @@ const Purge = () => {
                           style={{ flex: revealStep === 2 ? 1 : 'none', display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: '30px' }}
                         >
                           {/* English word focus card */}
-                          {revealStep === 2 && (
+                          {revealStep >= 2 && (
                           <div className="glass-panel" style={{
                             flex: 1,
                             display: 'flex',
@@ -5872,7 +5874,7 @@ const Purge = () => {
                           </div>
                           )}
                           {/* Thai Translation */}
-                          {revealStep >= 3 && (
+                          {revealStep >= 4 && (
                           <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.18)' }}>
                             {richCardData.thaiTranslation && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
@@ -5889,7 +5891,7 @@ const Purge = () => {
                           )}
 
                           {/* Collocation */}
-                          {revealStep >= 3 && richCardData.englishExplanation?.phrase && (
+                          {revealStep >= 4 && richCardData.englishExplanation?.phrase && (
                             <div className="glass-panel" style={{ padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.012)' }}>
                               <span style={{ fontSize: '0.56rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', letterSpacing: '0.5px', marginBottom: '0.15rem' }}>Collocation</span>
                               <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
@@ -5902,7 +5904,7 @@ const Purge = () => {
                           )}
 
                           {/* Verb Forms (V1, V2, V3) */}
-                          {revealStep >= 3 && (() => {
+                          {revealStep >= 4 && (() => {
                             let verbForms = undefined;
                             if (richCardData && 'verbForms' in richCardData) {
                               verbForms = richCardData.verbForms;
@@ -6018,7 +6020,7 @@ const Purge = () => {
 
         {/* Translucent Apple-style Glassmorphic Rating Dock */}
         <AnimatePresence>
-          {revealStep >= 3 && (
+          {revealStep >= 4 && (
             <motion.div
               id="tutorial-srs-buttons"
               initial={{ y: 70, opacity: 0 }}

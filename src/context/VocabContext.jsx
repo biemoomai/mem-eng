@@ -657,9 +657,11 @@ export const VocabProvider = ({ children }) => {
       }
     }
 
-    const updated = [newCard, ...vocab];
-    setVocab(updated);
-    saveDeckToLocal(updated);
+    setVocab(previousDeck => {
+      const updated = [newCard, ...previousDeck];
+      saveDeckToLocal(updated);
+      return updated;
+    });
     return { success: true, card: newCard };
   };
 
@@ -778,7 +780,7 @@ export const VocabProvider = ({ children }) => {
   };
 
   // Add new words from selected curriculum to the user's local deck
-  const addNewCurriculumWords = async (curriculumName, count = 5, onWordAdded) => {
+  const addNewCurriculumWords = async (curriculumName, count = 5, onWordAdded, options = {}) => {
     // Fallback Self-Study to Oxford 5000 so the checkmark always works in every mode
     const targetCurriculum = (!curriculumName || curriculumName === 'Self-Study only') ? 'Oxford 5000' : curriculumName;
     const { data: dbWords, error: dbError } = await supabase
@@ -919,7 +921,7 @@ export const VocabProvider = ({ children }) => {
 
           let wordId = null;
           
-          if (user) {
+          if (!options.previewOnly && user) {
             const { data: existingWord } = await supabase
               .from('global_dictionary')
               .select('id, rich_data')
@@ -961,7 +963,7 @@ export const VocabProvider = ({ children }) => {
           }
 
           const newCard = {
-            id: user ? null : Date.now() + Math.random().toString(36).substr(2, 9),
+            id: user && !options.previewOnly ? null : `preview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
             word: item.word.toLowerCase().trim(),
             meaning: typeof details === 'object' ? JSON.stringify(details) : details,
             pos: item.pos,
@@ -1000,11 +1002,13 @@ export const VocabProvider = ({ children }) => {
             }
           }
           
-          setVocab(prev => {
-            const updated = [newCard, ...prev];
-            localStorage.setItem('chatgpt_anki_deck', JSON.stringify(updated));
-            return updated;
-          });
+          if (!options.previewOnly) {
+            setVocab(prev => {
+              const updated = [newCard, ...prev];
+              localStorage.setItem('chatgpt_anki_deck', JSON.stringify(updated));
+              return updated;
+            });
+          }
           
           addedCardsList.push(newCard);
           if (typeof onWordAdded === 'function') {
