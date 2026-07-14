@@ -1,0 +1,4 @@
+# The client uses Supabase publishable keys. The handler validates the apikey itself,
+# which avoids the legacy JWT gateway rejecting modern sb_publishable_ keys.
+[functions.get-word-details]
+verify_jwt = false

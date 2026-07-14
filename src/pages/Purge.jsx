@@ -1537,19 +1537,7 @@ const Purge = () => {
     }
   };
 
-  const handleWordClick = (word) => {
-    const cleaned = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "").trim().toLowerCase();
-    if (!cleaned) return;
-    
-    window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: cleaned } }));
-    
-    // Prevent duplicate push
-    if (tooltipStack.length > 0 && tooltipStack[tooltipStack.length - 1].word === cleaned) {
-      return;
-    }
-
-    setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
-    
+  const loadTooltipWord = async (cleaned) => {
     const lookupCandidates = getWordLookupCandidates(cleaned);
     const local = vocab.find(v => v && v.word && lookupCandidates.includes(v.word.toLowerCase()));
     if (local) {
@@ -1557,57 +1545,83 @@ const Purge = () => {
       try {
         parsed = typeof local.meaning === 'string' ? JSON.parse(local.meaning) : local.meaning;
       } catch (e) {}
-      
+
       const details = {
         definition: parsed?.englishExplanation?.definition || parsed?.meaning || 'No definition available',
-        translation: parsed?.thaiTranslation?.word || parsed?.translation || 'ไม่มีคำแปล',
+        translation: parsed?.thaiTranslation?.word || parsed?.translation || 'No Thai translation available',
         pos: local.pos || parsed?.pos || 'n.',
         alreadyInDeck: true,
         rawDetails: parsed
       };
-      
-      setTooltipStack(prev => prev.map((item, idx) => 
+      setTooltipStack(prev => prev.map((item, idx) =>
         idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details } : item
       ));
-    } else {
-      getAiWordRichDetails(lookupCandidates[0] || cleaned).then(details => {
-        let detailsObj;
-        if (details && !details.error) {
-          detailsObj = {
+      return;
+    }
+
+    try {
+      const details = await getAiWordRichDetails(lookupCandidates[0] || cleaned);
+      const detailsObj = details && !details.error
+        ? {
             definition: details.englishExplanation?.definition || details.definition || 'No definition available',
-            translation: details.thaiTranslation?.word || details.translation || 'ไม่มีคำแปล',
-            pos: details.pos || 'n.',
+            translation: details.thaiTranslation?.word || details.translation || (details._fallback ? 'Thai translation is unavailable right now.' : 'No Thai translation available'),
+            pos: details.pos || 'word',
             alreadyInDeck: false,
             rawDetails: details
-          };
-        } else {
-          detailsObj = {
-            definition: 'Could not fetch details for this word.',
-            translation: 'ไม่พบข้อมูลคำศัพท์',
+          }
+        : {
+            definition: 'We could not look up this word right now.',
+            translation: 'Please check your connection and try again.',
             pos: '',
             alreadyInDeck: false,
-            rawDetails: null
+            rawDetails: null,
+            lookupFailed: true
           };
-        }
-        setTooltipStack(prev => prev.map((item, idx) => 
-          idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details: detailsObj } : item
-        ));
-      }).catch(err => {
-        console.error(err);
-        const detailsObj = {
-          definition: 'Error fetching details.',
-          translation: 'เกิดข้อผิดพลาด',
-          pos: '',
-          alreadyInDeck: false,
-          rawDetails: null
-        };
-        setTooltipStack(prev => prev.map((item, idx) => 
-          idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details: detailsObj } : item
-        ));
-      });
+      setTooltipStack(prev => prev.map((item, idx) =>
+        idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details: detailsObj } : item
+      ));
+    } catch (err) {
+      console.error(err);
+      setTooltipStack(prev => prev.map((item, idx) =>
+        idx === prev.length - 1 && item.word === cleaned
+          ? {
+              ...item,
+              loading: false,
+              details: {
+                definition: 'We could not look up this word right now.',
+                translation: 'Please check your connection and try again.',
+                pos: '',
+                alreadyInDeck: false,
+                rawDetails: null,
+                lookupFailed: true
+              }
+            }
+          : item
+      ));
     }
   };
 
+  const retryTooltipLookup = () => {
+    if (!activeTooltipWord || isSearchingTooltipWord) return;
+    setTooltipStack(prev => prev.map((item, idx) =>
+      idx === prev.length - 1 ? { ...item, loading: true, details: null } : item
+    ));
+    void loadTooltipWord(activeTooltipWord);
+  };
+
+  const handleWordClick = (word) => {
+    const cleaned = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "").trim().toLowerCase();
+    if (!cleaned) return;
+
+    window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: cleaned } }));
+
+    if (tooltipStack.length > 0 && tooltipStack[tooltipStack.length - 1].word === cleaned) {
+      return;
+    }
+
+    setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
+    void loadTooltipWord(cleaned);
+  };
   const handleAddWordFromTooltip = async () => {
     if (!activeTooltipWord || !tooltipDetails || !tooltipDetails.rawDetails) return;
     setIsAddingTooltipWord(true);
@@ -3151,6 +3165,23 @@ const Purge = () => {
                       <CheckCircle size={11} />
                       <span>Already in Deck</span>
                     </button>
+                  ) : tooltipDetails?.lookupFailed ? (
+                    <button
+                      onClick={retryTooltipLookup}
+                      className="glass-button"
+                      style={{
+                        width: '100%',
+                        fontSize: '0.75rem',
+                        padding: '0.5rem',
+                        borderRadius: '12px',
+                        fontWeight: 800,
+                        color: '#fbbf24',
+                        borderColor: 'rgba(251,191,36,0.35)',
+                        background: 'rgba(251,191,36,0.08)'
+                      }}
+                    >
+                      Try again
+                    </button>
                   ) : (
                     <button 
                       id="tutorial-tooltip-add-btn"
@@ -3169,7 +3200,9 @@ const Purge = () => {
                         gap: '0.3rem',
                         background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)',
                         border: 'none',
-                        boxShadow: '0 4px 15px rgba(239, 68, 68, 0.25)'
+                        boxShadow: '0 4px 15px rgba(239, 68, 68, 0.25)',
+                        opacity: tooltipDetails?.rawDetails ? 1 : 0.45,
+                        cursor: tooltipDetails?.rawDetails ? 'pointer' : 'not-allowed'
                       }}
                     >
                       {isAddingTooltipWord ? (

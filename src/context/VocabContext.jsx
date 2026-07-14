@@ -62,6 +62,60 @@ const sanitizeThaiInObject = (obj) => {
 };
 
 
+const getPublicDictionaryFallback = async (word) => {
+  const normalizedWord = String(word || '').toLowerCase().trim();
+  if (!normalizedWord || normalizedWord.includes(' ')) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const response = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(normalizedWord)}`,
+      { signal: controller.signal }
+    );
+    if (!response.ok) return null;
+
+    const entries = await response.json();
+    const entry = Array.isArray(entries) ? entries[0] : null;
+    const meaning = entry?.meanings?.find(item => item?.definitions?.[0]?.definition);
+    const firstDefinition = meaning?.definitions?.[0];
+    if (!firstDefinition?.definition) return null;
+
+    const definition = String(firstDefinition.definition).trim().slice(0, 180);
+    const example = String(firstDefinition.example || '').trim();
+
+    return {
+      word: entry.word || normalizedWord,
+      pos: meaning?.partOfSpeech || 'word',
+      cefrLevel: 'Unranked',
+      validation: { isInvalid: false, suggestion: null },
+      englishExplanation: { definition, phrase: null, phraseMeaning: null },
+      thaiTranslation: { word: '', phrase: null },
+      scenes: example ? [{
+        title: 'Example',
+        situation: '',
+        dialogue: example,
+        meaning: '',
+        thaiWordUsed: '',
+        imageTag: normalizedWord
+      }] : [],
+      imagePrompts: [normalizedWord],
+      synonyms: [],
+      nearWords: [],
+      wordFamily: [],
+      moreContexts: [],
+      takeaway: definition,
+      _provider: 'Dictionary fallback',
+      _fallback: true
+    };
+  } catch (error) {
+    console.warn(`Public dictionary fallback failed for "${normalizedWord}":`, error?.message || error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 const fsrsScheduler = fsrs({
   request_retention: 0.9,
   maximum_interval: 36500,
@@ -1351,6 +1405,11 @@ export const VocabProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('❌ Server-side translation failed:', err.message);
+      const dictionaryFallback = await getPublicDictionaryFallback(normalizedWord);
+      if (dictionaryFallback) {
+        console.info(`✅ Dictionary fallback loaded for "${normalizedWord}"`);
+        return dictionaryFallback;
+      }
       return { error: err.message };
     }
 

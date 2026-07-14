@@ -81,6 +81,38 @@ const fetchLexicalReferences = async (word) => {
   }
 };
 
+const lookupRateLimit = new Map<string, { startedAt: number; count: number }>();
+const LOOKUP_WINDOW_MS = 60 * 1000;
+const MAX_LOOKUPS_PER_WINDOW = 25;
+
+const isAuthorizedClient = (req: Request) => {
+  const apiKey = req.headers.get('apikey');
+  if (!apiKey) return false;
+
+  try {
+    const configuredKeys = JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '{}');
+    const acceptedKeys = [
+      ...Object.values(configuredKeys),
+      Deno.env.get('SUPABASE_ANON_KEY')
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+    return acceptedKeys.includes(apiKey);
+  } catch {
+    return false;
+  }
+};
+
+const isRateLimited = (req: Request) => {
+  const clientId = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const now = Date.now();
+  const existing = lookupRateLimit.get(clientId);
+  if (!existing || now - existing.startedAt >= LOOKUP_WINDOW_MS) {
+    lookupRateLimit.set(clientId, { startedAt: now, count: 1 });
+    return false;
+  }
+  if (existing.count >= MAX_LOOKUPS_PER_WINDOW) return true;
+  existing.count += 1;
+  return false;
+};
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -88,6 +120,20 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (!isAuthorizedClient(req)) {
+      return new Response(JSON.stringify({ error: 'Unauthorized client request' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (isRateLimited(req)) {
+      return new Response(JSON.stringify({ error: 'Too many lookup requests. Please try again shortly.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const { word, forceValid } = await req.json();
     
     if (!word) {
