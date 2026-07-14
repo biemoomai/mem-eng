@@ -198,7 +198,17 @@ const Profile = () => {
       setShowStreakSplash(false);
       return;
     }
+    const todayKey = `memeng_streak_splash_seen_${new Date().toISOString().slice(0, 10)}`;
+    try {
+      if (localStorage.getItem(todayKey) === 'true') {
+        setShowStreakSplash(false);
+        return;
+      }
+    } catch (error) {}
     if (stats.streak > 0) {
+      try {
+        localStorage.setItem(todayKey, 'true');
+      } catch (error) {}
       setShowStreakSplash(true);
       setDisplayedStreak(1);
       

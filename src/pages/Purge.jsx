@@ -6,6 +6,7 @@ import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Spa
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { supabase } from '../lib/supabaseClient';
 import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { playClickSound, playSwipeSound, playSuccessSound, playMasterSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
@@ -100,6 +101,38 @@ const cleanMediaUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('approved:')) return url.substring(9);
   return url;
+};
+
+const DISCOVERY_COLLECTIONS = [
+  { name: 'Movie Words', accent: '#e11d48', fallbackWords: ['scene', 'script', 'sequel', 'trailer', 'cast', 'director', 'soundtrack', 'plot', 'genre', 'audience', 'dialogue', 'suspense', 'villain', 'character', 'screenplay', 'documentary', 'cinema', 'episode', 'review', 'subtitle'] },
+  { name: 'Music Words', accent: '#8b5cf6', fallbackWords: ['melody', 'rhythm', 'chorus', 'verse', 'harmony', 'tempo', 'lyrics', 'album', 'concert', 'orchestra', 'instrument', 'vocalist', 'composer', 'acoustic', 'remix', 'playlist', 'recording', 'microphone'] },
+  { name: 'Business Words', accent: '#059669', fallbackWords: ['revenue', 'profit', 'budget', 'strategy', 'client', 'customer', 'market', 'sales', 'contract', 'deadline', 'proposal', 'negotiate', 'investment', 'invoice', 'manager', 'target', 'campaign', 'partnership'] }
+];
+const DISCOVERY_PROMPT_INTERVAL_MS = 15 * 60 * 1000;
+const DISCOVERY_ACTIVE_MS_KEY = 'memeng_discovery_active_ms';
+
+const loadDiscoveryActiveMs = () => {
+  try {
+    const value = Number(localStorage.getItem(DISCOVERY_ACTIVE_MS_KEY));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch (error) {
+    return 0;
+  }
+};
+
+const saveDiscoveryActiveMs = (value) => {
+  try {
+    localStorage.setItem(DISCOVERY_ACTIVE_MS_KEY, String(Math.max(0, Math.floor(value))));
+  } catch (error) {}
+};
+
+const shuffleItems = (items) => {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 };
 
 const TODAY_INTERESTING_WORDS = [
@@ -891,7 +924,7 @@ const ReviewOptionButton = ({ onClick, disabled, label, color, icon: Icon, isLoa
 };
 
 const Purge = () => {
-  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords, uploadUserCardImage, updateUserCardOverride } = useVocab();
+  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, warmCurriculumBuffer, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords, uploadUserCardImage, updateUserCardOverride } = useVocab();
   const vocab = useMemo(() => {
     return rawVocab.filter(item => {
       if (activeCurriculum === 'Self-Study only') {
@@ -1108,8 +1141,12 @@ const Purge = () => {
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [flippedCollectionWords, setFlippedCollectionWords] = useState({});
   const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
+  const [activeCollectionWords, setActiveCollectionWords] = useState([]);
+  const [collectionCategories, setCollectionCategories] = useState(() => shuffleItems(DISCOVERY_COLLECTIONS));
+  const [isCollectionLoading, setIsCollectionLoading] = useState(false);
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
-  const collectionPromptArmedRef = useRef(true);
+  const collectionActiveMsRef = useRef(loadDiscoveryActiveMs());
+  const collectionPromptDueRef = useRef(collectionActiveMsRef.current >= DISCOVERY_PROMPT_INTERVAL_MS);
   const lowGraphics = false;
   const [addedProgress, setAddedProgress] = useState(null);
   
@@ -1623,42 +1660,72 @@ const Purge = () => {
     }
   };
 
-  const handleSelectCollection = (colName) => {
+  const handleSelectCollection = async (colName) => {
+    if (isCollectionLoading) return;
+    setIsCollectionLoading(true);
     setSelectedCollection(colName);
-    setShowCollectionChoice(false);
-    
-    const colWords = COLLECTIONS_DATA[colName] || [];
-    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
-    
-    if (unadded.length > 0) {
+    try {
+      const config = DISCOVERY_COLLECTIONS.find(item => item.name === colName);
+      const { data, error } = await supabase
+        .from('curriculum_words')
+        .select('word, pos, cefr_level')
+        .eq('curriculum_name', colName);
+      const sourceWords = !error && data?.length
+        ? data
+        : (config?.fallbackWords || []).map(word => ({ word, pos: 'word', cefr_level: 'B1' }));
+      const existingWords = new Set(rawVocab.filter(Boolean).map(item => item.word?.toLowerCase().trim()).filter(Boolean));
+      const candidates = shuffleItems(sourceWords)
+        .filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()))
+        .slice(0, 5);
+      if (!candidates.length) {
+        showToast(`You have already imported all words from "${colName}"!`);
+        return;
+      }
+
+      const cards = [];
+      for (const item of candidates) {
+        const details = await getAiWordRichDetails(item.word);
+        if (!details || details.error) continue;
+        cards.push({
+          word: item.word.toLowerCase().trim(),
+          pos: details.pos || item.pos || 'word',
+          cefrLevel: details.cefrLevel || item.cefr_level || 'B1',
+          meaning: JSON.stringify({ ...details, curriculum: colName })
+        });
+      }
+      if (!cards.length) {
+        showToast('Fresh words could not be loaded. Please try again.');
+        return;
+      }
       const defaultSelected = {};
-      unadded.forEach(w => {
-        defaultSelected[w.word] = true;
-      });
+      cards.forEach(card => { defaultSelected[card.word] = true; });
+      setActiveCollectionWords(cards);
       setSelectedCollectionWords(defaultSelected);
+      setFlippedCollectionWords({});
+      setShowCollectionChoice(false);
       setShowCollectionImport(true);
-    } else {
-      showToast(`You have already imported all words from "${colName}"!`);
+    } catch (error) {
+      console.error('Could not load collection:', error);
+      showToast('Fresh words could not be loaded. Please try again.');
+    } finally {
+      setIsCollectionLoading(false);
     }
   };
 
   const handleAddCollectionWords = async () => {
     if (!selectedCollection) return;
-    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
-    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = activeCollectionWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
     for (const w of unadded) {
       if (selectedCollectionWords[w.word] !== false) {
-        const richData = {
-          ...JSON.parse(w.meaning),
-          curriculum: selectedCollection
-        };
-        await addWordToDeck(w.word, richData);
-        count += 1;
+        const richData = { ...JSON.parse(w.meaning), curriculum: selectedCollection };
+        const result = await addWordToDeck(w.word, richData);
+        if (result.success) count += 1;
       }
     }
     setShowCollectionImport(false);
     setSelectedCollection(null);
+    setActiveCollectionWords([]);
     if (count > 0) {
       showToast(`Added ${count} new words to your deck!`);
       setIsInitialized(false);
@@ -1989,20 +2056,52 @@ const Purge = () => {
     }
   }, [vocab, loading]);
 
-  // 2. Trigger Recommended Collections modal whenever a study round finishes
+  // Prepare a private buffer of new cards while the learner is using the app.
   useEffect(() => {
-    if (loading) return;
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone) return;
+    if (loading) return undefined;
+    const timer = window.setTimeout(() => {
+      void warmCurriculumBuffer(activeCurriculum, 15);
+    }, 1800);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Buffering is intentionally refreshed after deck changes.
+  }, [activeCurriculum, loading, rawVocab.length]);
 
+  // Count only active, visible study time. A fresh random collection appears
+  // after fifteen minutes, once the current review queue is finished.
+  useEffect(() => {
+    if (loading || !isStudying || localStorage.getItem('memeng_tutorial_running') === 'true') return undefined;
+    let lastTickAt = Date.now();
+    const recordStudyTime = () => {
+      const now = Date.now();
+      if (document.visibilityState === 'visible') {
+        collectionActiveMsRef.current += now - lastTickAt;
+        if (collectionActiveMsRef.current >= DISCOVERY_PROMPT_INTERVAL_MS) collectionPromptDueRef.current = true;
+        saveDiscoveryActiveMs(collectionActiveMsRef.current);
+      }
+      lastTickAt = now;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') recordStudyTime();
+      lastTickAt = Date.now();
+    };
+    const intervalId = window.setInterval(recordStudyTime, 15000);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      recordStudyTime();
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [isStudying, loading]);
+
+  useEffect(() => {
+    if (loading || localStorage.getItem('memeng_tutorial_running') === 'true') return;
     const dueCountLocal = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()).length;
-    if (isStudying || dueCountLocal > 0) {
-      collectionPromptArmedRef.current = true;
-      return;
-    }
-
-    if (collectionPromptArmedRef.current && !showCollectionChoice && !showCollectionImport) {
-      collectionPromptArmedRef.current = false;
+    if (isStudying || dueCountLocal > 0) return;
+    if (collectionPromptDueRef.current && !showCollectionChoice && !showCollectionImport) {
+      collectionPromptDueRef.current = false;
+      collectionActiveMsRef.current = 0;
+      saveDiscoveryActiveMs(0);
+      setCollectionCategories(shuffleItems(DISCOVERY_COLLECTIONS));
       setShowCollectionChoice(true);
     }
   }, [vocab, isStudying, loading, showCollectionChoice, showCollectionImport]);
@@ -3600,7 +3699,7 @@ const Purge = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {categories.map((cat) => (
+              {collectionCategories.map((cat) => (
                 <motion.button
                   key={cat.name}
                   whileHover={{ scale: 1.01, border: '1px solid rgba(255, 255, 255, 0.15)' }}
@@ -3674,7 +3773,7 @@ const Purge = () => {
 
   const renderCollectionImportModal = () => {
     if (!selectedCollection) return null;
-    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
+    const colWords = activeCollectionWords;
     const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
 
     return (

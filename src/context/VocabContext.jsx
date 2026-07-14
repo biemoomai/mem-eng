@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { getVocabImageUrl, fetchVocabImage } from '../utils/imageHelper';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
@@ -138,6 +138,8 @@ export const useVocab = () => useContext(VocabContext);
 
 export const VocabProvider = ({ children }) => {
   const [vocab, setVocab] = useState([]);
+  const curriculumPrefetchRef = useRef(new Map());
+  const curriculumPrefetchingRef = useRef(new Set());
   const [streak, setStreak] = useState(1);
   const [loading, setLoading] = useState(true);
   const [reviewLogs, setReviewLogs] = useState(() => {
@@ -869,8 +871,15 @@ export const VocabProvider = ({ children }) => {
     const diverseUncached = diversifyWords(uncachedGroup);
     
     const targetWords = [];
-    const cachedArr = [...diverseCached];
-    const uncachedArr = [...diverseUncached];
+    const prefetchedItems = (curriculumPrefetchRef.current.get(targetCurriculum) || [])
+      .filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()));
+    for (const item of prefetchedItems) {
+      if (targetWords.length >= count) break;
+      targetWords.push(item);
+    }
+    const selectedWords = new Set(targetWords.map(item => item.word.toLowerCase().trim()));
+    const cachedArr = [...diverseCached].filter(item => !selectedWords.has(item.word.toLowerCase().trim()));
+    const uncachedArr = [...diverseUncached].filter(item => !selectedWords.has(item.word.toLowerCase().trim()));
     
     while (targetWords.length < count && (cachedArr.length > 0 || uncachedArr.length > 0)) {
       if (uncachedArr.length > 0 && (targetWords.length % 2 === 1 || cachedArr.length === 0)) {
@@ -884,10 +893,10 @@ export const VocabProvider = ({ children }) => {
     
     for (const item of targetWords) {
       try {
-        const details = await getAiWordRichDetails(item.word);
+        const details = item._prefetchedDetails || await getAiWordRichDetails(item.word);
         if (details && !details.error) {
           // Fetch auto-image if not present
-          let imgUrl = details?.savedSceneImages?.[0] || '';
+          let imgUrl = item._prefetchedImage || details?.savedSceneImages?.[0] || '';
           if (!imgUrl) {
             const firstImagePrompt = details?.imagePrompts && details.imagePrompts[0]
               ? details.imagePrompts[0]
@@ -1011,10 +1020,64 @@ export const VocabProvider = ({ children }) => {
     }
     
     if (addedCardsList.length > 0) {
+      const addedNames = new Set(addedCardsList.map(card => card.word.toLowerCase().trim()));
+      curriculumPrefetchRef.current.set(
+        targetCurriculum,
+        (curriculumPrefetchRef.current.get(targetCurriculum) || []).filter(item => !addedNames.has(item.word.toLowerCase().trim()))
+      );
       return { success: true, count: addedCardsList.length, addedWords: addedCardsList };
     }
     
     return { success: false, error: lastError || 'Could not fetch details for any new words at this time.' };
+  };
+
+  // Quietly prepare rich cards while the learner is browsing. The prepared cards
+  // are not added until +5 is pressed, so the deck never changes unexpectedly.
+  const warmCurriculumBuffer = async (curriculumName, count = 15) => {
+    const targetCurriculum = (!curriculumName || curriculumName === 'Self-Study only') ? 'Oxford 5000' : curriculumName;
+    if (curriculumPrefetchingRef.current.has(targetCurriculum)) return 0;
+
+    const existingWords = new Set(vocab.map(item => item?.word?.toLowerCase().trim()).filter(Boolean));
+    const alreadyPrepared = (curriculumPrefetchRef.current.get(targetCurriculum) || [])
+      .filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()));
+    if (alreadyPrepared.length >= count) return alreadyPrepared.length;
+
+    curriculumPrefetchingRef.current.add(targetCurriculum);
+    try {
+      const { data: dbWords, error } = await supabase
+        .from('curriculum_words')
+        .select('word, pos, cefr_level')
+        .eq('curriculum_name', targetCurriculum);
+      if (error || !dbWords?.length) return alreadyPrepared.length;
+
+      const candidates = dbWords
+        .filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()))
+        .sort(() => Math.random() - 0.5)
+        .slice(0, Math.max(0, count - alreadyPrepared.length) * 3);
+      const prepared = [...alreadyPrepared];
+      for (const item of candidates) {
+        if (prepared.length >= count) break;
+        const details = await getAiWordRichDetails(item.word);
+        if (!details || details.error) continue;
+        let imageUrl = details?.savedSceneImages?.[0] || '';
+        if (!imageUrl) {
+          const imageResult = await fetchVocabImage(details?.imagePrompts?.[0] || item.word, 'photo');
+          imageUrl = imageResult?.url || '';
+          if (imageUrl) {
+            details.savedSceneImages = details.savedSceneImages || [];
+            details.savedSceneImages[0] = imageUrl;
+          }
+        }
+        prepared.push({ ...item, _prefetchedDetails: details, _prefetchedImage: imageUrl });
+      }
+      curriculumPrefetchRef.current.set(targetCurriculum, prepared);
+      return prepared.length;
+    } catch (error) {
+      console.warn('Could not warm curriculum buffer:', error);
+      return alreadyPrepared.length;
+    } finally {
+      curriculumPrefetchingRef.current.delete(targetCurriculum);
+    }
   };
 
   // Update a card's image in the database dynamically
@@ -1358,6 +1421,7 @@ export const VocabProvider = ({ children }) => {
       updateUserCardOverride,
       uploadUserCardImage,
       addNewCurriculumWords,
+      warmCurriculumBuffer,
       getAiWordRichDetails,
       providerStatus,
       resetCooldowns,

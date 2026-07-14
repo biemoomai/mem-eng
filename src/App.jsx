@@ -607,18 +607,19 @@ function AppContent() {
           overflow: 'hidden',
           position: 'relative'
         }}>
-          <AnimatePresence initial={false} mode="sync">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, x: routeTransitionDirection < 0 ? 34 : routeTransitionDirection > 0 ? -34 : 0 }}
-              animate={{ opacity: 1, x: isSwiping ? effectiveSwipeOffset : 0 }}
-              exit={{ opacity: 0, x: routeTransitionDirection < 0 ? -26 : routeTransitionDirection > 0 ? 26 : 0 }}
-              transition={isSwiping ? { duration: 0 } : { duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', willChange: 'transform' }}
-            >
-              <Suspense fallback={<ScreenLoading />}>{renderCurrentTabRoute()}</Suspense>
-            </motion.div>
-          </AnimatePresence>
+          <div
+            key={location.pathname}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              transform: isSwiping ? `translate3d(${effectiveSwipeOffset}px, 0, 0)` : 'translate3d(0, 0, 0)',
+              willChange: isSwiping ? 'transform' : 'auto'
+            }}
+          >
+            <Suspense fallback={<ScreenLoading />}>{renderCurrentTabRoute()}</Suspense>
+          </div>
         </div>
       ) : (
         <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
