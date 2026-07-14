@@ -1256,31 +1256,33 @@ function AppContent() {
                 </motion.button>
 
 
-                <motion.button
-                  variants={itemVariants}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowDeleteAccountConfirm(true);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '11px',
-                    borderRadius: '12px',
-                    background: 'rgba(127, 29, 29, 0.14)',
-                    border: '1px solid rgba(248, 113, 113, 0.28)',
-                    color: '#fca5a5',
-                    fontSize: '0.78rem',
-                    fontWeight: 750,
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <Trash2 size={15} />
-                  <span>{isAnonymous ? 'Delete Guest Data' : 'Delete Account & Data'}</span>
-                </motion.button>
+                {!isAnonymous && (
+                  <motion.button
+                    variants={itemVariants}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowDeleteAccountConfirm(true);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '11px',
+                      borderRadius: '12px',
+                      background: 'rgba(127, 29, 29, 0.14)',
+                      border: '1px solid rgba(248, 113, 113, 0.28)',
+                      color: '#fca5a5',
+                      fontSize: '0.78rem',
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    <span>Delete Account & Data</span>
+                  </motion.button>
+                )}
                 {/* Privacy & Terms */}
                 <motion.div
                   variants={itemVariants}

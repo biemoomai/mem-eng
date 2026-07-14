@@ -36,6 +36,30 @@ const wordsMatchForLookup = (a, b) => {
   return aCandidates.some(candidate => bCandidates.includes(candidate));
 };
 
+const TypewriterDefinition = ({ text, renderComplete }) => {
+  const safeText = String(text || '');
+  const [visibleLength, setVisibleLength] = useState(0);
+
+  useEffect(() => {
+    setVisibleLength(0);
+    if (!safeText) return undefined;
+    const duration = Math.min(1200, Math.max(420, safeText.length * 18));
+    const startedAt = performance.now();
+    let frameId = 0;
+    const reveal = (now) => {
+      const nextLength = Math.min(safeText.length, Math.ceil(((now - startedAt) / duration) * safeText.length));
+      setVisibleLength(previous => previous === nextLength ? previous : nextLength);
+      if (nextLength < safeText.length) frameId = requestAnimationFrame(reveal);
+    };
+    frameId = requestAnimationFrame(reveal);
+    return () => cancelAnimationFrame(frameId);
+  }, [safeText]);
+
+  if (!safeText) return null;
+  if (visibleLength >= safeText.length) return renderComplete();
+  return <>{safeText.slice(0, visibleLength)}<span style={{ opacity: 0.55 }}>|</span></>;
+};
+
 // Premium white minimal finger pointer SVG component for tutorial highlights
 const PremiumFingerPointer = ({ direction = 'down', scale = 1.0 }) => {
   let rotateDeg = 0;
@@ -935,7 +959,7 @@ const Purge = () => {
   }, [rawVocab, activeCurriculum, curriculumWords]);
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { isAnonymous } = useAuth();
+  const { isAnonymous, user } = useAuth();
 
   const speakText = (text) => {
     speakEnglish(text);
@@ -977,6 +1001,9 @@ const Purge = () => {
   const [showStats, setShowStats] = useState(false);
   const [hoveredSrs, setHoveredSrs] = useState(null);
   const [tutorialStep, setTutorialStep] = useState(null);
+  const [showMasterHint, setShowMasterHint] = useState(false);
+  const masterHintKey = `memeng_master_hint_seen_${user?.id || 'guest'}`;
+  const masterHintProgressKey = `memeng_master_hint_progress_${user?.id || 'guest'}`;
 
   useEffect(() => {
     if (regenCount >= 6) {
@@ -4218,6 +4245,16 @@ const Purge = () => {
     const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (!isTutorialActive) {
       updateWordSrs(wordObj.id, choice, durationMs);
+      try {
+        const reviewed = Number(localStorage.getItem(masterHintProgressKey) || 0) + 1;
+        localStorage.setItem(masterHintProgressKey, String(reviewed));
+        if (reviewed >= 3 && localStorage.getItem(masterHintKey) !== 'true') {
+          localStorage.setItem(masterHintKey, 'true');
+          window.setTimeout(() => setShowMasterHint(true), 450);
+        }
+      } catch (error) {
+        console.warn('Could not save Master hint progress', error);
+      }
     }
 
     setTimeout(() => {
@@ -5766,12 +5803,7 @@ const Purge = () => {
                               <span className="badge-neon" style={{ fontSize: '0.62rem' }}>{wordObj.pos || 'n.'}</span>
                               <span className="badge-cyan" style={{ fontSize: '0.62rem' }}>{wordObj.cefrLevel || 'C1'}</span>
                             </div>
-                            {/* Divider */}
-                            <div style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.1)', borderRadius: '1px' }} />
-                            {/* Definition */}
-                            <p style={{ margin: 0, fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.55, fontWeight: 400, maxWidth: '340px' }}>
-                              {renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
-                            </p>
+
                           </div>
                           
                           {/* FSRS Rating Buttons shown only when Thai is revealed in step 2 */}
@@ -5832,7 +5864,10 @@ const Purge = () => {
                             </div>
                             <div style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.1)', borderRadius: '1px' }} />
                             <p style={{ margin: 0, fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.55, fontWeight: 400, maxWidth: '340px' }}>
-                              {renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
+                              <TypewriterDefinition
+                                text={richCardData.englishExplanation?.definition}
+                                renderComplete={() => renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
+                              />
                             </p>
                           </div>
                           )}
@@ -6113,6 +6148,40 @@ const Purge = () => {
                 <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#ef4444', letterSpacing: '0.3px' }}>Again</span>
                 <span style={{ fontSize: '0.56rem', fontWeight: 700, color: 'rgba(239, 68, 68, 0.65)' }}>{projections.again}</span>
               </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showMasterHint && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 250, background: 'rgba(3, 4, 7, 0.68)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+            >
+              <motion.div
+                initial={{ scale: 0.94, y: 14 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.94, y: 14 }}
+                style={{ width: '100%', maxWidth: '340px', background: '#121318', border: '1px solid rgba(250, 204, 21, 0.28)', borderRadius: '20px', padding: '1.4rem', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.55)' }}
+              >
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', margin: '0 auto 0.75rem', display: 'grid', placeItems: 'center', background: 'rgba(250, 204, 21, 0.12)', border: '1px solid rgba(250, 204, 21, 0.25)' }}>
+                  <CheckCircle size={22} color="#facc15" />
+                </div>
+                <h3 style={{ color: 'white', fontSize: '1.05rem', fontWeight: 900, margin: '0 0 0.45rem' }}>Know a word already?</h3>
+                <p style={{ color: 'rgba(255,255,255,0.68)', fontSize: '0.84rem', lineHeight: 1.5, margin: '0 0 1rem' }}>
+                  Hold any revealed card for 1 second to move it to Mastered.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMasterHint(false)}
+                  className="glass-button animate-scale"
+                  style={{ width: '100%', padding: '0.72rem', color: '#facc15', borderColor: 'rgba(250, 204, 21, 0.3)', fontWeight: 850 }}
+                >
+                  Got it
+                </button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
