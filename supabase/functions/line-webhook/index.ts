@@ -21,10 +21,24 @@ function buildFlexMessage(aiData: any, userText: string) {
     };
   }
 
-  const pos = aiData.pos || "word";
+  const posMap: Record<string, string> = {
+    noun: 'noun (คำนาม)',
+    verb: 'verb (คำกริยา)',
+    adjective: 'adjective (คำคุณศัพท์)',
+    adverb: 'adverb (คำวิเศษณ์)',
+    pronoun: 'pronoun (คำสรรพนาม)',
+    preposition: 'preposition (คำบุพบท)',
+    conjunction: 'conjunction (คำสันธาน)',
+    interjection: 'interjection (คำอุทาน)'
+  };
+
+  const rawPos = aiData.pos ? aiData.pos.toLowerCase() : "";
+  const posDisplay = posMap[rawPos] || aiData.pos || "word";
+
   const thaiTrans = aiData.thaiTranslation?.word || aiData.validation?.thaiTranslationShort || "N/A";
   const engDef = aiData.englishExplanation?.definition || "";
   const sceneSentence = aiData.scenes?.[0]?.dialogue || "No example available.";
+  const sceneMeaning = aiData.scenes?.[0]?.meaning || "";
 
   return {
     type: "flex",
@@ -39,7 +53,7 @@ function buildFlexMessage(aiData: any, userText: string) {
         contents: [
           {
             type: "text",
-            text: pos,
+            text: posDisplay,
             color: "#ffffff",
             weight: "bold",
             size: "sm"
@@ -80,7 +94,15 @@ function buildFlexMessage(aiData: any, userText: string) {
                 size: "sm",
                 color: "#333333",
                 wrap: true
-              }
+              },
+              ...(sceneMeaning ? [{
+                type: "text",
+                text: `คำแปล: ${sceneMeaning}`,
+                size: "xs",
+                color: "#888888",
+                wrap: true,
+                margin: "sm"
+              }] : [])
             ]
           }
         ]
@@ -92,24 +114,13 @@ function buildFlexMessage(aiData: any, userText: string) {
         contents: [
           {
             type: "button",
-            style: "link",
-            color: "#4a86e8",
-            height: "sm",
-            action: {
-              type: "message",
-              label: "🔊 ฟังเสียง",
-              text: `play_audio:${userText}`
-            }
-          },
-          {
-            type: "button",
-            style: "link",
+            style: "primary",
             color: "#43a047",
             height: "sm",
             action: {
               type: "message",
               label: "+ เก็บเข้าเด็ค",
-              text: `add_word:${userText}:::${pos}:::${thaiTrans}`
+              text: `add_word:${userText}:::${rawPos}:::${thaiTrans}`
             }
           }
         ]
