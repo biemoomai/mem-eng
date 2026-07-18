@@ -17,6 +17,7 @@ const Library = lazy(() => import('./pages/Library'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Tutorial = lazy(() => import('./components/Tutorial').then((module) => ({ default: module.Tutorial })));
+import LineDemo from './pages/LineDemo';
 
 const ScreenLoading = () => (
   <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.62)', fontSize: '0.8rem' }}>
@@ -25,7 +26,7 @@ const ScreenLoading = () => (
 );
 
 function AppContent() {
-  const { user, signOut, deleteAccount, loading, isAnonymous } = useAuth();
+  const { user, signOut, deleteAccount, loading, isAnonymous, isLiffMode } = useAuth();
   const { vocab, streak, clearDeckAndResetStats } = useVocab();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -180,7 +181,7 @@ function AppContent() {
     }
   });
   const [isTutorialActive, setIsTutorialActive] = useState(false);
-  const pageSwipeEnabled = !isTutorialActive && !menuOpen;
+  const pageSwipeEnabled = !isTutorialActive && !menuOpen && !isLiffMode;
 
   useEffect(() => {
     const preloadTimer = window.setTimeout(() => {
@@ -392,7 +393,10 @@ function AppContent() {
     if (!user && !publicRoutes.includes(location.pathname)) {
       navigate('/login');
     }
-  }, [user, loading, location.pathname, navigate]);
+    if (isLiffMode && location.pathname !== '/purge') {
+      navigate('/purge', { replace: true });
+    }
+  }, [user, loading, location.pathname, navigate, isLiffMode]);
 
   const dueToday = vocab.filter(
     w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()
@@ -627,13 +631,14 @@ function AppContent() {
             <Route path="/purge" element={<Purge />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/" element={<AddWord />} />
+            <Route path="/line" element={<LineDemo />} />
             <Route path="*" element={<AddWord />} />
           </Routes></Suspense>
         </div>
       )}
 
       {/* Floating translucent bottom nav dock */}
-      {showBottomNav && user && isTabRoute && !menuOpen && (
+      {showBottomNav && user && isTabRoute && !menuOpen && !isLiffMode && (
         <div 
           className="bottom-nav-dock"
           style={{

@@ -1,18 +1,54 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
+import liff from '@line/liff';
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isLiffMode, setIsLiffMode] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
     const initAuth = async () => {
       try {
+        // 1. Initialize LIFF
+        try {
+          await liff.init({ liffId: '2010748224-EeJEpvzz' });
+          if (liff.isInClient()) {
+            setIsLiffMode(true);
+            if (!liff.isLoggedIn()) {
+              liff.login();
+              return;
+            }
+            
+            // We are in LINE App! Exchange LINE Token for Supabase Session
+            const lineToken = liff.getAccessToken();
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || localStorage.getItem('supabase_url');
+            
+            const res = await fetch(`${supabaseUrl}/functions/v1/liff-auth`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ line_access_token: lineToken })
+            });
+            
+            const authData = await res.json();
+            if (authData.token) {
+              await supabase.auth.setSession({
+                access_token: authData.token,
+                refresh_token: authData.token // Simple mock refresh token
+              });
+            }
+          }
+        } catch (liffErr) {
+          console.error("LIFF Init failed:", liffErr);
+        }
+
+        // 2. Normal Auth Flow
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           if (isMounted) {
@@ -237,7 +273,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, signUp, signIn, signInWithGoogle, signOut, deleteAccount, isAnonymous, loginAsGuest }}>
+    <AuthContext.Provider value={{ user, profile, signUp, signIn, signInWithGoogle, signOut, deleteAccount, isAnonymous, loginAsGuest, isLiffMode }}>
       {!loading && children}
     </AuthContext.Provider>
   );
