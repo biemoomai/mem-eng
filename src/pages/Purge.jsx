@@ -902,7 +902,7 @@ const Purge = () => {
   }, [rawVocab, activeCurriculum, curriculumWords]);
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { isAnonymous } = useAuth();
+  const { isAnonymous, isLiffMode } = useAuth();
 
   const speakText = (text) => {
     speakEnglish(text);
@@ -4617,26 +4617,28 @@ const Purge = () => {
 
                   <h2 style={{ color: theme === 'theme-3' ? '#000000' : 'white', marginBottom: '0.2rem', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px' }}>All caught up!</h2>
                   <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontSize: '0.85rem' }}>You've reviewed all cards for today.</p>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setShowCollectionChoice(true);
-                    }}
-                    style={{
-                      marginTop: '0.4rem',
-                      padding: '0.42rem 0.72rem',
-                      borderRadius: '999px',
-                      border: '1px solid rgba(250, 204, 21, 0.3)',
-                      color: '#fde68a',
-                      background: 'rgba(250, 204, 21, 0.08)',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Browse word collections
-                  </button>
+                  {!isLiffMode && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setShowCollectionChoice(true);
+                      }}
+                      style={{
+                        marginTop: '0.4rem',
+                        padding: '0.42rem 0.72rem',
+                        borderRadius: '999px',
+                        border: '1px solid rgba(250, 204, 21, 0.3)',
+                        color: '#fde68a',
+                        background: 'rgba(250, 204, 21, 0.08)',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Browse word collections
+                    </button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

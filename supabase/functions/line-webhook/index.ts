@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 // Helper to build the LINE Flex Message JSON
-function buildFlexMessage(aiData: any, userText: string) {
+function buildFlexMessage(aiData: any, userText: string, wordId: string | null = null) {
   // If the word was invalid, return a simple text message suggesting the correct word
   if (aiData.validation?.isInvalid) {
     return {
@@ -120,7 +120,7 @@ function buildFlexMessage(aiData: any, userText: string) {
             action: {
               type: "message",
               label: "+ เก็บเข้าเด็ค",
-              text: `add_word:${userText}:::${rawPos}:::${thaiTrans}`
+              text: wordId ? `add_word:${wordId}:::${userText}` : `add_word:${userText}:::${rawPos}:::${thaiTrans}`
             }
           }
         ]
@@ -163,9 +163,8 @@ serve(async (req) => {
 
         if (userText.startsWith('add_word:')) {
           const payloadParts = userText.replace('add_word:', '').split(':::');
-          const wordToAdd = payloadParts[0];
-          const pos = payloadParts[1] || '';
-          const translation = payloadParts[2] || '';
+          const wordIdOrText = payloadParts[0];
+          const wordToAdd = payloadParts[1] || wordIdOrText;
           
           let replyMsg = `✅ เก็บคำว่า "${wordToAdd}" เข้าเด็คของคุณเรียบร้อยแล้วครับ!`;
 
@@ -183,19 +182,39 @@ serve(async (req) => {
               // User hasn't opened LIFF yet to register their account
               replyMsg = `⚠️ คุณยังไม่เคยเข้าแอปเลยครับ กรุณากดเมนู Flashcards ด้านล่างเพื่อเริ่มใช้งานก่อนนะครับ!`;
             } else {
-              // 2. Insert into flashcards
-              const { error: insertErr } = await supabaseAdmin
-                .from('flashcards')
-                .insert({
-                  user_id: userData.id,
-                  word: wordToAdd,
-                  part_of_speech: pos,
-                  translation: translation
-                });
-                
-              if (insertErr) {
-                console.error("Insert error:", insertErr);
-                replyMsg = `❌ เกิดข้อผิดพลาดในการบันทึกคำศัพท์ครับ`;
+              // If wordIdOrText is a UUID, it means we have the wordId from global_dictionary
+              // If not, it means the insert to global_dictionary failed earlier, so we can't add to user_decks easily.
+              if (wordIdOrText.length === 36 && wordIdOrText.includes('-')) {
+                const { error: insertErr } = await supabaseAdmin
+                  .from('user_decks')
+                  .insert({
+                    user_id: userData.id,
+                    word_id: wordIdOrText,
+                    srs_level: 'Learning',
+                    repetition: 0,
+                    interval: 1,
+                    ease_factor: 2.5,
+                    next_review_date: new Date().toISOString(),
+                    stability: 2.0,
+                    difficulty: 5.0,
+                    reps: 0,
+                    lapses: 0,
+                    state: 0,
+                    scheduled_days: 0,
+                    elapsed_days: 0,
+                    learning_steps: 0
+                  });
+                  
+                if (insertErr) {
+                  if (insertErr.code === '23505') {
+                    replyMsg = `ℹ️ คำว่า "${wordToAdd}" มีอยู่ในเด็คของคุณแล้วครับ`;
+                  } else {
+                    console.error("Insert error:", insertErr);
+                    replyMsg = `❌ เกิดข้อผิดพลาดในการบันทึกคำศัพท์ลงเด็คครับ`;
+                  }
+                }
+              } else {
+                 replyMsg = `❌ ไม่สามารถบันทึกได้ กรุณาลองพิมพ์หาคำศัพท์ใหม่อีกครั้งครับ`;
               }
             }
           } catch (e) {
@@ -238,7 +257,43 @@ serve(async (req) => {
         }
 
         const aiData = await aiResponse.json();
-        const flexMessage = buildFlexMessage(aiData, userText);
+        
+        // Ensure word is in global_dictionary before building FlexMessage
+        let wordId = null;
+        let finalUserText = userText;
+        if (!aiData.validation?.isInvalid) {
+          finalUserText = aiData.word || userText;
+          const normalizedWord = finalUserText.toLowerCase();
+          try {
+            const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+            let { data: existingWord } = await supabaseAdmin
+              .from('global_dictionary')
+              .select('id')
+              .eq('word', normalizedWord)
+              .maybeSingle();
+
+            if (existingWord) {
+              wordId = existingWord.id;
+            } else {
+              const { data: newWord } = await supabaseAdmin
+                .from('global_dictionary')
+                .insert({
+                  word: normalizedWord,
+                  pos: aiData.pos || 'n.',
+                  meaning: JSON.stringify(aiData),
+                  rich_data: aiData,
+                  cefr_level: aiData.cefrLevel || 'Unranked'
+                })
+                .select('id')
+                .single();
+              if (newWord) wordId = newWord.id;
+            }
+          } catch (dbErr) {
+            console.error("Error inserting into global_dictionary:", dbErr);
+          }
+        }
+
+        const flexMessage = buildFlexMessage(aiData, finalUserText, wordId);
 
         // Send Reply to LINE
         await fetch('https://api.line.me/v2/bot/message/reply', {
