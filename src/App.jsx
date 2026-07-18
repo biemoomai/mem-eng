@@ -402,7 +402,7 @@ function AppContent() {
     w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()
   ).length;
 
-  const showMenuButton = user && location.pathname !== '/login';
+  const showMenuButton = user && location.pathname !== '/login' && !isLiffMode;
 
   const navItems = [
     {
