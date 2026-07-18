@@ -16,10 +16,11 @@ import Terms from './pages/Terms';
 import { playClickSound, playSwipeSound } from './utils/soundHelper';
 import { speakEnglish } from './utils/speechHelper';
 import { Tutorial } from './components/Tutorial';
+import LineDemo from './pages/LineDemo';
 
 
 function AppContent() {
-  const { user, signOut, loading, isAnonymous } = useAuth();
+  const { user, signOut, loading, isAnonymous, isLiffMode } = useAuth();
   const { vocab, streak, clearDeckAndResetStats } = useVocab();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -172,7 +173,7 @@ function AppContent() {
     }
   });
   const [isTutorialActive, setIsTutorialActive] = useState(false);
-  const pageSwipeEnabled = !isTutorialActive && !menuOpen;
+  const pageSwipeEnabled = !isTutorialActive && !menuOpen && !isLiffMode;
 
   useEffect(() => {
     const handleActiveChange = (e) => {
@@ -378,7 +379,10 @@ function AppContent() {
     if (!user && !publicRoutes.includes(location.pathname)) {
       navigate('/login');
     }
-  }, [user, loading, location.pathname, navigate]);
+    if (isLiffMode && location.pathname !== '/purge') {
+      navigate('/purge', { replace: true });
+    }
+  }, [user, loading, location.pathname, navigate, isLiffMode]);
 
   const dueToday = vocab.filter(
     w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()
@@ -625,13 +629,14 @@ function AppContent() {
             <Route path="/purge" element={<Purge />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/" element={<AddWord />} />
+            <Route path="/line" element={<LineDemo />} />
             <Route path="*" element={<AddWord />} />
           </Routes>
         </div>
       )}
 
       {/* Floating translucent bottom nav dock */}
-      {showBottomNav && user && isTabRoute && !menuOpen && (
+      {showBottomNav && user && isTabRoute && !menuOpen && !isLiffMode && (
         <div 
           className="bottom-nav-dock"
           style={{
