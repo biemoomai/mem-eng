@@ -167,12 +167,26 @@ export const VocabProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       syncData(user.id);
+
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          // Background sync when returning to the app
+          setTimeout(() => {
+            syncData(user.id, true);
+          }, 500);
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [user]);
 
-  const syncData = async (userId) => {
+  const syncData = async (userId, isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
 
       // Fetch user profile stats (Streak)
       const { data: userProfile, error: profileError } = await supabase
