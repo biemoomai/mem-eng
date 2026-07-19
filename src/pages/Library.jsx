@@ -42,6 +42,13 @@ export default function Library() {
     });
   }, [vocab, searchTerm, filterLevel]);
 
+  const filterCounts = levels.reduce((counts, level) => {
+    counts[level] = level === 'All'
+      ? vocab.length
+      : vocab.filter(item => item.srsLevel === level).length;
+    return counts;
+  }, {});
+
   const parseMeaning = (card) => {
     try {
       if (typeof card.meaning === 'object') return card.meaning;
@@ -268,7 +275,10 @@ export default function Library() {
         </div>
         <div>
           <h1 style={{ color: 'white', margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>Library</h1>
-          <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontSize: '0.8rem' }}>{vocab.length} Words in your deck</p>
+          <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0, fontSize: '0.8rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            <span style={{ color: '#facc15', fontSize: '1.15rem', fontWeight: 900, lineHeight: 1 }}>{vocab.length}</span>
+            <span>Words in your deck</span>
+          </p>
         </div>
       </div>
 
@@ -345,7 +355,7 @@ export default function Library() {
               fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
             }}
           >
-            {level}
+            {level} <span style={{ opacity: 0.8, fontVariantNumeric: 'tabular-nums' }}>({filterCounts[level] || 0})</span>
           </button>
         ))}
       </div>

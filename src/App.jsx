@@ -94,6 +94,7 @@ function AppContent() {
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, []);
 
   useEffect(() => {
@@ -142,6 +143,7 @@ function AppContent() {
     }, 450);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [selectedWord]);
 
   const handlePopupMouseDown = () => {
@@ -377,6 +379,7 @@ function AppContent() {
     return () => {
       document.removeEventListener('click', handleDocumentClick);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, []);
 
   // Theme is managed globally by ThemeContext now
@@ -608,18 +611,19 @@ function AppContent() {
           overflow: 'hidden',
           position: 'relative'
         }}>
-          <AnimatePresence initial={false} mode="sync">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, x: routeTransitionDirection < 0 ? 34 : routeTransitionDirection > 0 ? -34 : 0 }}
-              animate={{ opacity: 1, x: isSwiping ? effectiveSwipeOffset : 0 }}
-              exit={{ opacity: 0, x: routeTransitionDirection < 0 ? -26 : routeTransitionDirection > 0 ? 26 : 0 }}
-              transition={isSwiping ? { duration: 0 } : { duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', willChange: 'transform' }}
-            >
-              <Suspense fallback={<ScreenLoading />}>{renderCurrentTabRoute()}</Suspense>
-            </motion.div>
-          </AnimatePresence>
+          <div
+            key={location.pathname}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              transform: isSwiping ? `translate3d(${effectiveSwipeOffset}px, 0, 0)` : 'translate3d(0, 0, 0)',
+              willChange: isSwiping ? 'transform' : 'auto'
+            }}
+          >
+            <Suspense fallback={<ScreenLoading />}>{renderCurrentTabRoute()}</Suspense>
+          </div>
         </div>
       ) : (
         <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -1257,31 +1261,33 @@ function AppContent() {
                 </motion.button>
 
 
-                <motion.button
-                  variants={itemVariants}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowDeleteAccountConfirm(true);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '11px',
-                    borderRadius: '12px',
-                    background: 'rgba(127, 29, 29, 0.14)',
-                    border: '1px solid rgba(248, 113, 113, 0.28)',
-                    color: '#fca5a5',
-                    fontSize: '0.78rem',
-                    fontWeight: 750,
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <Trash2 size={15} />
-                  <span>{isAnonymous ? 'Delete Guest Data' : 'Delete Account & Data'}</span>
-                </motion.button>
+                {!isAnonymous && (
+                  <motion.button
+                    variants={itemVariants}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowDeleteAccountConfirm(true);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '11px',
+                      borderRadius: '12px',
+                      background: 'rgba(127, 29, 29, 0.14)',
+                      border: '1px solid rgba(248, 113, 113, 0.28)',
+                      color: '#fca5a5',
+                      fontSize: '0.78rem',
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    <span>Delete Account & Data</span>
+                  </motion.button>
+                )}
                 {/* Privacy & Terms */}
                 <motion.div
                   variants={itemVariants}

@@ -6,6 +6,7 @@ import { Volume2, ShieldAlert, Flame, BookOpen, Clock, X, Play, CheckCircle, Spa
 import { useVocab } from '../context/VocabContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { supabase } from '../lib/supabaseClient';
 import { SafeImage } from '../components/SafeImage';
 import { fetchVocabImage } from '../utils/imageHelper';
 import { playClickSound, playSwipeSound, playSuccessSound, playMasterSound, playAgainSound, startDragSound, updateDragSound, stopDragSound } from '../utils/soundHelper';
@@ -100,6 +101,38 @@ const cleanMediaUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('approved:')) return url.substring(9);
   return url;
+};
+
+const DISCOVERY_COLLECTIONS = [
+  { name: 'Movie Words', accent: '#e11d48', fallbackWords: ['scene', 'script', 'sequel', 'trailer', 'cast', 'director', 'soundtrack', 'plot', 'genre', 'audience', 'dialogue', 'suspense', 'villain', 'character', 'screenplay', 'documentary', 'cinema', 'episode', 'review', 'subtitle'] },
+  { name: 'Music Words', accent: '#8b5cf6', fallbackWords: ['melody', 'rhythm', 'chorus', 'verse', 'harmony', 'tempo', 'lyrics', 'album', 'concert', 'orchestra', 'instrument', 'vocalist', 'composer', 'acoustic', 'remix', 'playlist', 'recording', 'microphone'] },
+  { name: 'Business Words', accent: '#059669', fallbackWords: ['revenue', 'profit', 'budget', 'strategy', 'client', 'customer', 'market', 'sales', 'contract', 'deadline', 'proposal', 'negotiate', 'investment', 'invoice', 'manager', 'target', 'campaign', 'partnership'] }
+];
+const DISCOVERY_PROMPT_INTERVAL_MS = 15 * 60 * 1000;
+const DISCOVERY_ACTIVE_MS_KEY = 'memeng_discovery_active_ms';
+
+const loadDiscoveryActiveMs = () => {
+  try {
+    const value = Number(localStorage.getItem(DISCOVERY_ACTIVE_MS_KEY));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch (error) {
+    return 0;
+  }
+};
+
+const saveDiscoveryActiveMs = (value) => {
+  try {
+    localStorage.setItem(DISCOVERY_ACTIVE_MS_KEY, String(Math.max(0, Math.floor(value))));
+  } catch (error) {}
+};
+
+const shuffleItems = (items) => {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 };
 
 const TODAY_INTERESTING_WORDS = [
@@ -891,7 +924,7 @@ const ReviewOptionButton = ({ onClick, disabled, label, color, icon: Icon, isLoa
 };
 
 const Purge = () => {
-  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords, uploadUserCardImage, updateUserCardOverride } = useVocab();
+  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, warmCurriculumBuffer, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords, uploadUserCardImage, updateUserCardOverride } = useVocab();
   const vocab = useMemo(() => {
     return rawVocab.filter(item => {
       if (activeCurriculum === 'Self-Study only') {
@@ -902,7 +935,7 @@ const Purge = () => {
   }, [rawVocab, activeCurriculum, curriculumWords]);
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { isAnonymous, isLiffMode } = useAuth();
+  const { isAnonymous, user } = useAuth();
 
   const speakText = (text) => {
     speakEnglish(text);
@@ -944,6 +977,9 @@ const Purge = () => {
   const [showStats, setShowStats] = useState(false);
   const [hoveredSrs, setHoveredSrs] = useState(null);
   const [tutorialStep, setTutorialStep] = useState(null);
+  const [showMasterHint, setShowMasterHint] = useState(false);
+  const masterHintKey = `memeng_master_hint_seen_${user?.id || 'guest'}`;
+  const masterHintProgressKey = `memeng_master_hint_progress_${user?.id || 'guest'}`;
 
   useEffect(() => {
     if (regenCount >= 6) {
@@ -1098,6 +1134,7 @@ const Purge = () => {
     );
   };
   const [unlockedWords, setUnlockedWords] = useState([]);
+  const [savingUnlockAction, setSavingUnlockAction] = useState(null);
   const [selectedUnlockIds, setSelectedUnlockIds] = useState({});
   const [flippedUnlockIds, setFlippedUnlockIds] = useState({});
   const [showInterestingModal, setShowInterestingModal] = useState(false);
@@ -1108,8 +1145,15 @@ const Purge = () => {
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [flippedCollectionWords, setFlippedCollectionWords] = useState({});
   const [selectedCollectionWords, setSelectedCollectionWords] = useState({});
+  const [activeCollectionWords, setActiveCollectionWords] = useState([]);
+  const [collectionCategories, setCollectionCategories] = useState(() => shuffleItems(DISCOVERY_COLLECTIONS));
+  const [isCollectionLoading, setIsCollectionLoading] = useState(false);
   const [showGuestModePopup, setShowGuestModePopup] = useState(false);
-  const collectionPromptArmedRef = useRef(true);
+  const collectionActiveMsRef = useRef(loadDiscoveryActiveMs());
+  const collectionPromptDueRef = useRef(collectionActiveMsRef.current >= DISCOVERY_PROMPT_INTERVAL_MS);
+  // Collection cards are prepared off-screen so this prompt opens instantly.
+  const collectionPrefetchRef = useRef(new Map());
+  const collectionPrefetchingRef = useRef(new Set());
   const lowGraphics = false;
   const [addedProgress, setAddedProgress] = useState(null);
   
@@ -1448,17 +1492,8 @@ const Purge = () => {
       if (interval) clearInterval(interval);
       setAddedProgress(null);
       if (apiResult && apiResult.success) {
-        if (isStudying) {
-          // If already studying, silently append the added words to sessionQueue
-          setSessionQueue(prev => {
-            const existingIds = new Set(prev.map(w => w.id));
-            const newDue = (apiResult.addedWords || []).filter(w => !existingIds.has(w.id));
-            return [...prev, ...newDue];
-          });
-        } else {
-          setUnlockedWords(apiResult.addedWords || []);
-          setIsCustomSession(true);
-        }
+        setUnlockedWords(apiResult.addedWords || []);
+        setIsCustomSession(true);
       } else {
         showToast((apiResult && apiResult.error) || 'ไม่มีคำใหม่ให้อิมพอร์ตแล้ว');
       }
@@ -1466,7 +1501,7 @@ const Purge = () => {
     };
 
     try {
-      const res = await addNewCurriculumWords(activeCurriculum, 5, onWordAdded);
+      const res = await addNewCurriculumWords(activeCurriculum, 5, onWordAdded, { previewOnly: true });
       apiResult = res;
       apiCompleted = true;
       actualLoadedCount = res.success ? (res.addedWords?.length || 0) : 0;
@@ -1479,19 +1514,7 @@ const Purge = () => {
     }
   };
 
-  const handleWordClick = (word) => {
-    const cleaned = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "").trim().toLowerCase();
-    if (!cleaned) return;
-    
-    window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: cleaned } }));
-    
-    // Prevent duplicate push
-    if (tooltipStack.length > 0 && tooltipStack[tooltipStack.length - 1].word === cleaned) {
-      return;
-    }
-
-    setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
-    
+  const loadTooltipWord = async (cleaned) => {
     const lookupCandidates = getWordLookupCandidates(cleaned);
     const local = vocab.find(v => v && v.word && lookupCandidates.includes(v.word.toLowerCase()));
     if (local) {
@@ -1499,57 +1522,83 @@ const Purge = () => {
       try {
         parsed = typeof local.meaning === 'string' ? JSON.parse(local.meaning) : local.meaning;
       } catch (e) {}
-      
+
       const details = {
         definition: parsed?.englishExplanation?.definition || parsed?.meaning || 'No definition available',
-        translation: parsed?.thaiTranslation?.word || parsed?.translation || 'ไม่มีคำแปล',
+        translation: parsed?.thaiTranslation?.word || parsed?.translation || 'No Thai translation available',
         pos: local.pos || parsed?.pos || 'n.',
         alreadyInDeck: true,
         rawDetails: parsed
       };
-      
-      setTooltipStack(prev => prev.map((item, idx) => 
+      setTooltipStack(prev => prev.map((item, idx) =>
         idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details } : item
       ));
-    } else {
-      getAiWordRichDetails(lookupCandidates[0] || cleaned).then(details => {
-        let detailsObj;
-        if (details && !details.error) {
-          detailsObj = {
+      return;
+    }
+
+    try {
+      const details = await getAiWordRichDetails(lookupCandidates[0] || cleaned);
+      const detailsObj = details && !details.error
+        ? {
             definition: details.englishExplanation?.definition || details.definition || 'No definition available',
-            translation: details.thaiTranslation?.word || details.translation || 'ไม่มีคำแปล',
-            pos: details.pos || 'n.',
+            translation: details.thaiTranslation?.word || details.translation || (details._fallback ? 'Thai translation is unavailable right now.' : 'No Thai translation available'),
+            pos: details.pos || 'word',
             alreadyInDeck: false,
             rawDetails: details
-          };
-        } else {
-          detailsObj = {
-            definition: 'Could not fetch details for this word.',
-            translation: 'ไม่พบข้อมูลคำศัพท์',
+          }
+        : {
+            definition: 'We could not look up this word right now.',
+            translation: 'Please check your connection and try again.',
             pos: '',
             alreadyInDeck: false,
-            rawDetails: null
+            rawDetails: null,
+            lookupFailed: true
           };
-        }
-        setTooltipStack(prev => prev.map((item, idx) => 
-          idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details: detailsObj } : item
-        ));
-      }).catch(err => {
-        console.error(err);
-        const detailsObj = {
-          definition: 'Error fetching details.',
-          translation: 'เกิดข้อผิดพลาด',
-          pos: '',
-          alreadyInDeck: false,
-          rawDetails: null
-        };
-        setTooltipStack(prev => prev.map((item, idx) => 
-          idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details: detailsObj } : item
-        ));
-      });
+      setTooltipStack(prev => prev.map((item, idx) =>
+        idx === prev.length - 1 && item.word === cleaned ? { ...item, loading: false, details: detailsObj } : item
+      ));
+    } catch (err) {
+      console.error(err);
+      setTooltipStack(prev => prev.map((item, idx) =>
+        idx === prev.length - 1 && item.word === cleaned
+          ? {
+              ...item,
+              loading: false,
+              details: {
+                definition: 'We could not look up this word right now.',
+                translation: 'Please check your connection and try again.',
+                pos: '',
+                alreadyInDeck: false,
+                rawDetails: null,
+                lookupFailed: true
+              }
+            }
+          : item
+      ));
     }
   };
 
+  const retryTooltipLookup = () => {
+    if (!activeTooltipWord || isSearchingTooltipWord) return;
+    setTooltipStack(prev => prev.map((item, idx) =>
+      idx === prev.length - 1 ? { ...item, loading: true, details: null } : item
+    ));
+    void loadTooltipWord(activeTooltipWord);
+  };
+
+  const handleWordClick = (word) => {
+    const cleaned = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "").trim().toLowerCase();
+    if (!cleaned) return;
+
+    window.dispatchEvent(new CustomEvent('tutorial-tooltip-opened', { detail: { word: cleaned } }));
+
+    if (tooltipStack.length > 0 && tooltipStack[tooltipStack.length - 1].word === cleaned) {
+      return;
+    }
+
+    setTooltipStack(prev => [...prev, { word: cleaned, loading: true, details: null }]);
+    void loadTooltipWord(cleaned);
+  };
   const handleAddWordFromTooltip = async () => {
     if (!activeTooltipWord || !tooltipDetails || !tooltipDetails.rawDetails) return;
     setIsAddingTooltipWord(true);
@@ -1581,31 +1630,46 @@ const Purge = () => {
     }
   };
 
-    const handleCloseUnlockedWords = (shouldStartStudy) => {
-    // Delete any words that the user unchecked
-    unlockedWords.forEach(w => {
-      const isSelected = selectedUnlockIds[w.id] !== false;
-      if (!isSelected) {
-        deleteWordFromDeck(w.id);
+  const handleCloseUnlockedWords = async (shouldStartStudy) => {
+    if (savingUnlockAction) return;
+    setSavingUnlockAction(shouldStartStudy ? 'study' : 'close');
+
+    try {
+      const selectedPreviews = unlockedWords.filter(word => selectedUnlockIds[word.id] !== false);
+      const savedWords = [];
+
+      // Close and Start Study both save only checked previews. Start Study also opens that saved queue.
+      for (const preview of selectedPreviews) {
+        const richData = parseMeaningField(preview.meaning) || {};
+        richData.curriculum = preview.curriculum || activeCurriculum || 'Self-Study only';
+        if (preview.videoUrl && !richData.savedSceneImages?.[0]) {
+          richData.savedSceneImages = [preview.videoUrl, ...(richData.savedSceneImages || []).slice(1)];
+        }
+        const result = await addWordToDeck(preview.word, richData);
+        if (result.success && result.card) savedWords.push(result.card);
       }
-    });
 
-    const selectedWords = unlockedWords.filter(w => selectedUnlockIds[w.id] !== false);
-    setUnlockedWords([]);
-    setSelectedUnlockIds({});
-    setFlippedUnlockIds({});
+      setUnlockedWords([]);
+      setSelectedUnlockIds({});
+      setFlippedUnlockIds({});
 
-    if (shouldStartStudy && selectedWords.length > 0) {
-      setSessionQueue(selectedWords);
-      setIsStudying(true);
-      setIsCustomSession(true);
-      setRevealStep(0);
-    } else {
-      const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
-      setSessionQueue(due);
+      if (shouldStartStudy && savedWords.length > 0) {
+        setSessionQueue(savedWords);
+        setIsStudying(true);
+        setIsCustomSession(true);
+        setRevealStep(0);
+      } else {
+        setSessionQueue([]);
+        setIsStudying(false);
+        setIsCustomSession(false);
+      }
+    } catch (error) {
+      console.error('Failed to save selected unlocked words:', error);
+      showToast('Could not save the selected words. Please try again.');
+    } finally {
+      setSavingUnlockAction(null);
     }
   };
-
   const handleAddInterestingWords = async () => {
     const unadded = TODAY_INTERESTING_WORDS.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
@@ -1623,42 +1687,95 @@ const Purge = () => {
     }
   };
 
-  const handleSelectCollection = (colName) => {
-    setSelectedCollection(colName);
-    setShowCollectionChoice(false);
-    
-    const colWords = COLLECTIONS_DATA[colName] || [];
-    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
-    
-    if (unadded.length > 0) {
-      const defaultSelected = {};
-      unadded.forEach(w => {
-        defaultSelected[w.word] = true;
+  const buildCollectionPreview = async (colName) => {
+    const config = DISCOVERY_COLLECTIONS.find(item => item.name === colName);
+    const { data, error } = await supabase
+      .from('curriculum_words')
+      .select('word, pos, cefr_level')
+      .eq('curriculum_name', colName);
+    const sourceWords = !error && data?.length
+      ? data
+      : (config?.fallbackWords || []).map(word => ({ word, pos: 'word', cefr_level: 'B1' }));
+    const existingWords = new Set(rawVocab.filter(Boolean).map(item => item.word?.toLowerCase().trim()).filter(Boolean));
+    const candidates = shuffleItems(sourceWords)
+      .filter(item => item?.word && !existingWords.has(item.word.toLowerCase().trim()))
+      .slice(0, 5);
+
+    const cards = [];
+    for (const item of candidates) {
+      const details = await getAiWordRichDetails(item.word);
+      if (!details || details.error) continue;
+      cards.push({
+        word: item.word.toLowerCase().trim(),
+        pos: details.pos || item.pos || 'word',
+        cefrLevel: details.cefrLevel || item.cefr_level || 'B1',
+        meaning: JSON.stringify({ ...details, curriculum: colName })
       });
-      setSelectedCollectionWords(defaultSelected);
-      setShowCollectionImport(true);
-    } else {
-      showToast(`You have already imported all words from "${colName}"!`);
+    }
+    return cards;
+  };
+
+  const warmCollectionPreview = async (colName) => {
+    const cached = collectionPrefetchRef.current.get(colName);
+    if (cached?.length) return cached;
+    if (collectionPrefetchingRef.current.has(colName)) return [];
+
+    collectionPrefetchingRef.current.add(colName);
+    try {
+      const cards = await buildCollectionPreview(colName);
+      if (cards.length) collectionPrefetchRef.current.set(colName, cards);
+      return cards;
+    } finally {
+      collectionPrefetchingRef.current.delete(colName);
     }
   };
 
+  const handleSelectCollection = async (colName) => {
+    if (isCollectionLoading) return;
+    setIsCollectionLoading(true);
+    setSelectedCollection(colName);
+    try {
+      const existingWords = new Set(rawVocab.filter(Boolean).map(item => item.word?.toLowerCase().trim()).filter(Boolean));
+      let cards = (collectionPrefetchRef.current.get(colName) || [])
+        .filter(card => !existingWords.has(card.word.toLowerCase().trim()));
+
+      // This is normally already warm; retain a graceful fallback for a new session.
+      if (!cards.length) cards = await warmCollectionPreview(colName);
+      cards = cards.filter(card => !existingWords.has(card.word.toLowerCase().trim()));
+      if (!cards.length) {
+        showToast(`You have already imported all words from "${colName}"!`);
+        return;
+      }
+
+      const defaultSelected = {};
+      cards.forEach(card => { defaultSelected[card.word] = true; });
+      collectionPrefetchRef.current.delete(colName);
+      setActiveCollectionWords(cards);
+      setSelectedCollectionWords(defaultSelected);
+      setFlippedCollectionWords({});
+      setShowCollectionChoice(false);
+      setShowCollectionImport(true);
+    } catch (error) {
+      console.error('Could not load collection:', error);
+      showToast('Fresh words could not be loaded. Please try again.');
+    } finally {
+      setIsCollectionLoading(false);
+    }
+  };
   const handleAddCollectionWords = async () => {
     if (!selectedCollection) return;
-    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
-    const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = activeCollectionWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
     let count = 0;
     for (const w of unadded) {
       if (selectedCollectionWords[w.word] !== false) {
-        const richData = {
-          ...JSON.parse(w.meaning),
-          curriculum: selectedCollection
-        };
-        await addWordToDeck(w.word, richData);
-        count += 1;
+        const richData = { ...JSON.parse(w.meaning), curriculum: selectedCollection };
+        const result = await addWordToDeck(w.word, richData);
+        if (result.success) count += 1;
       }
     }
     setShowCollectionImport(false);
     setSelectedCollection(null);
+    setActiveCollectionWords([]);
     if (count > 0) {
       showToast(`Added ${count} new words to your deck!`);
       setIsInitialized(false);
@@ -1726,10 +1843,17 @@ const Purge = () => {
     if (wordObj && revealStep === 0) {
       cardShowTimeRef.current = performance.now();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [wordObj?.id, revealStep]);
 
   const scrollContainerRef = useRef(null);
   const isProgrammaticScrolling = false; // kept for inline handler guard (no-op)
+
+  useEffect(() => {
+    if (revealStep === 4 && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [revealStep]);
 
 
   const x = useMotionValue(0);
@@ -1947,6 +2071,7 @@ const Purge = () => {
       window.removeEventListener('tutorial-step-changed', handleStepChanged);
       window.removeEventListener('tutorial-reset', handleResetEvent);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [vocab]);
 
   // Self-correcting mock card purge on mount/update if tutorial is finished
@@ -1987,20 +2112,71 @@ const Purge = () => {
     }
   }, [vocab, loading]);
 
-  // 2. Trigger Recommended Collections modal whenever a study round finishes
+  // Prepare a private buffer of new cards while the learner is using the app.
   useEffect(() => {
-    if (loading) return;
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone) return;
+    if (loading) return undefined;
+    const timer = window.setTimeout(() => {
+      void warmCurriculumBuffer(activeCurriculum, 15);
+    }, 1800);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Buffering is intentionally refreshed after deck changes.
+  }, [activeCurriculum, loading, rawVocab.length]);
 
+  // Warm the three discovery choices while Flashcards is open, before a prompt is due.
+  useEffect(() => {
+    if (loading || localStorage.getItem('memeng_tutorial_running') === 'true') return undefined;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        for (const collection of shuffleItems(DISCOVERY_COLLECTIONS)) {
+          if (cancelled) return;
+          await warmCollectionPreview(collection.name);
+        }
+      })();
+    }, 3200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This is intentionally refreshed only when the deck changes.
+  }, [loading, rawVocab.length]);
+
+  // Count only active, visible study time. A fresh random collection appears
+  // after fifteen minutes, once the current review queue is finished.
+  useEffect(() => {
+    if (loading || !isStudying || localStorage.getItem('memeng_tutorial_running') === 'true') return undefined;
+    let lastTickAt = Date.now();
+    const recordStudyTime = () => {
+      const now = Date.now();
+      if (document.visibilityState === 'visible') {
+        collectionActiveMsRef.current += now - lastTickAt;
+        if (collectionActiveMsRef.current >= DISCOVERY_PROMPT_INTERVAL_MS) collectionPromptDueRef.current = true;
+        saveDiscoveryActiveMs(collectionActiveMsRef.current);
+      }
+      lastTickAt = now;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') recordStudyTime();
+      lastTickAt = Date.now();
+    };
+    const intervalId = window.setInterval(recordStudyTime, 15000);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      recordStudyTime();
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [isStudying, loading]);
+
+  useEffect(() => {
+    if (loading || localStorage.getItem('memeng_tutorial_running') === 'true') return;
     const dueCountLocal = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()).length;
-    if (isStudying || dueCountLocal > 0) {
-      collectionPromptArmedRef.current = true;
-      return;
-    }
-
-    if (collectionPromptArmedRef.current && !showCollectionChoice && !showCollectionImport) {
-      collectionPromptArmedRef.current = false;
+    if (isStudying || dueCountLocal > 0) return;
+    if (collectionPromptDueRef.current && !showCollectionChoice && !showCollectionImport) {
+      collectionPromptDueRef.current = false;
+      collectionActiveMsRef.current = 0;
+      saveDiscoveryActiveMs(0);
+      setCollectionCategories(shuffleItems(DISCOVERY_COLLECTIONS));
       setShowCollectionChoice(true);
     }
   }, [vocab, isStudying, loading, showCollectionChoice, showCollectionImport]);
@@ -2030,6 +2206,7 @@ const Purge = () => {
     } else {
       setActiveReviewImageUrl(wordObj.videoUrl || '');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [wordObj?.id, wordObj?.isImageSaved, wordObj?.videoUrl]);
 
   const getStatusWords = () => {
@@ -2291,7 +2468,7 @@ const Purge = () => {
                       No cards found matching your query.
                     </div>
                   ) : (
-                    statusWords.map(item => {
+                    statusWords.map((item, index) => {
                       let parsedMeaning = parseMeaningField(item.meaning);
                       const definition = parsedMeaning?.englishExplanation?.definition || item.meaning;
                       const thaiTranslation = parsedMeaning?.thaiTranslation?.word || '';
@@ -2981,6 +3158,23 @@ const Purge = () => {
                       <CheckCircle size={11} />
                       <span>Already in Deck</span>
                     </button>
+                  ) : tooltipDetails?.lookupFailed ? (
+                    <button
+                      onClick={retryTooltipLookup}
+                      className="glass-button"
+                      style={{
+                        width: '100%',
+                        fontSize: '0.75rem',
+                        padding: '0.5rem',
+                        borderRadius: '12px',
+                        fontWeight: 800,
+                        color: '#fbbf24',
+                        borderColor: 'rgba(251,191,36,0.35)',
+                        background: 'rgba(251,191,36,0.08)'
+                      }}
+                    >
+                      Try again
+                    </button>
                   ) : (
                     <button 
                       id="tutorial-tooltip-add-btn"
@@ -2999,7 +3193,9 @@ const Purge = () => {
                         gap: '0.3rem',
                         background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)',
                         border: 'none',
-                        boxShadow: '0 4px 15px rgba(239, 68, 68, 0.25)'
+                        boxShadow: '0 4px 15px rgba(239, 68, 68, 0.25)',
+                        opacity: tooltipDetails?.rawDetails ? 1 : 0.45,
+                        cursor: tooltipDetails?.rawDetails ? 'pointer' : 'not-allowed'
                       }}
                     >
                       {isAddingTooltipWord ? (
@@ -3293,6 +3489,7 @@ const Purge = () => {
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0, width: '100%', marginTop: '0.5rem' }}>
               <button
                 onClick={() => handleCloseUnlockedWords(false)}
+                disabled={!!savingUnlockAction}
                 className="glass-button animate-scale"
                 style={{
                   flex: 1,
@@ -3302,13 +3499,16 @@ const Purge = () => {
                   fontWeight: 800,
                   background: 'rgba(255, 255, 255, 0.02)',
                   borderColor: 'rgba(255, 255, 255, 0.06)',
-                  color: 'rgba(255, 255, 255, 0.75)'
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  opacity: savingUnlockAction ? 0.55 : 1,
+                  cursor: savingUnlockAction ? 'wait' : 'pointer'
                 }}
               >
-                Close
+                {savingUnlockAction === 'close' ? 'Saving...' : 'Close'}
               </button>
               <button
                 onClick={() => handleCloseUnlockedWords(true)}
+                disabled={!!savingUnlockAction}
                 className="glass-button primary animate-scale"
                 style={{
                   flex: 1.5,
@@ -3319,10 +3519,12 @@ const Purge = () => {
                   background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                   borderColor: 'transparent',
                   color: 'white',
-                  boxShadow: '0 4px 15px rgba(217, 119, 6, 0.35)'
+                  boxShadow: '0 4px 15px rgba(217, 119, 6, 0.35)',
+                  opacity: savingUnlockAction ? 0.55 : 1,
+                  cursor: savingUnlockAction ? 'wait' : 'pointer'
                 }}
               >
-                Start Study
+                {savingUnlockAction === 'study' ? 'Saving...' : 'Start Study'}
               </button>
             </div>
           </motion.div>
@@ -3597,7 +3799,7 @@ const Purge = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {categories.map((cat) => (
+              {collectionCategories.map((cat) => (
                 <motion.button
                   key={cat.name}
                   whileHover={{ scale: 1.01, border: '1px solid rgba(255, 255, 255, 0.15)' }}
@@ -3671,7 +3873,7 @@ const Purge = () => {
 
   const renderCollectionImportModal = () => {
     if (!selectedCollection) return null;
-    const colWords = COLLECTIONS_DATA[selectedCollection] || [];
+    const colWords = activeCollectionWords;
     const unadded = colWords.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
 
     return (
@@ -4051,22 +4253,6 @@ const Purge = () => {
     playClickSound();
     setRevealStep(1);
 
-    // Track hesitation time (>8 seconds before revealing)
-    if (cardShowTimeRef.current) {
-      const timeToReveal = performance.now() - cardShowTimeRef.current;
-      if (timeToReveal > 8000) {
-        const insults = [
-          "คิดนานขนาดนี้ ไปนอนเหอะป่ะ 🙄",
-          "คิดนานจังนึกว่าหลับคาจอไปละ สภาพพพ",
-          "สมองปลาทองมาก หรือลืมคำนี้ไปแล้วจ๊ะ?",
-          "คำศัพท์แค่นี้คิดถึง 8 วิเลยเหรออออ"
-        ];
-        const pick = insults[Math.floor(Math.random() * insults.length)];
-        window.dispatchEvent(new CustomEvent('nongmem-comment', { 
-          detail: { text: pick, mood: 'mocking', duration: 4000 } 
-        }));
-      }
-    }
   };
 
 
@@ -4090,86 +4276,15 @@ const Purge = () => {
     const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (!isTutorialActive) {
       updateWordSrs(wordObj.id, choice, durationMs);
-
-      // Update Nong Mem Stats
-      const richCardData = parseMeaningField(wordObj.meaning);
-      let verbForms = undefined;
-      if (richCardData && 'verbForms' in richCardData) {
-        verbForms = richCardData.verbForms;
-      } else {
-        verbForms = getVerbForms(wordObj.word, wordObj.pos);
-      }
-
-      window.nongMemStats = window.nongMemStats || {
-        studiedCount: 0,
-        lastWord: '',
-        lastRating: '',
-        avgResponseTime: 0,
-        isHesitating: false,
-        responseTimes: [],
-        streak: 1
-      };
-      
-      window.nongMemStats.studiedCount = (window.nongMemStats.studiedCount || 0) + 1;
-      window.nongMemStats.lastWord = wordObj.word;
-      window.nongMemStats.lastRating = choice;
-      window.nongMemStats.lastWordTenses = (verbForms && verbForms.length >= 3) ? verbForms : null;
-      window.nongMemStats.streak = streak || 1;
-      
-      const rTimes = window.nongMemStats.responseTimes || [];
-      rTimes.push(durationMs);
-      window.nongMemStats.responseTimes = rTimes;
-      
-      const sum = rTimes.reduce((a, b) => a + b, 0);
-      window.nongMemStats.avgResponseTime = sum / rTimes.length;
-      window.nongMemStats.isHesitating = durationMs > 8000;
-
-      // Nong Mem comments on user rating choice
-      let comment = '';
-      let mood = 'mocking';
-
-      if (choice === 'again') {
-        const againComments = [
-          "ผิดอีกละเหรอออ ท่องกี่รอบก็ลืม น่าเห็นใจจัง 🤭",
-          "กระจอกจริง คำนี้ง่ายจะตายยังตอบผิด",
-          "สมองปลาทองเรียกพี่แล้วนาทีนี้ ผิดอีกละ",
-          "นึกว่าจะจำได้ซะอีก... หวังสูงไปสินะเรา"
-        ];
-        comment = againComments[Math.floor(Math.random() * againComments.length)];
-        mood = 'angry';
-      } else if (choice === 'easy') {
-        const easyComments = [
-          "แหม่ๆ กด Easy สลอนเลยนะ นึกว่าเก่งเหรอออ 😏",
-          "ทำเป็นบอกว่าง่ายยย เดี๋ยวเจอกลุ่มคำยากก็ร้อง",
-          "เก่งจริงปะเนี่ย หรือแอบโกงกดเล่นๆ หือออ",
-          "จ้าาา ง่ายจ้าาา เก่งที่สุดในสามโลก (ประชดนะ)"
-        ];
-        comment = easyComments[Math.floor(Math.random() * easyComments.length)];
-        mood = 'happy';
-      } else if (choice === 'hard') {
-        const hardComments = [
-          "กด Hard อีกละ สภาพพพ พยายามเข้าล่ะ",
-          "ยากมากปะล่ะ? สมน้ำหน้าไม่ยอมทบทวนบ่อยๆ",
-          "ทำหน้าเครียดทำไมล่ะ ท่องๆ ไปเหอะน่า",
-          "เกือบขิตนะคำนี้ แต่รอดมาได้เฉยๆ ย่ะ"
-        ];
-        comment = hardComments[Math.floor(Math.random() * hardComments.length)];
-        mood = 'mocking';
-      } else if (choice === 'normal') {
-        const normalComments = [
-          "ก็ยังดีที่ตอบถูกแบบ Normal สภาพพพ",
-          "ผ่านไปได้แบบเฉียดฉิวจ้าาา ยัยตัวดี",
-          "นึกว่าจะกด Again ซะแล้ว รอดตัวไปนะ",
-          "ทบทวนบ่อยๆ จะได้กด Easy กับเค้าบ้างนะย่ะ"
-        ];
-        comment = normalComments[Math.floor(Math.random() * normalComments.length)];
-        mood = 'idle';
-      }
-
-      if (comment) {
-        window.dispatchEvent(new CustomEvent('nongmem-comment', { 
-          detail: { text: comment, mood, duration: 4000 } 
-        }));
+      try {
+        const reviewed = Number(localStorage.getItem(masterHintProgressKey) || 0) + 1;
+        localStorage.setItem(masterHintProgressKey, String(reviewed));
+        if (reviewed >= 3 && localStorage.getItem(masterHintKey) !== 'true') {
+          localStorage.setItem(masterHintKey, 'true');
+          window.setTimeout(() => setShowMasterHint(true), 450);
+        }
+      } catch (error) {
+        console.warn('Could not save Master hint progress', error);
       }
     }
 
@@ -4617,28 +4732,7 @@ const Purge = () => {
 
                   <h2 style={{ color: theme === 'theme-3' ? '#000000' : 'white', marginBottom: '0.2rem', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.5px' }}>All caught up!</h2>
                   <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontSize: '0.85rem' }}>You've reviewed all cards for today.</p>
-                  {!isLiffMode && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setShowCollectionChoice(true);
-                      }}
-                      style={{
-                        marginTop: '0.4rem',
-                        padding: '0.42rem 0.72rem',
-                        borderRadius: '999px',
-                        border: '1px solid rgba(250, 204, 21, 0.3)',
-                        color: '#fde68a',
-                        background: 'rgba(250, 204, 21, 0.08)',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Browse word collections
-                    </button>
-                  )}
+
                 </motion.div>
               )}
             </AnimatePresence>
@@ -5159,6 +5253,8 @@ const Purge = () => {
               setRevealStep(2);
             } else if (revealStep === 2) {
               setRevealStep(3);
+            } else if (revealStep === 3) {
+              setRevealStep(4);
               window.dispatchEvent(new Event('tutorial-card-fully-revealed'));
             }
           }}
@@ -5623,7 +5719,7 @@ const Purge = () => {
               </div>
 
               {/* Sentence card — FIXED size, never shrinks */}
-              {revealStep >= 2 && (
+              {revealStep >= 3 && (
               <div style={{ flexShrink: 0, zIndex: 20, padding: '0.85rem 1rem 0 1rem' }}>
                 <div className="glass-panel" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', padding: '1rem 1.1rem' }}>
                   <p style={{ 
@@ -5648,7 +5744,7 @@ const Purge = () => {
                 style={{ 
                   flex: 1, 
                   overflowY: 'auto', 
-                  padding: `0.75rem 1rem ${revealStep >= 3 ? '150px' : '20px'} 1rem`,
+                  padding: `0.75rem 1rem ${revealStep >= 4 ? '150px' : '20px'} 1rem`,
                   zIndex: 10,
                   position: 'relative',
                   scrollbarWidth: 'none',
@@ -5740,12 +5836,7 @@ const Purge = () => {
                               <span className="badge-neon" style={{ fontSize: '0.62rem' }}>{wordObj.pos || 'n.'}</span>
                               <span className="badge-cyan" style={{ fontSize: '0.62rem' }}>{wordObj.cefrLevel || 'C1'}</span>
                             </div>
-                            {/* Divider */}
-                            <div style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.1)', borderRadius: '1px' }} />
-                            {/* Definition */}
-                            <p style={{ margin: 0, fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.55, fontWeight: 400, maxWidth: '340px' }}>
-                              {renderInteractiveSentence(richCardData.englishExplanation?.definition, null, handleWordClick)}
-                            </p>
+
                           </div>
                           
                           {/* FSRS Rating Buttons shown only when Thai is revealed in step 2 */}
@@ -5759,10 +5850,10 @@ const Purge = () => {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -16 }}
                           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                          style={{ flex: revealStep === 2 ? 1 : 'none', display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: '30px' }}
+                          style={{ flex: revealStep < 4 ? 1 : 'none', display: 'flex', flexDirection: 'column', gap: '0.55rem', paddingBottom: revealStep >= 4 ? '30px' : 0, minHeight: revealStep < 4 ? '100%' : 'auto' }}
                         >
                           {/* English word focus card */}
-                          {revealStep === 2 && (
+                          {revealStep >= 2 && revealStep < 4 && (
                           <div className="glass-panel" style={{
                             flex: 1,
                             display: 'flex',
@@ -5811,7 +5902,7 @@ const Purge = () => {
                           </div>
                           )}
                           {/* Thai Translation */}
-                          {revealStep >= 3 && (
+                          {revealStep >= 4 && (
                           <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.18)' }}>
                             {richCardData.thaiTranslation && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
@@ -5828,7 +5919,7 @@ const Purge = () => {
                           )}
 
                           {/* Collocation */}
-                          {revealStep >= 3 && richCardData.englishExplanation?.phrase && (
+                          {revealStep >= 4 && richCardData.englishExplanation?.phrase && (
                             <div className="glass-panel" style={{ padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.012)' }}>
                               <span style={{ fontSize: '0.56rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', letterSpacing: '0.5px', marginBottom: '0.15rem' }}>Collocation</span>
                               <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>
@@ -5841,7 +5932,7 @@ const Purge = () => {
                           )}
 
                           {/* Verb Forms (V1, V2, V3) */}
-                          {revealStep >= 3 && (() => {
+                          {revealStep >= 4 && (() => {
                             let verbForms = undefined;
                             if (richCardData && 'verbForms' in richCardData) {
                               verbForms = richCardData.verbForms;
@@ -5957,7 +6048,7 @@ const Purge = () => {
 
         {/* Translucent Apple-style Glassmorphic Rating Dock */}
         <AnimatePresence>
-          {revealStep >= 3 && (
+          {revealStep >= 4 && (
             <motion.div
               id="tutorial-srs-buttons"
               initial={{ y: 70, opacity: 0 }}
@@ -6087,6 +6178,40 @@ const Purge = () => {
                 <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#ef4444', letterSpacing: '0.3px' }}>Again</span>
                 <span style={{ fontSize: '0.56rem', fontWeight: 700, color: 'rgba(239, 68, 68, 0.65)' }}>{projections.again}</span>
               </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showMasterHint && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 250, background: 'rgba(3, 4, 7, 0.68)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+            >
+              <motion.div
+                initial={{ scale: 0.94, y: 14 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.94, y: 14 }}
+                style={{ width: '100%', maxWidth: '340px', background: '#121318', border: '1px solid rgba(250, 204, 21, 0.28)', borderRadius: '20px', padding: '1.4rem', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.55)' }}
+              >
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', margin: '0 auto 0.75rem', display: 'grid', placeItems: 'center', background: 'rgba(250, 204, 21, 0.12)', border: '1px solid rgba(250, 204, 21, 0.25)' }}>
+                  <CheckCircle size={22} color="#facc15" />
+                </div>
+                <h3 style={{ color: 'white', fontSize: '1.05rem', fontWeight: 900, margin: '0 0 0.45rem' }}>Know a word already?</h3>
+                <p style={{ color: 'rgba(255,255,255,0.68)', fontSize: '0.84rem', lineHeight: 1.5, margin: '0 0 1rem' }}>
+                  Hold any revealed card for 1 second to move it to Mastered.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMasterHint(false)}
+                  className="glass-button animate-scale"
+                  style={{ width: '100%', padding: '0.72rem', color: '#facc15', borderColor: 'rgba(250, 204, 21, 0.3)', fontWeight: 850 }}
+                >
+                  Got it
+                </button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
