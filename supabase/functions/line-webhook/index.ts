@@ -118,9 +118,10 @@ function buildFlexMessage(aiData: any, userText: string, wordId: string | null =
             color: "#43a047",
             height: "sm",
             action: {
-              type: "message",
+              type: "postback",
               label: "+ เก็บเข้าเด็ค",
-              text: wordId ? `add_word:${wordId}:::${userText}` : `add_word:${userText}:::${rawPos}:::${thaiTrans}`
+              data: wordId ? `add_word:${wordId}:::${userText}` : `add_word:${userText}:::${rawPos}:::${thaiTrans}`,
+              displayText: `เก็บคำว่า "${userText}" เข้าเด็ค`
             }
           }
         ]
@@ -141,12 +142,18 @@ serve(async (req) => {
     const events = data.events || [];
 
     for (const event of events) {
-      if (event.type === 'message' && event.message.type === 'text') {
-        const userText = event.message.text.trim();
-        const replyToken = event.replyToken;
-        const userId = event.source.userId;
+      if ((event.type === 'message' && event.message.type === 'text') || event.type === 'postback') {
+        let userText = '';
+        let replyToken = event.replyToken;
+        let userId = event.source.userId;
 
-        console.log(`Received message from LINE: ${userText} by ${userId}`);
+        if (event.type === 'postback') {
+          userText = event.postback.data;
+          console.log(`Received postback from LINE: ${userText} by ${userId}`);
+        } else {
+          userText = event.message.text.trim();
+          console.log(`Received message from LINE: ${userText} by ${userId}`);
+        }
 
         if (userText.startsWith('play_audio:')) {
           const word = userText.split(':')[1];
