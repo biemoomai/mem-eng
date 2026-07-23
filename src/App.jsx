@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useState, useRef } from 'react';
-import { Menu, X, Sparkles, CheckSquare, User, LogOut, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Trash2, HelpCircle, Bot, BookOpen } from 'lucide-react';
+import { Menu, X, Sparkles, CheckSquare, User, LogOut, Link2, Bell, Sliders, Volume2, VolumeX, Plus, XCircle, Trash2, HelpCircle, Bot, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VocabProvider, useVocab } from './context/VocabContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -17,7 +17,7 @@ const Library = lazy(() => import('./pages/Library'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Tutorial = lazy(() => import('./components/Tutorial').then((module) => ({ default: module.Tutorial })));
-import LineDemo from './pages/LineDemo';
+const LineDemo = lazy(() => import('./pages/LineDemo'));
 
 const ScreenLoading = () => (
   <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.62)', fontSize: '0.8rem' }}>
@@ -26,7 +26,17 @@ const ScreenLoading = () => (
 );
 
 function AppContent() {
-  const { user, signOut, deleteAccount, loading, isAnonymous, isLiffMode } = useAuth();
+  const {
+    user,
+    signOut,
+    deleteAccount,
+    loading,
+    isAnonymous,
+    isLineUser,
+    hasGoogleIdentity,
+    isLiffMode,
+  } = useAuth();
+  const needsGoogleLink = isLineUser && !hasGoogleIdentity;
   const { vocab, streak, clearDeckAndResetStats } = useVocab();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -396,10 +406,24 @@ function AppContent() {
     if (!user && !publicRoutes.includes(location.pathname)) {
       navigate('/login');
     }
-    if (isLiffMode && location.pathname !== '/purge') {
+    const isLineConnectRoute =
+      location.pathname === '/login' &&
+      new URLSearchParams(location.search).get('auth') === '1';
+    if (
+      isLiffMode &&
+      location.pathname !== '/purge' &&
+      !isLineConnectRoute
+    ) {
       navigate('/purge', { replace: true });
     }
-  }, [user, loading, location.pathname, navigate, isLiffMode]);
+  }, [
+    user,
+    loading,
+    location.pathname,
+    location.search,
+    navigate,
+    isLiffMode,
+  ]);
 
   const dueToday = vocab.filter(
     w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()
@@ -1326,7 +1350,7 @@ function AppContent() {
                 <motion.button
                   variants={itemVariants}
                   onClick={() => {
-                    if (isAnonymous) {
+                    if (isAnonymous || needsGoogleLink) {
                       setMenuOpen(false);
                       navigate('/login?auth=1');
                       return;
@@ -1350,8 +1374,12 @@ function AppContent() {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <LogOut size={16} />
-                  <span>{isAnonymous ? 'Sign In to save deck' : 'Sign Out'}</span>
+                  {needsGoogleLink ? <Link2 size={16} /> : <LogOut size={16} />}
+                  <span>
+                    {isAnonymous
+                      ? 'Sign In to save deck'
+                      : needsGoogleLink ? 'Connect Google to back up' : 'Sign Out'}
+                  </span>
                 </motion.button>
               </div>
             </motion.div>

@@ -57,6 +57,10 @@ insert into storage.buckets (id, name, public)
 values ('user-card-images', 'user-card-images', true)
 on conflict (id) do nothing;
 
+drop policy if exists "Users upload their own card images" on storage.objects;
+drop policy if exists "Users update their own card images" on storage.objects;
+drop policy if exists "Users delete their own card images" on storage.objects;
+
 create policy "Users upload their own card images"
   on storage.objects for insert to authenticated
   with check (bucket_id = 'user-card-images' and (storage.foldername(name))[1] = auth.uid()::text);

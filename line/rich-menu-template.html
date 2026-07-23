@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      width: 2500px;
+      height: 843px;
+      margin: 0;
+      overflow: hidden;
+      background: #0a0b0e;
+      font-family: "Noto Sans Thai", "Leelawadee UI", "Tahoma", sans-serif;
+    }
+    .menu {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      width: 2500px;
+      height: 843px;
+      color: #f7f7f4;
+      background:
+        linear-gradient(90deg, #111217 0%, #0b0c10 48%, #111217 100%);
+      border-top: 8px solid #2b2d35;
+    }
+    .brand {
+      position: absolute;
+      top: 34px;
+      left: 54px;
+      z-index: 3;
+      font-size: 27px;
+      font-weight: 900;
+      color: #f5c842;
+    }
+    .zone {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      border-right: 2px solid #2b2d35;
+      overflow: hidden;
+    }
+    .zone:last-child { border-right: 0; }
+    .content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 42px;
+      padding: 80px 70px 44px;
+    }
+    .icon {
+      width: 150px;
+      height: 150px;
+      flex: 0 0 150px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 4px solid currentColor;
+      font-size: 76px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .copy { min-width: 0; }
+    .label {
+      margin: 0;
+      font-size: 63px;
+      line-height: 1.12;
+      font-weight: 950;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .hint {
+      margin-top: 15px;
+      font-size: 27px;
+      line-height: 1.35;
+      color: #aeb3c0;
+      white-space: nowrap;
+    }
+    .start { color: #f5c842; }
+    .start::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 18% 68%, rgba(245,200,66,.18), transparent 48%);
+    }
+    .library { color: #5de0a3; }
+    .library::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(93,224,163,.11), transparent 56%);
+    }
+    .help { color: #b69cff; }
+    .help::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 78% 52%, rgba(182,156,255,.13), transparent 55%);
+    }
+    .mascot {
+      position: absolute;
+      left: -52px;
+      bottom: -365px;
+      width: 640px;
+      height: 640px;
+      object-fit: cover;
+      object-position: 50% 18%;
+      border-radius: 50%;
+      opacity: .27;
+      filter: saturate(.85) contrast(1.05);
+    }
+    .start .content { padding-left: 255px; }
+    .start .icon { background: #f5c842; color: #111217; border-color: #f5c842; }
+    .library .icon { color: #5de0a3; background: rgba(93,224,163,.08); }
+    .help .icon { color: #b69cff; background: rgba(182,156,255,.08); }
+    .label span { color: #f7f7f4; }
+  </style>
+</head>
+<body>
+  <main class="menu">
+    <div class="brand">ไอ้แปร๋ · MEM-ENG</div>
+
+    <section class="zone start">
+      <img class="mascot" src="../public/line/ai-prae-mascot-v1.png" alt="">
+      <div class="content">
+        <div class="icon">▶</div>
+        <div class="copy">
+          <h1 class="label"><span>เริ่มทวน</span></h1>
+          <div class="hint">เปิดแฟลชการ์ดของคุณ</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="zone library">
+      <div class="content">
+        <div class="icon">≡</div>
+        <div class="copy">
+          <h1 class="label"><span>คลังของฉัน</span></h1>
+          <div class="hint">ดูจำนวนคำและระดับ CEFR</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="zone help">
+      <div class="content">
+        <div class="icon">?</div>
+        <div class="copy">
+          <h1 class="label"><span>วิธีใช้</span></h1>
+          <div class="hint">พิมพ์ แปล เก็บ แล้วทวน</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

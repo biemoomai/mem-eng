@@ -1,245 +1,658 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  BookmarkPlus,
+  Check,
+  CircleHelp,
+  Library,
+  MoreHorizontal,
+  Play,
+  Search,
+  Send,
+  Volume2,
+} from 'lucide-react';
 import { useVocab } from '../context/VocabContext';
-import { ArrowLeft, Search, MoreHorizontal, Send, ChevronDown, Volume2, Plus } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Purge from './Purge';
 import { speakEnglish } from '../utils/speechHelper';
 
+const newMessageId = () =>
+  Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+const getThai = (details) =>
+  details?.thaiTranslation?.word ||
+  details?.validation?.thaiTranslationShort ||
+  'ยังไม่มีคำแปลไทย';
+
+const getDefinition = (details) =>
+  details?.englishExplanation?.definition ||
+  details?.validation?.englishExplanationShort ||
+  'No definition yet.';
+
 export default function LineDemo() {
+  const navigate = useNavigate();
   const { getAiWordRichDetails, addWordToDeck } = useVocab();
   const [messages, setMessages] = useState([
-    { id: 1, sender: 'bot', type: 'text', content: 'พิมพ์คำศัพท์ภาษาอังกฤษที่อยากแปลมาได้เลยครับ! 😊' }
+    {
+      id: 'welcome',
+      sender: 'bot',
+      type: 'text',
+      content:
+        'หวัดดี เราไอ้แปร๋ ส่งคำศัพท์อังกฤษมาได้เลย เดี๋ยวแปลให้และเก็บไว้ทวนได้ทันที',
+    },
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [showLiff, setShowLiff] = useState(false);
-  const [liffComponent, setLiffComponent] = useState(null);
-  
-  const endOfMessagesRef = useRef(null);
+  const endRef = useRef(null);
 
-  // Scroll to bottom on new message
   useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    endRef.current?.scrollIntoView({ block: 'end' });
   }, [messages, isTyping]);
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
-    
-    const word = inputText.trim();
-    setInputText('');
-    
-    // Add User Message
-    const userMsg = { id: Date.now(), sender: 'user', type: 'text', content: word };
-    setMessages(prev => [...prev, userMsg]);
-    
-    // Show typing
+  const addMessage = (message) => {
+    setMessages((current) => [
+      ...current,
+      { id: newMessageId(), sender: 'bot', ...message },
+    ]);
+  };
+
+  const requestWord = async (requestedWord, forceValid = false) => {
+    const word = requestedWord.trim();
+    if (!word || isTyping) return;
+
     setIsTyping(true);
-    
     try {
-      const details = await getAiWordRichDetails(word);
-      setIsTyping(false);
-      
-      if (details.error) {
-        setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', type: 'text', content: 'ขออภัยครับ ตอนนี้ระบบแปลมีปัญหา ลองใหม่อีกครั้งนะครับ 😅' }]);
+      const details = await getAiWordRichDetails(word, forceValid);
+      if (!details || details.error) {
+        addMessage({
+          type: 'text',
+          content: 'ระบบแปลกำลังพัก ลองส่งคำนี้มาอีกครั้งนะ',
+        });
         return;
       }
 
-      // Simulated Flex Message
-      const flexMsg = {
-        id: Date.now(),
-        sender: 'bot',
-        type: 'flex',
-        details: details
-      };
-      setMessages(prev => [...prev, flexMsg]);
+      if (details.validation?.isInvalid && !forceValid) {
+        addMessage({
+          type: 'suggestion',
+          input: word,
+          suggestion: details.validation.suggestion,
+          thai: details.validation.thaiTranslationShort,
+        });
+        return;
+      }
 
-    } catch (err) {
+      addMessage({
+        type: 'card',
+        details: {
+          ...details,
+          word: forceValid ? word.toLowerCase() : details.word || word,
+          _forcedOriginal: forceValid,
+        },
+        saved: false,
+      });
+    } catch (error) {
+      console.error('LINE preview lookup failed:', error);
+      addMessage({
+        type: 'text',
+        content: 'ระบบสะดุดนิดหน่อย ลองส่งคำนี้มาอีกครั้งนะ',
+      });
+    } finally {
       setIsTyping(false);
-      setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', type: 'text', content: 'เอ๊ะ ระบบมีปัญหานิดหน่อยครับ' }]);
     }
   };
 
-  const handleAddWord = (details) => {
-    addWordToDeck(details);
-    setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', type: 'text', content: `เก็บคำว่า "${details.word}" เข้าเด็คเรียบร้อยแล้วครับ! อย่าลืมมากดทบทวนนะ 📚` }]);
+  const handleSend = async () => {
+    const word = inputText.trim();
+    if (!word || isTyping) return;
+
+    setMessages((current) => [
+      ...current,
+      {
+        id: newMessageId(),
+        sender: 'user',
+        type: 'text',
+        content: word,
+      },
+    ]);
+    setInputText('');
+    await requestWord(word);
   };
 
-  const openLiff = (componentName) => {
-    setLiffComponent(componentName);
-    setShowLiff(true);
+  const handleSave = async (message) => {
+    const details = message.details;
+    const result = await addWordToDeck(details.word, details);
+
+    setMessages((current) =>
+      current.map((item) =>
+        item.id === message.id ? { ...item, saved: result.success } : item,
+      ),
+    );
+
+    addMessage({
+      type: 'text',
+      content: result.success
+        ? 'เก็บ "' + details.word + '" แล้ว กดเริ่มทวนได้เลย'
+        : result.error || 'คำนี้อยู่ในคลังของคุณแล้ว',
+    });
+  };
+
+  const showHelp = () => {
+    addMessage({
+      type: 'text',
+      content:
+        'พิมพ์คำอังกฤษ แล้วกดเก็บคำนี้บนการ์ด จากนั้นกดเริ่มทวนเพื่อเล่นแฟลชการ์ดได้เลย',
+    });
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', background: '#e5e5e5', minHeight: '100vh', width: '100%', overflow: 'hidden' }}>
-      
-      {/* Mobile Frame Simulator */}
-      <div style={{ width: '100%', maxWidth: '400px', background: '#849ebf', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 0 40px rgba(0,0,0,0.2)' }}>
-        
-        {/* LINE Header */}
-        <div style={{ background: '#273246', color: 'white', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <ArrowLeft size={24} />
-            <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Mem-Eng 🤖</div>
+    <div
+      style={{
+        minHeight: '100dvh',
+        width: '100%',
+        display: 'grid',
+        placeItems: 'center',
+        background: '#08090C',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 430,
+          height: '100dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#161B24',
+          color: '#FFFFFF',
+          overflow: 'hidden',
+        }}
+      >
+        <header
+          style={{
+            height: 64,
+            flex: '0 0 64px',
+            padding: '0 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#242B38',
+            borderBottom: '1px solid rgba(255,255,255,.08)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              aria-label="Back"
+              style={iconButtonStyle}
+            >
+              <ArrowLeft size={21} />
+            </button>
+            <img
+              src="/line/ai-prae-mascot-v1.png"
+              alt=""
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                objectPosition: '50% 22%',
+              }}
+            />
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 16 }}>ไอ้แปร๋</div>
+              <div style={{ color: '#AEB5C4', fontSize: 11 }}>
+                พิมพ์คำ แปล เก็บ แล้วทวน
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <Search size={20} />
-            <MoreHorizontal size={20} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button type="button" aria-label="Search" style={iconButtonStyle}>
+              <Search size={19} />
+            </button>
+            <button type="button" aria-label="More" style={iconButtonStyle}>
+              <MoreHorizontal size={20} />
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* Chat Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#ffffff99', marginBottom: '8px' }}>Today</div>
-          
-          {messages.map(msg => (
-            <div key={msg.id} style={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', marginBottom: '8px' }}>
-              
-              {msg.sender === 'bot' && (
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#11141c', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '8px', flexShrink: 0, border: '2px solid #06b6d4' }}>
-                  🤖
+        <main
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '18px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}
+        >
+          <div
+            style={{
+              alignSelf: 'center',
+              color: '#8D96A8',
+              fontSize: 11,
+              marginBottom: 2,
+            }}
+          >
+            LINE preview
+          </div>
+
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              style={{
+                display: 'flex',
+                justifyContent:
+                  message.sender === 'user' ? 'flex-end' : 'flex-start',
+                gap: 8,
+              }}
+            >
+              {message.sender === 'bot' && (
+                <img
+                  src="/line/ai-prae-mascot-v1.png"
+                  alt=""
+                  style={{
+                    width: 34,
+                    height: 34,
+                    flex: '0 0 34px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    objectPosition: '50% 22%',
+                  }}
+                />
+              )}
+
+              {message.type === 'text' && (
+                <div
+                  style={{
+                    maxWidth: '78%',
+                    padding: '10px 13px',
+                    borderRadius: 12,
+                    borderTopLeftRadius:
+                      message.sender === 'bot' ? 3 : 12,
+                    borderTopRightRadius:
+                      message.sender === 'user' ? 3 : 12,
+                    background:
+                      message.sender === 'user' ? '#20B65A' : '#F7F7F4',
+                    color:
+                      message.sender === 'user' ? '#FFFFFF' : '#15161B',
+                    fontSize: 14,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {message.content}
                 </div>
               )}
 
-              {msg.type === 'text' && (
-                <div style={{
-                  background: msg.sender === 'user' ? '#00c300' : 'white',
-                  color: msg.sender === 'user' ? 'white' : 'black',
-                  padding: '10px 14px',
-                  borderRadius: '16px',
-                  borderTopRightRadius: msg.sender === 'user' ? '4px' : '16px',
-                  borderTopLeftRadius: msg.sender === 'bot' ? '4px' : '16px',
-                  maxWidth: '75%',
-                  fontSize: '0.95rem',
-                  lineHeight: '1.4',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                }}>
-                  {msg.content}
-                </div>
+              {message.type === 'suggestion' && (
+                <section style={cardStyle}>
+                  <div style={{ color: '#8D96A8', fontSize: 12 }}>
+                    สะกดแบบนี้หรือเปล่า?
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontWeight: 950,
+                      fontSize: 26,
+                    }}
+                  >
+                    {message.suggestion}
+                  </div>
+                  {message.thai && (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        color: '#5DE0A3',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {message.thai}
+                    </div>
+                  )}
+                  <div style={{ display: 'grid', gap: 8, marginTop: 16 }}>
+                    <button
+                      type="button"
+                      onClick={() => requestWord(message.suggestion)}
+                      style={primaryButtonStyle}
+                    >
+                      ใช่ คำนี้แหละ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => requestWord(message.input, true)}
+                      style={secondaryButtonStyle}
+                    >
+                      ใช้คำเดิม
+                    </button>
+                  </div>
+                </section>
               )}
 
-              {msg.type === 'flex' && (
-                <div style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  maxWidth: '85%',
-                  overflow: 'hidden',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                }}>
-                  <div style={{ background: '#06b6d4', padding: '12px', color: 'white' }}>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, textTransform: 'capitalize' }}>{msg.details.word}</div>
-                    <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{msg.details.pos}</div>
-                  </div>
-                  
-                  <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '0.9rem', color: '#333' }}>
-                      <strong style={{ color: '#06b6d4' }}>แปล:</strong> {msg.details.thaiTranslation?.word || msg.details.validation?.thaiTranslationShort}
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>
-                      "{msg.details.englishExplanation?.definition || msg.details.validation?.englishExplanationShort}"
-                    </div>
-
-                    {msg.details.scenes?.[0] && (
-                      <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', fontSize: '0.8rem', marginTop: '4px' }}>
-                        <div><strong>EX:</strong> {msg.details.scenes[0].dialogue}</div>
-                        <div style={{ color: '#64748b', marginTop: '4px' }}>{msg.details.scenes[0].meaning}</div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', borderTop: '1px solid #e2e8f0' }}>
-                    <button 
-                      onClick={() => speakEnglish(msg.details.word)}
-                      style={{ flex: 1, padding: '12px', background: 'white', border: 'none', borderRight: '1px solid #e2e8f0', color: '#3b82f6', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+              {message.type === 'card' && (
+                <section style={cardStyle}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 950,
+                        fontSize: 27,
+                        overflowWrap: 'anywhere',
+                      }}
                     >
-                      <Volume2 size={16} /> ฟังเสียง
-                    </button>
-                    <button 
-                      onClick={() => handleAddWord(msg.details)}
-                      style={{ flex: 1, padding: '12px', background: 'white', border: 'none', color: '#10b981', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                      {message.details.word}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => speakEnglish(message.details.word)}
+                      aria-label="Play pronunciation"
+                      style={roundButtonStyle}
                     >
-                      <Plus size={16} /> เก็บเข้าเด็ค
+                      <Volume2 size={17} />
                     </button>
                   </div>
-                </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 7,
+                      marginTop: 7,
+                      color: '#AEB5C4',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    <span>{message.details.cefrLevel || '—'}</span>
+                    <span>{message.details.pos || 'word'}</span>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 14,
+                      color: '#5DE0A3',
+                      fontWeight: 900,
+                      fontSize: 17,
+                    }}
+                  >
+                    {getThai(message.details)}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      color: '#D6DAE3',
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {getDefinition(message.details)}
+                  </div>
+                  {message.details.scenes?.[0]?.dialogue && (
+                    <div
+                      style={{
+                        marginTop: 13,
+                        padding: 11,
+                        borderRadius: 7,
+                        background: '#20232A',
+                        color: '#FFFFFF',
+                        fontSize: 12,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {message.details.scenes[0].dialogue}
+                    </div>
+                  )}
+                  {message.details._forcedOriginal && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        color: '#F5C842',
+                        fontSize: 11,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      คำนี้อาจสะกดไม่มาตรฐาน แต่บันทึกตามที่ยืนยัน
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 8,
+                      marginTop: 16,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSave(message)}
+                      disabled={message.saved}
+                      style={{
+                        ...primaryButtonStyle,
+                        background: message.saved ? '#264D3C' : '#2DAA73',
+                        color: message.saved ? '#82D8B1' : '#FFFFFF',
+                      }}
+                    >
+                      {message.saved ? (
+                        <Check size={16} />
+                      ) : (
+                        <BookmarkPlus size={16} />
+                      )}
+                      {message.saved ? 'เก็บแล้ว' : 'เก็บคำนี้'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/purge')}
+                      style={secondaryButtonStyle}
+                    >
+                      <Play size={16} fill="currentColor" />
+                      เริ่มทวน
+                    </button>
+                  </div>
+                </section>
               )}
             </div>
           ))}
-          
+
           {isTyping && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#11141c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤖</div>
-              <div style={{ background: 'white', padding: '10px 14px', borderRadius: '16px', display: 'flex', gap: '4px' }}>
-                <span style={{ width: '6px', height: '6px', background: '#ccc', borderRadius: '50%', animation: 'pulse 1s infinite' }}></span>
-                <span style={{ width: '6px', height: '6px', background: '#ccc', borderRadius: '50%', animation: 'pulse 1s infinite 0.2s' }}></span>
-                <span style={{ width: '6px', height: '6px', background: '#ccc', borderRadius: '50%', animation: 'pulse 1s infinite 0.4s' }}></span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <img
+                src="/line/ai-prae-mascot-v1.png"
+                alt=""
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  objectPosition: '50% 22%',
+                }}
+              />
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  borderTopLeftRadius: 3,
+                  background: '#F7F7F4',
+                  color: '#586173',
+                  fontSize: 13,
+                }}
+              >
+                กำลังหาคำให้...
               </div>
             </div>
           )}
-          
-          <div ref={endOfMessagesRef} />
-        </div>
+          <div ref={endRef} />
+        </main>
 
-        {/* Input Bar */}
-        <div style={{ background: '#f8f8f8', padding: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button style={{ background: 'none', border: 'none', color: '#888' }}><Plus size={24} /></button>
-          <input 
-            type="text" 
+        <div
+          style={{
+            flex: '0 0 auto',
+            padding: '9px 10px',
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+            background: '#F1F2F4',
+          }}
+        >
+          <input
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="พิมพ์ศัพท์..." 
-            style={{ flex: 1, padding: '10px 16px', borderRadius: '20px', border: '1px solid #ddd', outline: 'none', fontSize: '0.95rem' }}
+            onChange={(event) => setInputText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') handleSend();
+            }}
+            placeholder="พิมพ์คำศัพท์อังกฤษ"
+            maxLength={80}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              height: 40,
+              padding: '0 15px',
+              border: '1px solid #D3D7DE',
+              borderRadius: 20,
+              outline: 'none',
+              fontSize: 14,
+            }}
           />
-          <button onClick={handleSend} style={{ background: '#00c300', border: 'none', color: 'white', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={isTyping || !inputText.trim()}
+            aria-label="Send"
+            style={{
+              width: 40,
+              height: 40,
+              display: 'grid',
+              placeItems: 'center',
+              border: 0,
+              borderRadius: '50%',
+              background: '#20B65A',
+              color: '#FFFFFF',
+              opacity: isTyping || !inputText.trim() ? 0.5 : 1,
+            }}
+          >
             <Send size={18} />
           </button>
         </div>
 
-        {/* Rich Menu Simulator */}
-        <div style={{ height: '70px', background: '#ffffff', borderTop: '1px solid #eee', display: 'flex' }}>
-          <button 
-            onClick={() => openLiff('flashcards')}
-            style={{ flex: 1, border: 'none', borderRight: '1px solid #eee', background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', color: '#333' }}
+        <nav
+          style={{
+            height: 76,
+            flex: '0 0 76px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            background: '#0E1015',
+            borderTop: '1px solid #292C34',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => navigate('/purge')}
+            style={menuButtonStyle}
           >
-            <div style={{ fontSize: '1.5rem' }}>📚</div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700 }}>Flashcards</div>
+            <Play size={22} fill="currentColor" />
+            <span>เริ่มทวน</span>
           </button>
-          <button 
-            style={{ flex: 1, border: 'none', background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', color: '#333' }}
+          <button
+            type="button"
+            onClick={() => navigate('/library')}
+            style={{ ...menuButtonStyle, color: '#5DE0A3' }}
           >
-            <div style={{ fontSize: '1.5rem' }}>🏆</div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700 }}>Ranking</div>
+            <Library size={22} />
+            <span>คลังของฉัน</span>
           </button>
-        </div>
-        
-        {/* Simulated LIFF Webview Modal */}
-        <AnimatePresence>
-          {showLiff && (
-            <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#11141c', zIndex: 50, display: 'flex', flexDirection: 'column' }}
-            >
-              {/* LIFF Header Overlay - Floating above everything */}
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', color: 'black', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 99999, borderBottom: '1px solid #ddd', boxSizing: 'border-box' }}>
-                <button onClick={() => setShowLiff(false)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: 0 }}>
-                  <ChevronDown size={24} /> <span style={{ fontSize: '0.9rem', fontWeight: 600, marginLeft: '4px' }}>Close</span>
-                </button>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#666' }}>Mem-Eng Web</div>
-                <div style={{ width: '24px' }}></div>
-              </div>
-              
-              {/* Load actual app component inside the LIFF modal */}
-              <div style={{ flex: 1, position: 'relative', overflow: 'hidden', paddingTop: '50px' }}>
-                {liffComponent === 'flashcards' && <Purge />}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <button
+            type="button"
+            onClick={showHelp}
+            style={{ ...menuButtonStyle, color: '#B69CFF' }}
+          >
+            <CircleHelp size={22} />
+            <span>วิธีใช้</span>
+          </button>
+        </nav>
       </div>
-
     </div>
   );
 }
+
+const iconButtonStyle = {
+  width: 34,
+  height: 34,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 0,
+  border: 0,
+  borderRadius: '50%',
+  background: 'transparent',
+  color: '#FFFFFF',
+  cursor: 'pointer',
+};
+
+const roundButtonStyle = {
+  width: 34,
+  height: 34,
+  flex: '0 0 34px',
+  display: 'grid',
+  placeItems: 'center',
+  padding: 0,
+  border: '1px solid #353944',
+  borderRadius: '50%',
+  background: '#20232A',
+  color: '#D6DAE3',
+  cursor: 'pointer',
+};
+
+const cardStyle = {
+  width: 'min(315px, calc(100vw - 70px))',
+  padding: 16,
+  border: '1px solid #30333C',
+  borderRadius: 8,
+  background: '#15161B',
+  color: '#FFFFFF',
+  boxShadow: '0 8px 22px rgba(0,0,0,.22)',
+};
+
+const primaryButtonStyle = {
+  minHeight: 40,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  padding: '9px 12px',
+  border: 0,
+  borderRadius: 7,
+  background: '#2DAA73',
+  color: '#FFFFFF',
+  fontWeight: 900,
+  cursor: 'pointer',
+};
+
+const secondaryButtonStyle = {
+  minHeight: 40,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  padding: '9px 12px',
+  border: '1px solid #3A3E49',
+  borderRadius: 7,
+  background: '#20232A',
+  color: '#FFFFFF',
+  fontWeight: 900,
+  cursor: 'pointer',
+};
+
+const menuButtonStyle = {
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 5,
+  border: 0,
+  background: 'transparent',
+  color: '#F5C842',
+  fontSize: 11,
+  fontWeight: 900,
+  cursor: 'pointer',
+};

@@ -679,12 +679,31 @@ export const VocabProvider = ({ children }) => {
     // Push to Supabase if logged in
     if (user) {
       try {
+        let remoteDeckId = null;
         let wordId = null;
-        const { data: existingWord } = await supabase
+        if (richDetails._forcedOriginal) {
+          const { data: privateDeckId, error: privateSaveError } =
+            await supabase.rpc('save_private_word_to_deck', {
+              p_word: normalizedWord,
+              p_details: richDetails,
+              p_user_id: user.id
+            });
+          if (privateSaveError || !privateDeckId) {
+            throw new Error(
+              privateSaveError?.message || 'Could not save private word'
+            );
+          }
+          remoteDeckId = privateDeckId;
+        } else {
+        const { data: existingWord, error: existingWordError } = await supabase
           .from('global_dictionary')
           .select('id, rich_data')
           .eq('word', normalizedWord)
           .maybeSingle();
+
+        if (existingWordError) {
+          throw existingWordError;
+        }
 
         if (existingWord) {
           wordId = existingWord.id;
@@ -713,10 +732,16 @@ export const VocabProvider = ({ children }) => {
             })
             .select('id')
             .single();
-          if (!wordError && newWord) wordId = newWord.id;
+          if (wordError || !newWord?.id) {
+            throw wordError || new Error('Could not create dictionary word');
+          }
+          wordId = newWord.id;
         }
 
-        if (wordId) {
+        if (!wordId) {
+          throw new Error('Could not resolve dictionary word');
+        }
+
           const { data: userDeckRecord, error: deckError } = await supabase
             .from('user_decks')
             .insert({
@@ -741,12 +766,19 @@ export const VocabProvider = ({ children }) => {
             .select()
             .single();
 
-          if (!deckError && userDeckRecord) {
-            newCard.id = userDeckRecord.id; // Override with Supabase ID
+          if (deckError || !userDeckRecord?.id) {
+            throw deckError || new Error('Could not save word to deck');
           }
+          remoteDeckId = userDeckRecord.id;
         }
+
+        newCard.id = remoteDeckId;
       } catch (err) {
         console.error("Error saving word to Supabase:", err);
+        return {
+          success: false,
+          error: 'Could not save this word. Please try again.'
+        };
       }
     }
 
@@ -1476,6 +1508,7 @@ export const VocabProvider = ({ children }) => {
         }
         sanitized.validation.isInvalid = false;
         sanitized.validation.suggestion = null;
+        sanitized._forcedOriginal = true;
       }
       
       // Programmatic Safeguard:

@@ -83,6 +83,129 @@ const fetchLexicalReferences = async (word) => {
   }
 };
 
+const CACHEABLE_TERM_PATTERN =
+  /^(?=.{1,80}$)(?=.*[a-z])[a-z0-9][a-z0-9'-]*(?:\s+[a-z0-9][a-z0-9'-]*){0,7}$/i;
+const CEFR_LEVELS = new Set(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+
+const safeText = (value, max, fallback = '') => {
+  if (typeof value !== 'string') return fallback;
+  const cleaned = value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned ? cleaned.slice(0, max) : fallback;
+};
+
+const safeWordList = (items, maxItems = 6) => {
+  if (!Array.isArray(items)) return [];
+  const result = [];
+  const seen = new Set();
+  for (const item of items) {
+    const candidate = safeText(item?.word || item, 40)
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+    if (!CACHEABLE_TERM_PATTERN.test(candidate) || seen.has(candidate)) continue;
+    seen.add(candidate);
+    result.push(candidate);
+    if (result.length >= maxItems) break;
+  }
+  return result;
+};
+
+const safeScene = (scene) => ({
+  title: safeText(scene?.title, 80),
+  situation: safeText(scene?.situation, 180),
+  dialogue: safeText(scene?.dialogue, 220),
+  meaning: safeText(scene?.meaning, 240),
+  thaiWordUsed: safeText(scene?.thaiWordUsed, 80),
+  imageTag: safeText(scene?.imageTag, 80),
+});
+
+const sanitizeGeneratedDetails = (
+  raw,
+  requestedWord,
+  forceOriginal,
+) => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('Translation provider returned an invalid object');
+  }
+
+  const rawValidation =
+    raw.validation && typeof raw.validation === 'object'
+      ? raw.validation
+      : {};
+  const isInvalid = forceOriginal
+    ? false
+    : rawValidation.isInvalid === true;
+  const canonicalWord = safeText(raw.word, 80, requestedWord)
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  if (!isInvalid && !forceOriginal && !CACHEABLE_TERM_PATTERN.test(canonicalWord)) {
+    throw new Error('Translation provider returned an unsafe canonical word');
+  }
+
+  const suggestionCandidate = safeText(rawValidation.suggestion, 80)
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  const suggestion = CACHEABLE_TERM_PATTERN.test(suggestionCandidate)
+    ? suggestionCandidate
+    : null;
+  const cefrCandidate = safeText(raw.cefrLevel, 8).toUpperCase();
+  const scenes = Array.isArray(raw.scenes)
+    ? raw.scenes.slice(0, 2).map(safeScene)
+    : [];
+  const moreContexts = Array.isArray(raw.moreContexts)
+    ? raw.moreContexts.slice(0, 5).map((item) => ({
+        label: safeText(item?.label, 40),
+        sentence: safeText(item?.sentence, 220),
+        thaiMeaning: safeText(item?.thaiMeaning, 240),
+        note: safeText(item?.note, 180),
+      }))
+    : [];
+  const verbForms = Array.isArray(raw.verbForms) && raw.verbForms.length >= 3
+    ? raw.verbForms.slice(0, 3).map((item) => safeText(item, 40))
+    : null;
+
+  return {
+    word: canonicalWord,
+    validation: {
+      isInvalid,
+      suggestion,
+      thaiTranslationShort: safeText(rawValidation.thaiTranslationShort, 100),
+      englishExplanationShort: safeText(rawValidation.englishExplanationShort, 180),
+    },
+    pos: safeText(raw.pos, 32, 'word'),
+    cefrLevel: CEFR_LEVELS.has(cefrCandidate) ? cefrCandidate : 'Unranked',
+    verbForms,
+    synonyms: safeWordList(raw.synonyms, 5),
+    nearWords: safeWordList(raw.nearWords || raw.relatedWords, 6),
+    wordFamily: safeWordList(raw.wordFamily, 5),
+    moreContexts,
+    englishExplanation: {
+      definition: safeText(raw.englishExplanation?.definition, 180),
+      phrase: safeText(raw.englishExplanation?.phrase, 120),
+      phraseMeaning: safeText(raw.englishExplanation?.phraseMeaning, 180),
+    },
+    collocation: raw.collocation && typeof raw.collocation === 'object'
+      ? {
+          phrase: safeText(raw.collocation.phrase, 120),
+          meaning: safeText(raw.collocation.meaning, 180),
+          example: safeText(raw.collocation.example, 220),
+        }
+      : null,
+    scenes,
+    imagePrompts: Array.isArray(raw.imagePrompts)
+      ? raw.imagePrompts.slice(0, 2).map((item) => safeText(item, 80)).filter(Boolean)
+      : [],
+    thaiTranslation: {
+      word: safeText(raw.thaiTranslation?.word, 120),
+      phrase: safeText(raw.thaiTranslation?.phrase, 180),
+    },
+    takeaway: safeText(raw.takeaway, 180),
+    morphNote: safeText(raw.morphNote, 140),
+  };
+};
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -90,7 +213,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { word, forceValid } = await req.json();
+    const { word: rawWord, forceValid } = await req.json();
+    const word = typeof rawWord === 'string' ? rawWord.trim() : '';
+    const forceOriginal = forceValid === true;
+    const hasUnsafeCharacters =
+      /[^a-zA-Z0-9\s\-'?!.,;:"()\u0e00-\u0e7f]/.test(word);
+    if (!word || word.length > 80 || hasUnsafeCharacters) {
+      return new Response(JSON.stringify({ error: "A word or short phrase is required." }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -102,31 +236,48 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const bearerToken = authHeader.replace(/^Bearer\s+/i, '');
+    const internalUserId = req.headers.get('x-memeng-internal-user-id');
+    let quotaUserId = '';
+    let quotaIsAnonymous = false;
+
+    // LINE's signed webhook may call this function server-to-server. It must
+    // identify a real Supabase user and present the service-role secret.
+    if (bearerToken === serviceRoleKey && internalUserId) {
+      const { data: internalUser, error: internalUserError } =
+        await admin.auth.admin.getUserById(internalUserId);
+      if (internalUserError || !internalUser?.user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      quotaUserId = internalUser.user.id;
+      quotaIsAnonymous = true;
+    } else {
+      const authClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } }
       });
+      const { data: { user }, error: authError } = await authClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      quotaUserId = user.id;
+      quotaIsAnonymous = Boolean(user.is_anonymous);
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey);
     const { data: quota, error: quotaError } = await admin.rpc('consume_word_generation_quota', {
-      p_user_id: user.id,
-      p_is_anonymous: Boolean(user.is_anonymous)
+      p_user_id: quotaUserId,
+      p_is_anonymous: quotaIsAnonymous
     });
     if (quotaError || !quota?.allowed) {
       return new Response(JSON.stringify({ error: 'Daily generation limit reached. Please try again tomorrow.' }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    if (!word) {
-      return new Response(JSON.stringify({ error: "Missing required 'word' parameter" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
@@ -232,7 +383,7 @@ Return a JSON object with this exact structure:
 }
 
 Do NOT wrap the JSON in markdown code blocks. Return ONLY the raw JSON string.
-${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "isInvalid" MUST be false.` : ''}
+${forceOriginal ? `NOTE: You must treat "${word}" as a 100% valid English word. "isInvalid" MUST be false.` : ''}
 `;
 
     let textResponse = '';
@@ -345,7 +496,11 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
       });
     }
     // Parse the text to ensure it's valid JSON
-    const parsed = JSON.parse(textResponse.trim());
+    const parsed = sanitizeGeneratedDetails(
+      JSON.parse(textResponse.trim()),
+      word,
+      forceOriginal,
+    );
     parsed._provider = usedProvider; // Add provider metadata
     parsed._referenceSources = {
       lexical: lexicalReferences.source,
@@ -356,16 +511,23 @@ ${forceValid ? `NOTE: You must treat "${word}" as a 100% valid English word. "is
       )
     };
 
-    // Cache server-generated data centrally. Existing entries are never overwritten here.
-    await admin
-      .from('global_dictionary')
-      .upsert({
-        word: String(word).trim().toLowerCase(),
-        pos: parsed.pos || 'n.',
-        meaning: JSON.stringify(parsed),
-        rich_data: parsed,
-        cefr_level: parsed.cefrLevel || 'Unranked'
-      }, { onConflict: 'word', ignoreDuplicates: true });
+    // Forced/nonstandard spellings remain private user data. Only validated
+    // canonical English terms can enter the shared dictionary cache.
+    if (
+      !forceOriginal &&
+      !parsed.validation?.isInvalid &&
+      CACHEABLE_TERM_PATTERN.test(parsed.word)
+    ) {
+      await admin
+        .from('global_dictionary')
+        .upsert({
+          word: parsed.word,
+          pos: parsed.pos || 'n.',
+          meaning: JSON.stringify(parsed),
+          rich_data: parsed,
+          cefr_level: parsed.cefrLevel || 'Unranked'
+        }, { onConflict: 'word', ignoreDuplicates: true });
+    }
     return new Response(JSON.stringify(parsed), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
