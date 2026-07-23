@@ -895,6 +895,20 @@ async function processEvent(admin: any, event: any) {
     return;
   }
 
+  if (['account', 'who am i', 'my account'].includes(command)) {
+    const accountType = user.email.endsWith('@line.guest.com')
+      ? 'LINE account'
+      : 'Mem-eng account connected';
+    await reply(replyToken, [{
+      type: 'text',
+      text:
+        'Account status\n' +
+        'LINE name: ' + user.displayName + '\n' +
+        'Sign-in: ' + accountType + '\n' +
+        'Your saved words and progress use this account.',
+    }]);
+    return;
+  }
   if (!input || input.length > 80) {
     await reply(replyToken, [{
       type: 'text',
