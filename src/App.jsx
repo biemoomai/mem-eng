@@ -409,9 +409,10 @@ function AppContent() {
     const isLineConnectRoute =
       location.pathname === '/login' &&
       new URLSearchParams(location.search).get('auth') === '1';
+    const liffAllowedRoutes = ['/purge', '/library', '/profile'];
     if (
       isLiffMode &&
-      location.pathname !== '/purge' &&
+      !liffAllowedRoutes.includes(location.pathname) &&
       !isLineConnectRoute
     ) {
       navigate('/purge', { replace: true });
@@ -458,6 +459,9 @@ function AppContent() {
       icon: User
     }
   ];
+  const visibleNavItems = isLiffMode
+    ? navItems.filter((item) => item.path !== '/')
+    : navItems;
 
   const handleNavigation = (path) => {
     setMenuOpen(false);
@@ -666,7 +670,7 @@ function AppContent() {
       )}
 
       {/* Floating translucent bottom nav dock */}
-      {showBottomNav && user && isTabRoute && !menuOpen && !isLiffMode && (
+      {showBottomNav && user && isTabRoute && !menuOpen && (
         <div 
           className="bottom-nav-dock"
           style={{
@@ -692,7 +696,7 @@ function AppContent() {
             transition: 'all 0.3s ease'
           }}
         >
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const IconComponent = item.icon;
             const isActive = location.pathname === item.path;
             return (
