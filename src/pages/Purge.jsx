@@ -1877,7 +1877,7 @@ const Purge = () => {
   const stampGoodOpacity = useTransform(y, [-50, -130], [0, 1]);
   const stampHardOpacity = useTransform(y, [50, 130], [0, 1]);
 
-  // Initialize queue once when vocab is loaded
+  // Keep the dashboard queue current when LINE or another tab adds a due card.
   useEffect(() => {
     const isTutorialActive = localStorage.getItem('memeng_tutorial_done') !== 'true' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (isTutorialActive) {
@@ -1934,8 +1934,15 @@ const Purge = () => {
       const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
       setSessionQueue(due);
       setIsInitialized(true);
+    } else if (!loading && !isStudying && !isCustomSession) {
+      const due = vocab.filter(w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date());
+      setSessionQueue(previousQueue => {
+        const previousIds = previousQueue.map(card => card.id).sort().join('|');
+        const dueIds = due.map(card => card.id).sort().join('|');
+        return previousIds === dueIds ? previousQueue : due;
+      });
     }
-  }, [vocab, loading, isInitialized]);
+  }, [vocab, loading, isInitialized, isStudying, isCustomSession]);
 
   // Listeners for custom study session exits, tutorial step syncs, and resets
   useEffect(() => {

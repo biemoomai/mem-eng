@@ -218,30 +218,43 @@ export const VocabProvider = ({ children }) => {
   };
 
   const { user } = useAuth();
+  const resumeSyncTimerRef = useRef(null);
+  const syncInFlightRef = useRef(false);
 
   // Sync local deck and review logs to/from Supabase on login or reconnect
   useEffect(() => {
     if (user) {
       syncData(user.id);
 
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          // Background sync when returning to the app
-          setTimeout(() => {
-            syncData(user.id, true);
-          }, 500);
+      const syncOnResume = () => {
+        if (document.visibilityState === 'hidden') return;
+        if (resumeSyncTimerRef.current) {
+          clearTimeout(resumeSyncTimerRef.current);
         }
+        resumeSyncTimerRef.current = setTimeout(() => {
+          syncData(user.id, true);
+        }, 150);
       };
 
-      document.addEventListener('visibilitychange', handleVisibilityChange);
+      document.addEventListener('visibilitychange', syncOnResume);
+      window.addEventListener('focus', syncOnResume);
+      window.addEventListener('pageshow', syncOnResume);
       return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        document.removeEventListener('visibilitychange', syncOnResume);
+        window.removeEventListener('focus', syncOnResume);
+        window.removeEventListener('pageshow', syncOnResume);
+        if (resumeSyncTimerRef.current) {
+          clearTimeout(resumeSyncTimerRef.current);
+          resumeSyncTimerRef.current = null;
+        }
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [user]);
 
   const syncData = async (userId, isBackground = false) => {
+    if (syncInFlightRef.current) return;
+    syncInFlightRef.current = true;
     try {
       if (!isBackground) setLoading(true);
 
@@ -407,6 +420,7 @@ export const VocabProvider = ({ children }) => {
     } catch (err) {
       console.error("Error in syncData:", err);
     } finally {
+      syncInFlightRef.current = false;
       setLoading(false);
     }
   };
