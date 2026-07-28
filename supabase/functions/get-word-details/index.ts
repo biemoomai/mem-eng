@@ -303,9 +303,9 @@ CRITICAL INSTRUCTIONS FOR "verbForms":
 - DO NOT hallucinate, invent, or make up fake regular verb forms (e.g. for "then" you must return null, do NOT invent "thened").
 
 CRITICAL INSTRUCTIONS FOR "imagePrompts":
-- The "imagePrompts" array MUST contain exactly 2 highly descriptive, concrete visual search terms (1-3 words each, e.g., "divider", "zipper splitting", "fences dividing") that represent the visual definition/meaning of the target word directly.
-- DO NOT base "imagePrompts" on the scenes! For example, if the scenes take place in a classroom or a kitchen, DO NOT write "classroom" or "kitchen". The prompts must represent the word's definition directly so that searching them yields images explaining the word itself.
-
+- The "imagePrompts" array MUST contain exactly 2 short, concrete photo-search phrases (4-8 words each) describing a visible action, object, or situation from the two scenes.
+- Each prompt must make sense as a stock-photo search. Use concrete nouns and actions, not the target word by itself and not abstract labels.
+- Never ask for text, letters, documents, signs, logos, watermarks, or a dictionary page. Example: for "pragmatic", use "team comparing practical project options", not "pragmatic".
 CRITICAL INSTRUCTIONS FOR FORMATTING AND TEXT CONTENT:
 - DO NOT include any emojis, icons, or pictorial representations in the title, situation, dialogue, meaning, takeaway, or any other output fields. Keep them strictly as clean, standard plain text.
 - All Thai text (such as "thaiTranslationShort", "meaning", "thaiMeaning", and collocations) MUST be written in 100% natural, correct Thai language. Under no circumstances should you mix Chinese characters (e.g. 完成), Japanese characters, or other non-Thai alphabets into the Thai translations or explanations.

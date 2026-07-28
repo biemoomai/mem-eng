@@ -7,7 +7,7 @@
  */
 
 /**
- * Clean a prompt/keyword string into 1-3 concrete search terms.
+ * Clean a prompt/keyword string into a short concrete visual search phrase.
  * Removes scene prefixes, jargon, stop words.
  */
 export const cleanKeyword = (rawPrompt) => {
@@ -37,7 +37,7 @@ export const cleanKeyword = (rawPrompt) => {
         'concept', 'visual', 'image', 'picture', 'that', 'this', 'from',
         'into', 'within', 'about', 'where', 'while'].includes(w)
     )
-    .slice(0, 3)
+    .slice(0, 6)
     .join(' ')
     .trim();
 };
@@ -272,7 +272,8 @@ export const fetchVocabImage = async (keyword, mode = 'photo', excludeUrls = [])
 
   // 5. Ultimate keyless fallback to Pollinations AI (So it NEVER returns null!)
   const seed = Math.floor(Math.random() * 100000);
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(clean)}?width=500&height=400&model=flux&nologo=true&seed=${seed}`;
+  const aiPrompt = `realistic educational photograph of ${clean}, clear visual concept, no words, no letters, no typography, no logo, no watermark`;
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(aiPrompt)}?width=500&height=400&model=flux&nologo=true&seed=${seed}`;
   return { url: pollinationsUrl, source: 'Pollinations' };
 };
 

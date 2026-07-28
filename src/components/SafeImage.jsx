@@ -2,17 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { fetchVocabImage } from '../utils/imageHelper';
 
-export const SafeImage = ({ keyword, alt, style, mode = 'photo' }) => {
-  const [imgSrc, setImgSrc] = useState('');
-  const [isLoading, setIsLoading] = useState(true);  const [hasError, setHasError] = useState(false);
+export const SafeImage = ({ keyword, src = '', alt, style, mode = 'photo' }) => {
+  const [imgSrc, setImgSrc] = useState(src);
+  const [isLoading, setIsLoading] = useState(!src);  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    if (src) {
+      setImgSrc(src);
+      setIsLoading(false);
+      setHasError(false);
+      return undefined;
+    }
+
     if (!keyword) {
       setHasError(true);
       setIsLoading(false);
-      return;
+      return undefined;
     }
-
     let active = true;
     setIsLoading(true);
     setHasError(false);
@@ -30,7 +36,7 @@ export const SafeImage = ({ keyword, alt, style, mode = 'photo' }) => {
     return () => {
       active = false;
     };
-  }, [keyword, mode]);
+  }, [keyword, mode, src]);
 
   if (hasError || !imgSrc) {
     return (

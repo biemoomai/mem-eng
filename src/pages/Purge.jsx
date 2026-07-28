@@ -1140,6 +1140,7 @@ const Purge = () => {
   const [showInterestingModal, setShowInterestingModal] = useState(false);
   const [flippedInterestingWords, setFlippedInterestingWords] = useState({});
   const [selectedInterestingWords, setSelectedInterestingWords] = useState({});
+  const [interestingWords, setInterestingWords] = useState([]);
   const [showCollectionChoice, setShowCollectionChoice] = useState(false);
   const [showCollectionImport, setShowCollectionImport] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(null);
@@ -1671,14 +1672,19 @@ const Purge = () => {
     }
   };
   const handleAddInterestingWords = async () => {
-    const unadded = TODAY_INTERESTING_WORDS.filter(w => !rawVocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = interestingWords.filter(
+      item => !rawVocab.some(v => v?.word?.toLowerCase() === item.word.toLowerCase())
+    );
     let count = 0;
-    for (const w of unadded) {
-      if (selectedInterestingWords[w.word] !== false) {
-        const richData = JSON.parse(w.meaning);
-        await addWordToDeck(w.word, richData);
-        count += 1;
+    for (const card of unadded) {
+      if (selectedInterestingWords[card.word] === false) continue;
+      const richData = parseMeaningField(card.meaning);
+      if (!richData || Object.keys(richData).length === 0) continue;
+      if (card.videoUrl && !richData.savedSceneImages?.[0]) {
+        richData.savedSceneImages = [card.videoUrl, ...(richData.savedSceneImages || []).slice(1)];
       }
+      await addWordToDeck(card.word, richData);
+      count += 1;
     }
     setShowInterestingModal(false);
     if (count > 0) {
@@ -1686,7 +1692,6 @@ const Purge = () => {
       setIsInitialized(false);
     }
   };
-
   const buildCollectionPreview = async (colName) => {
     const config = DISCOVERY_COLLECTIONS.find(item => item.name === colName);
     const { data, error } = await supabase
@@ -2087,31 +2092,71 @@ const Purge = () => {
     }
   }, [vocab, sessionQueue]);
   
-  // 1. Today's Interesting Words check on mount
+  // Show a fresh daily discovery set from the shared dictionary.
   useEffect(() => {
-    if (loading) return;
-    const isDone = localStorage.getItem('memeng_tutorial_done') === 'true';
-    if (!isDone) return; // Skip if tutorial is active
+    if (loading) return undefined;
+    if (localStorage.getItem('memeng_tutorial_done') !== 'true') return undefined;
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const lastSeenDate = localStorage.getItem('memeng_last_interesting_seen_date');
+    if (localStorage.getItem('memeng_last_interesting_seen_date') === todayStr) return undefined;
 
-    if (lastSeenDate !== todayStr) {
-      const unadded = TODAY_INTERESTING_WORDS.filter(
-        w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase())
-      );
-      if (unadded.length > 0) {
-        const defaultSelected = {};
-        unadded.forEach(w => {
-          defaultSelected[w.word] = true;
-        });
-        setSelectedInterestingWords(defaultSelected);
-        setShowInterestingModal(true);
+    let cancelled = false;
+    const getRecentWords = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem('memeng_interesting_word_history') || '[]');
+        return Array.isArray(saved) ? saved.filter(Boolean).map(word => String(word).toLowerCase()) : [];
+      } catch (error) {
+        return [];
       }
-      localStorage.setItem('memeng_last_interesting_seen_date', todayStr);
-    }
-  }, [vocab, loading]);
+    };
 
+    const loadInterestingWords = async () => {
+      const deckWords = rawVocab
+        .map(item => item?.word?.toLowerCase().trim())
+        .filter(Boolean);
+      const excludeWords = [...new Set([...deckWords, ...getRecentWords()])];
+      const { data, error } = await supabase.rpc('get_random_interesting_words', {
+        p_exclude_words: excludeWords,
+        p_limit: 3
+      });
+
+      const fromDatabase = error ? [] : (data || []).map(row => {
+        const richData = row.rich_data || parseMeaningField(row.meaning);
+        if (!row.word || !richData || Object.keys(richData).length === 0) return null;
+        const savedImages = Array.isArray(richData.savedSceneImages) ? richData.savedSceneImages : [];
+        return {
+          word: row.word,
+          pos: row.pos || richData.pos || 'word',
+          cefrLevel: row.cefr_level || richData.cefrLevel || 'B1',
+          meaning: JSON.stringify(richData),
+          videoUrl: savedImages[0] || ''
+        };
+      }).filter(Boolean);
+
+      // Keep the feature useful during a temporary backend outage, but shuffle
+      // the local reserve and never repeat words that were just shown.
+      const seen = new Set([...excludeWords, ...fromDatabase.map(card => card.word.toLowerCase())]);
+      const reserve = shuffleItems(TODAY_INTERESTING_WORDS)
+        .filter(card => !seen.has(card.word.toLowerCase()))
+        .slice(0, Math.max(0, 3 - fromDatabase.length));
+      const cards = [...fromDatabase, ...reserve].slice(0, 3);
+
+      if (cancelled || cards.length === 0) return;
+      const selected = Object.fromEntries(cards.map(card => [card.word, true]));
+      const history = [...cards.map(card => card.word.toLowerCase()), ...getRecentWords()];
+      localStorage.setItem('memeng_interesting_word_history', JSON.stringify([...new Set(history)].slice(0, 30)));
+      localStorage.setItem('memeng_last_interesting_seen_date', todayStr);
+      setInterestingWords(cards);
+      setSelectedInterestingWords(selected);
+      setFlippedInterestingWords({});
+      setShowInterestingModal(true);
+    };
+
+    void loadInterestingWords();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, rawVocab]);
   // Prepare a private buffer of new cards while the learner is using the app.
   useEffect(() => {
     if (loading) return undefined;
@@ -3534,7 +3579,7 @@ const Purge = () => {
   };
 
   const renderInterestingWordsModal = () => {
-    const unadded = TODAY_INTERESTING_WORDS.filter(w => !vocab.some(v => v && v.word && v.word.toLowerCase() === w.word.toLowerCase()));
+    const unadded = interestingWords.filter(w => !rawVocab.some(v => v?.word?.toLowerCase() === w.word.toLowerCase()));
     
     return (
       <>
@@ -3599,7 +3644,7 @@ const Purge = () => {
 
             <div className="scrollable-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '4px', marginBottom: '1rem' }}>
               {unadded.map((card, index) => {
-                let parsedMeaning = JSON.parse(card.meaning);
+                const parsedMeaning = parseMeaningField(card.meaning);
                 const isChecked = selectedInterestingWords[card.word] !== false;
                 const showThai = !!flippedInterestingWords[card.word];
                 const definition = showThai
@@ -3628,7 +3673,7 @@ const Purge = () => {
                     }}
                   >
                     <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-                      <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <SafeImage src={card.videoUrl || parsedMeaning.savedSceneImages?.[0] || ''} keyword={parsedMeaning.imagePrompts?.[0] || parsedMeaning.scenes?.[0]?.situation || card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div style={{
                       position: 'absolute',
@@ -3939,7 +3984,7 @@ const Purge = () => {
 
             <div className="scrollable-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '4px', marginBottom: '1rem' }}>
               {unadded.map((card, index) => {
-                let parsedMeaning = JSON.parse(card.meaning);
+                const parsedMeaning = parseMeaningField(card.meaning);
                 const isChecked = selectedCollectionWords[card.word] !== false;
                 const showThai = !!flippedCollectionWords[card.word];
                 const definition = showThai
@@ -3968,7 +4013,7 @@ const Purge = () => {
                     }}
                   >
                     <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-                      <SafeImage keyword={card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <SafeImage src={card.videoUrl || parsedMeaning.savedSceneImages?.[0] || ''} keyword={parsedMeaning.imagePrompts?.[0] || parsedMeaning.scenes?.[0]?.situation || card.word} alt={card.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div style={{
                       position: 'absolute',
