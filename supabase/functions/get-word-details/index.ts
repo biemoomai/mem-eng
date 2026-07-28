@@ -270,15 +270,20 @@ Deno.serve(async (req) => {
       quotaIsAnonymous = Boolean(user.is_anonymous);
     }
 
-    const { data: quota, error: quotaError } = await admin.rpc('consume_word_generation_quota', {
-      p_user_id: quotaUserId,
-      p_is_anonymous: quotaIsAnonymous
-    });
-    if (quotaError || !quota?.allowed) {
-      return new Response(JSON.stringify({ error: 'Daily generation limit reached. Please try again tomorrow.' }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Keep the limiter ready for a future free/paid policy. Beta is unlimited per user.
+    const enforceUserGenerationQuota =
+      Deno.env.get('ENFORCE_WORD_GENERATION_QUOTA') === 'true';
+    if (enforceUserGenerationQuota) {
+      const { data: quota, error: quotaError } = await admin.rpc('consume_word_generation_quota', {
+        p_user_id: quotaUserId,
+        p_is_anonymous: quotaIsAnonymous
       });
+      if (quotaError || !quota?.allowed) {
+        return new Response(JSON.stringify({ error: 'Daily generation limit reached. Please try again tomorrow.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     const lexicalReferences = await fetchLexicalReferences(word);
