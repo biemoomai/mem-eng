@@ -105,7 +105,7 @@ const startLoading = async (lineUserId: string) => {
   try {
     await lineRequest('/v2/bot/chat/loading/start', {
       chatId: lineUserId,
-      loadingSeconds: 20,
+      loadingSeconds: 60,
     });
   } catch (error) {
     console.warn('LINE loading animation unavailable:', error);
@@ -835,10 +835,7 @@ async function processPostback(
   if (action === 'force') {
     const word = normalizeWord(params.get('word'));
     if (!word) throw new Error('Forced word is missing');
-    const [details] = await Promise.all([
-      generateWord(admin, user, word, true),
-      startLoading(user.lineUserId),
-    ]);
+    const details = await generateWord(admin, user, word, true);
     await reply(event.replyToken, [buildWordCard(details, true)]);
     return;
   }
@@ -855,6 +852,16 @@ async function processEvent(admin: any, event: any) {
   const lineUserId = asText(event.source?.userId);
   const replyToken = asText(event.replyToken);
   if (!lineUserId || !replyToken) return;
+
+  const canDisplayLoading =
+    event.source?.type === 'user' &&
+    (
+      event.type === 'postback' ||
+      (event.type === 'message' && event.message?.type === 'text')
+    );
+  if (canDisplayLoading) {
+    await startLoading(lineUserId);
+  }
 
   const profile = await getProfileForEvent(admin, lineUserId);
   const user = await ensureLineUser(admin, profile);
@@ -917,10 +924,7 @@ async function processEvent(admin: any, event: any) {
     return;
   }
 
-  const [details] = await Promise.all([
-    generateWord(admin, user, input, false),
-    startLoading(lineUserId),
-  ]);
+  const details = await generateWord(admin, user, input, false);
 
   if (details.validation?.isInvalid) {
     await reply(replyToken, [buildSuggestionCard(input, details)]);
