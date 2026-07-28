@@ -766,6 +766,67 @@ async function buildStatsCard(admin: any, userId: string) {
   };
 }
 
+async function buildAccountStatusMessage(admin: any, user: LineUser) {
+  const { data: deckRows, error } = await admin
+    .from('user_decks')
+    .select('srs_level,next_review_date')
+    .eq('user_id', user.id);
+
+  if (error) {
+    throw new Error('Could not inspect LINE deck: ' + error.message);
+  }
+
+  const now = Date.now();
+  const total = deckRows?.length || 0;
+  const due = (deckRows || []).filter((row: any) =>
+    row.srs_level !== 'Mastered' &&
+    Number.isFinite(Date.parse(row.next_review_date)) &&
+    Date.parse(row.next_review_date) <= now
+  ).length;
+  const mastered = (deckRows || []).filter(
+    (row: any) => row.srs_level === 'Mastered'
+  ).length;
+  const maskId = (value: string) =>
+    value.length <= 10 ? value : value.slice(0, 4) + '...' + value.slice(-4);
+  const accountType = user.email.endsWith('@line.guest.com')
+    ? 'บัญชี LINE'
+    : 'บัญชี Mem-eng ที่เชื่อมแล้ว';
+
+  return {
+    type: 'text',
+    text:
+      'สถานะบัญชี Mem-eng\n' +
+      'ชื่อ LINE: ' + user.displayName + '\n' +
+      'เข้าสู่ระบบด้วย: ' + accountType + '\n' +
+      'รหัสบัญชี: ' + maskId(user.id) + '\n\n' +
+      'คำในคลัง: ' + total + ' คำ\n' +
+      'พร้อมทวนตอนนี้: ' + due + ' คำ\n' +
+      'จำได้แล้ว: ' + mastered + ' คำ\n\n' +
+      (due > 0
+        ? 'กดปุ่มด้านล่างเพื่อเปิดคำล่าสุดและเริ่มทวนได้เลย'
+        : 'ตอนนี้ยังไม่มีคำถึงรอบทวน'),
+    quickReply: {
+      items: [
+        {
+          type: 'action',
+          action: {
+            type: 'uri',
+            label: due > 0 ? 'เปิดคำพร้อมทวน' : 'เปิดคลังคำ',
+            uri: LINE_START_URL,
+          },
+        },
+        {
+          type: 'action',
+          action: {
+            type: 'message',
+            label: 'ดูคลังคำ',
+            text: 'คลัง',
+          },
+        },
+      ],
+    },
+  };
+}
 const helpMessage = () => ({
   type: 'text',
   text:
@@ -902,20 +963,21 @@ async function processEvent(admin: any, event: any) {
     return;
   }
 
-  if (['account', 'who am i', 'my account'].includes(command)) {
-    const accountType = user.email.endsWith('@line.guest.com')
-      ? 'LINE account'
-      : 'Mem-eng account connected';
-    await reply(replyToken, [{
-      type: 'text',
-      text:
-        'Account status\n' +
-        'LINE name: ' + user.displayName + '\n' +
-        'Sign-in: ' + accountType + '\n' +
-        'Your saved words and progress use this account.',
-    }]);
+  if ([
+    'account',
+    'who am i',
+    'my account',
+    'ตรวจบัญชี',
+    'เช็กบัญชี',
+    'เช็คบัญชี',
+    'ซิงก์คำใหม่',
+    'ซิงค์คำใหม่',
+    'sync',
+  ].includes(command)) {
+    await reply(replyToken, [await buildAccountStatusMessage(admin, user)]);
     return;
   }
+
   if (!input || input.length > 80) {
     await reply(replyToken, [{
       type: 'text',
