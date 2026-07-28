@@ -924,7 +924,7 @@ const ReviewOptionButton = ({ onClick, disabled, label, color, icon: Icon, isLoa
 };
 
 const Purge = () => {
-  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, warmCurriculumBuffer, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords, uploadUserCardImage, updateUserCardOverride } = useVocab();
+  const { vocab: rawVocab, updateWordSrs, getProjectedIntervals, streak, loading, deleteWordFromDeck, addNewCurriculumWords, warmCurriculumBuffer, updateWordProperties, activeCurriculum, addWordToDeck, getAiWordRichDetails, curriculumWords, uploadUserCardImage, updateUserCardOverride, syncDiagnostics, syncNow } = useVocab();
   const vocab = useMemo(() => {
     return rawVocab.filter(item => {
       if (activeCurriculum === 'Self-Study only') {
@@ -935,7 +935,16 @@ const Purge = () => {
   }, [rawVocab, activeCurriculum, curriculumWords]);
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { isAnonymous, user } = useAuth();
+  const { isAnonymous, isLiffMode, user } = useAuth();
+  const liffInitialSyncRef = useRef('');
+
+  useEffect(() => {
+    if (!isLiffMode || !user?.id || liffInitialSyncRef.current === user.id) {
+      return;
+    }
+    liffInitialSyncRef.current = user.id;
+    void syncNow();
+  }, [isLiffMode, syncNow, user?.id]);
 
   const speakText = (text) => {
     speakEnglish(text);
@@ -4560,7 +4569,25 @@ const Purge = () => {
           }}>
             {/* Glowing Start Button or Check Circle */}
             <AnimatePresence mode="wait">
-              {dueCount > 0 ? (
+              {isLiffMode && syncDiagnostics.status === 'syncing' ? (
+                <motion.div
+                  key="line-deck-sync"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={{
+                    minHeight: '180px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.75rem',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  <Loader2 size={30} className="spin" color="#f97316" />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>Syncing your LINE words...</span>
+                </motion.div>
+              ) : dueCount > 0 ? (
                 <motion.div
                   key="start-dashboard"
                   initial={{ opacity: 0, scale: 0.96 }}

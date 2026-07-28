@@ -268,13 +268,11 @@ export const VocabProvider = ({ children }) => {
   }, [user, isLiffMode]);
 
   const pullRemoteDecks = async (userId) => {
-      // 3. Fetch all decks from Supabase (source of truth)
+      // Fetch deck rows and dictionary data separately. Embedded joins can
+      // return partial relations in mobile WebViews while auth is settling.
       const { data: remoteDecks, error: fetchError } = await supabase
         .from('user_decks')
-        .select(`
-          *,
-          global_dictionary (*)
-        `)
+        .select('*')
         .eq('user_id', userId);
 
       if (fetchError) {
@@ -282,7 +280,31 @@ export const VocabProvider = ({ children }) => {
       }
 
       if (remoteDecks) {
+        const dictionaryIds = [...new Set(
+          remoteDecks.map(deck => deck.word_id).filter(Boolean)
+        )];
+        const dictionaryRows = [];
+
+        for (let start = 0; start < dictionaryIds.length; start += 200) {
+          const { data, error } = await supabase
+            .from('global_dictionary')
+            .select('*')
+            .in('id', dictionaryIds.slice(start, start + 200));
+
+          if (error) {
+            throw new Error(`Dictionary sync failed: ${error.message}`);
+          }
+          if (data) dictionaryRows.push(...data);
+        }
+
+        const dictionaryById = new Map(
+          dictionaryRows.map(row => [row.id, row])
+        );
         const merged = remoteDecks
+          .map(ud => ({
+            ...ud,
+            global_dictionary: dictionaryById.get(ud.word_id)
+          }))
           .filter(ud => ud.global_dictionary)
           .map(ud => {
             let parsedMeaning = ud.global_dictionary.meaning;
