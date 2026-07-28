@@ -761,6 +761,7 @@ const AddWord = () => {
 
   const handleSaveWord = async () => {
     if (isSuccess || isExiting) return;
+    setErrorMsg('');
     const isTutorialActive = localStorage.getItem('memeng_tutorial_done') === 'false' && localStorage.getItem('memeng_tutorial_started') === 'true';
     if (isTutorialActive) {
       setIsExiting(true);

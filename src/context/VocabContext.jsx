@@ -284,42 +284,33 @@ export const VocabProvider = ({ children }) => {
       // 1. Upload unsynced local decks
       const localCards = vocab.filter(item => typeof item.id === 'string' && item.id.startsWith('local-'));
       for (const card of localCards) {
-        // Insert into global dictionary if missing
         let wordId = null;
-        const { data: existingWord } = await supabase
-          .from('global_dictionary')
-          .select('id')
-          .eq('word', card.word.toLowerCase())
-          .maybeSingle();
-
-        if (existingWord) {
-          wordId = existingWord.id;
-        } else {
-          const richDetails = typeof card.meaning === 'string' ? JSON.parse(card.meaning) : card.meaning;
-          const { data: newWord, error: wordError } = await supabase
-            .from('global_dictionary')
-            .insert({
+        const richDetails = typeof card.meaning === 'string'
+          ? JSON.parse(card.meaning)
+          : card.meaning;
+        const { data: dictionaryCard, error: dictionaryError } =
+          await supabase.functions.invoke('save-dictionary-card', {
+            body: {
               word: card.word.toLowerCase(),
               pos: card.pos || 'n.',
-              meaning: typeof card.meaning === 'string' ? card.meaning : JSON.stringify(card.meaning),
-              rich_data: richDetails,
-              cefr_level: card.cefrLevel || 'Unranked'
-            })
-            .select('id')
-            .single();
+              richData: richDetails,
+              cefrLevel: card.cefrLevel || 'Unranked'
+            }
+          });
 
-          if (!wordError && newWord) {
-            wordId = newWord.id;
-          }
+        if (!dictionaryError && !dictionaryCard?.error) {
+          wordId = dictionaryCard?.id || null;
         }
 
         if (wordId) {
           // Insert into user_decks
           await supabase
             .from('user_decks')
-            .insert({
+            .upsert({
               user_id: userId,
               word_id: wordId,
+              custom_meaning: richDetails,
+              custom_video_url: card.videoUrl || null,
               srs_level: card.srsLevel,
               repetition: card.repetition,
               interval: card.interval,
@@ -335,7 +326,7 @@ export const VocabProvider = ({ children }) => {
               learning_steps: card.learning_steps || 0,
               last_review_date: card.lastReviewDate || null,
               mastered_at: card.masteredAt || null
-            });
+            }, { onConflict: 'user_id,word_id', ignoreDuplicates: true });
         }
       }
 
@@ -709,58 +700,32 @@ export const VocabProvider = ({ children }) => {
           }
           remoteDeckId = privateDeckId;
         } else {
-        const { data: existingWord, error: existingWordError } = await supabase
-          .from('global_dictionary')
-          .select('id, rich_data')
-          .eq('word', normalizedWord)
-          .maybeSingle();
+          const { data: dictionaryCard, error: dictionaryError } =
+            await supabase.functions.invoke('save-dictionary-card', {
+              body: {
+                word: normalizedWord,
+                pos: richDetails.pos || 'n.',
+                richData: richDetails,
+                cefrLevel: richDetails.cefrLevel || 'Unranked'
+              }
+            });
 
-        if (existingWordError) {
-          throw existingWordError;
-        }
-
-        if (existingWord) {
-          wordId = existingWord.id;
-          // If the cached global_dictionary record doesn't have an image, update it
-          const cachedRichData = existingWord.rich_data ? (typeof existingWord.rich_data === 'string' ? JSON.parse(existingWord.rich_data) : existingWord.rich_data) : null;
-          if (cachedRichData && (!cachedRichData.savedSceneImages || !cachedRichData.savedSceneImages[0]) && imgUrl) {
-            if (!cachedRichData.savedSceneImages) cachedRichData.savedSceneImages = [];
-            cachedRichData.savedSceneImages[0] = imgUrl;
-            await supabase
-              .from('global_dictionary')
-              .update({
-                meaning: JSON.stringify(cachedRichData),
-                rich_data: cachedRichData
-              })
-              .eq('id', wordId);
+          if (dictionaryError || dictionaryCard?.error || !dictionaryCard?.id) {
+            throw new Error(
+              dictionaryCard?.error ||
+              dictionaryError?.message ||
+              'Could not resolve dictionary word'
+            );
           }
-        } else {
-          const { data: newWord, error: wordError } = await supabase
-            .from('global_dictionary')
-            .insert({
-              word: normalizedWord,
-              pos: richDetails.pos || 'n.',
-              meaning: typeof richDetails === 'object' ? JSON.stringify(richDetails) : richDetails,
-              rich_data: richDetails,
-              cefr_level: richDetails.cefrLevel || 'Unranked'
-            })
-            .select('id')
-            .single();
-          if (wordError || !newWord?.id) {
-            throw wordError || new Error('Could not create dictionary word');
-          }
-          wordId = newWord.id;
-        }
-
-        if (!wordId) {
-          throw new Error('Could not resolve dictionary word');
-        }
+          wordId = dictionaryCard.id;
 
           const { data: userDeckRecord, error: deckError } = await supabase
             .from('user_decks')
             .insert({
               user_id: user.id,
               word_id: wordId,
+              custom_meaning: richDetails,
+              custom_video_url: imgUrl,
               srs_level: newCard.srsLevel,
               repetition: newCard.repetition,
               interval: newCard.interval,
@@ -788,7 +753,12 @@ export const VocabProvider = ({ children }) => {
 
         newCard.id = remoteDeckId;
       } catch (err) {
-        console.error("Error saving word to Supabase:", err);
+        console.error("Error saving word to Supabase:", JSON.stringify({
+          code: err?.code,
+          message: err?.message,
+          details: err?.details,
+          hint: err?.hint
+        }));
         return {
           success: false,
           error: 'Could not save this word. Please try again.'
