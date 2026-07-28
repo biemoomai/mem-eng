@@ -267,6 +267,79 @@ export const VocabProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
   }, [user, isLiffMode]);
 
+  const pullRemoteDecks = async (userId) => {
+      // 3. Fetch all decks from Supabase (source of truth)
+      const { data: remoteDecks, error: fetchError } = await supabase
+        .from('user_decks')
+        .select(`
+          *,
+          global_dictionary (*)
+        `)
+        .eq('user_id', userId);
+
+      if (fetchError) {
+        throw new Error(`Deck sync failed: ${fetchError.message}`);
+      }
+
+      if (remoteDecks) {
+        const merged = remoteDecks
+          .filter(ud => ud.global_dictionary)
+          .map(ud => {
+            let parsedMeaning = ud.global_dictionary.meaning;
+            let parsedRichData = ud.global_dictionary.rich_data;
+          try {
+            if (typeof parsedMeaning === 'string') parsedMeaning = JSON.parse(parsedMeaning);
+          } catch (e) {}
+          try {
+            if (typeof parsedRichData === 'string') parsedRichData = JSON.parse(parsedRichData);
+          } catch (e) {}
+
+          const customMeaning = ud.custom_meaning || null;
+          const effectiveMeaning = customMeaning || parsedRichData || parsedMeaning;
+
+          return {
+            id: ud.id,
+            word: ud.custom_word || ud.global_dictionary.word,
+            originalWord: ud.global_dictionary.word,
+            pos: ud.global_dictionary.pos,
+            meaning: effectiveMeaning,
+            richCardData: effectiveMeaning,
+            customMeaning,
+            customVideoUrl: ud.custom_video_url,
+            videoUrl: ud.custom_video_url || effectiveMeaning?.savedSceneImages?.[0] || parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
+            curriculum: parsedRichData?.curriculum || parsedMeaning?.curriculum || 'Self-Study only',
+            srsLevel: ud.srs_level,
+            repetition: ud.repetition,
+            interval: ud.interval,
+            easeFactor: ud.ease_factor,
+            nextReviewDate: ud.next_review_date,
+            stability: ud.stability,
+            difficulty: ud.difficulty,
+            reps: ud.reps,
+            lapses: ud.lapses,
+            state: ud.state,
+            scheduled_days: ud.scheduled_days || 0,
+            elapsed_days: ud.elapsed_days || 0,
+            learning_steps: ud.learning_steps || 0,
+            lastReviewDate: ud.last_review_date || null,
+            masteredAt: ud.mastered_at || null,
+            created_at: ud.created_at
+          };
+        });
+        setVocab(merged);
+        saveDeckToLocal(merged);
+        const syncedAt = new Date().toISOString();
+        setSyncDiagnostics({
+          status: 'success',
+          lastAttemptAt: syncedAt,
+          lastSuccessAt: syncedAt,
+          remoteCount: remoteDecks.length,
+          visibleCount: merged.length,
+          error: null
+        });
+      }
+  };
+
   const syncData = async (userId, isBackground = false) => {
     if (syncInFlightRef.current) {
       syncQueuedRef.current = true;
@@ -281,6 +354,9 @@ export const VocabProvider = ({ children }) => {
     }));
     try {
       if (!isBackground) setLoading(true);
+
+      // LINE saves arrive remotely, so pull the server deck before slower maintenance work.
+      await pullRemoteDecks(userId);
 
       // Fetch user profile stats (Streak)
       const { data: userProfile, error: profileError } = await supabase
@@ -375,76 +451,6 @@ export const VocabProvider = ({ children }) => {
         }
       }
 
-      // 3. Fetch all decks from Supabase (source of truth)
-      const { data: remoteDecks, error: fetchError } = await supabase
-        .from('user_decks')
-        .select(`
-          *,
-          global_dictionary (*)
-        `)
-        .eq('user_id', userId);
-
-      if (fetchError) {
-        throw new Error(`Deck sync failed: ${fetchError.message}`);
-      }
-
-      if (remoteDecks) {
-        const merged = remoteDecks
-          .filter(ud => ud.global_dictionary)
-          .map(ud => {
-            let parsedMeaning = ud.global_dictionary.meaning;
-            let parsedRichData = ud.global_dictionary.rich_data;
-          try {
-            if (typeof parsedMeaning === 'string') parsedMeaning = JSON.parse(parsedMeaning);
-          } catch (e) {}
-          try {
-            if (typeof parsedRichData === 'string') parsedRichData = JSON.parse(parsedRichData);
-          } catch (e) {}
-
-          const customMeaning = ud.custom_meaning || null;
-          const effectiveMeaning = customMeaning || parsedRichData || parsedMeaning;
-
-          return {
-            id: ud.id,
-            word: ud.custom_word || ud.global_dictionary.word,
-            originalWord: ud.global_dictionary.word,
-            pos: ud.global_dictionary.pos,
-            meaning: effectiveMeaning,
-            richCardData: effectiveMeaning,
-            customMeaning,
-            customVideoUrl: ud.custom_video_url,
-            videoUrl: ud.custom_video_url || effectiveMeaning?.savedSceneImages?.[0] || parsedRichData?.savedSceneImages?.[0] || parsedMeaning?.savedSceneImages?.[0] || '',
-            curriculum: parsedRichData?.curriculum || parsedMeaning?.curriculum || 'Self-Study only',
-            srsLevel: ud.srs_level,
-            repetition: ud.repetition,
-            interval: ud.interval,
-            easeFactor: ud.ease_factor,
-            nextReviewDate: ud.next_review_date,
-            stability: ud.stability,
-            difficulty: ud.difficulty,
-            reps: ud.reps,
-            lapses: ud.lapses,
-            state: ud.state,
-            scheduled_days: ud.scheduled_days || 0,
-            elapsed_days: ud.elapsed_days || 0,
-            learning_steps: ud.learning_steps || 0,
-            lastReviewDate: ud.last_review_date || null,
-            masteredAt: ud.mastered_at || null,
-            created_at: ud.created_at
-          };
-        });
-        setVocab(merged);
-        saveDeckToLocal(merged);
-        const syncedAt = new Date().toISOString();
-        setSyncDiagnostics({
-          status: 'success',
-          lastAttemptAt: syncedAt,
-          lastSuccessAt: syncedAt,
-          remoteCount: remoteDecks.length,
-          visibleCount: merged.length,
-          error: null
-        });
-      }
     } catch (err) {
       console.error("Error in syncData:", err);
       setSyncDiagnostics(current => ({

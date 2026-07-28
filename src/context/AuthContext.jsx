@@ -65,7 +65,8 @@ export const AuthProvider = ({ children }) => {
 
           if (!liff.isLoggedIn()) {
             lineLoginRedirectStarted = true;
-            liff.login({ redirectUri: window.location.href });
+            // Let LINE use the configured LIFF endpoint. A direct pages.dev URL may not be a valid redirect target.
+            liff.login();
             return;
           }
 
