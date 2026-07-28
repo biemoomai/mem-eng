@@ -196,6 +196,14 @@ export const VocabProvider = ({ children }) => {
   const curriculumPrefetchingRef = useRef(new Set());
   const [streak, setStreak] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [syncDiagnostics, setSyncDiagnostics] = useState({
+    status: 'idle',
+    lastAttemptAt: null,
+    lastSuccessAt: null,
+    remoteCount: null,
+    visibleCount: null,
+    error: null
+  });
   const [reviewLogs, setReviewLogs] = useState(() => {
     try {
       const saved = localStorage.getItem('vocab_review_logs');
@@ -265,6 +273,12 @@ export const VocabProvider = ({ children }) => {
       return;
     }
     syncInFlightRef.current = true;
+    setSyncDiagnostics(current => ({
+      ...current,
+      status: 'syncing',
+      lastAttemptAt: new Date().toISOString(),
+      error: null
+    }));
     try {
       if (!isBackground) setLoading(true);
 
@@ -370,7 +384,11 @@ export const VocabProvider = ({ children }) => {
         `)
         .eq('user_id', userId);
 
-      if (!fetchError && remoteDecks) {
+      if (fetchError) {
+        throw new Error(`Deck sync failed: ${fetchError.message}`);
+      }
+
+      if (remoteDecks) {
         const merged = remoteDecks
           .filter(ud => ud.global_dictionary)
           .map(ud => {
@@ -417,9 +435,23 @@ export const VocabProvider = ({ children }) => {
         });
         setVocab(merged);
         saveDeckToLocal(merged);
+        const syncedAt = new Date().toISOString();
+        setSyncDiagnostics({
+          status: 'success',
+          lastAttemptAt: syncedAt,
+          lastSuccessAt: syncedAt,
+          remoteCount: remoteDecks.length,
+          visibleCount: merged.length,
+          error: null
+        });
       }
     } catch (err) {
       console.error("Error in syncData:", err);
+      setSyncDiagnostics(current => ({
+        ...current,
+        status: 'error',
+        error: err instanceof Error ? err.message : String(err)
+      }));
     } finally {
       syncInFlightRef.current = false;
       setLoading(false);
@@ -1579,7 +1611,9 @@ export const VocabProvider = ({ children }) => {
       curriculumList,
       loadingCurriculumWords,
       clearDeckAndResetStats,
-      loading 
+      loading,
+      syncDiagnostics,
+      syncNow: () => user ? syncData(user.id, true) : Promise.resolve()
     }}>
       {children}
     </VocabContext.Provider>

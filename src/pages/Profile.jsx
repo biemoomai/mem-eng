@@ -53,11 +53,22 @@ const getNextReviewText = (nextReviewDate) => {
 };
 
 const Profile = () => {
-  const { vocab, getSrsCounts, deleteWordFromDeck, updateWordProperties, activeCurriculum, setActiveCurriculum, clearDeckAndResetStats, curriculumWords, curriculumList, loadingCurriculumWords, addWordToDeck, getAiWordRichDetails } = useVocab();
-  const { profile, signOut, isAnonymous } = useAuth();
+  const { vocab, getSrsCounts, deleteWordFromDeck, updateWordProperties, activeCurriculum, setActiveCurriculum, clearDeckAndResetStats, curriculumWords, curriculumList, loadingCurriculumWords, addWordToDeck, getAiWordRichDetails, syncDiagnostics, syncNow } = useVocab();
+  const { user, profile, signOut, isAnonymous, isLiffMode } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const accountDebugEnabled =
+    new URLSearchParams(location.search).get('debug') === 'account';
+  const maskId = (value) => {
+    if (!value) return 'none';
+    const text = String(value);
+    return text.length <= 8 ? text : `${text.slice(0, 4)}...${text.slice(-4)}`;
+  };
+  const lineUserId =
+    profile?.line_user_id ||
+    user?.app_metadata?.line_user_id ||
+    user?.user_metadata?.line_user_id;
   const activeVocab = vocab.filter(item => {
     if (!item || !item.word) return false;
     if (activeCurriculum === 'Self-Study only') {
@@ -729,6 +740,21 @@ const Profile = () => {
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {accountDebugEnabled && (
+        <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', right: '0.75rem', zIndex: 100000, padding: '0.8rem', border: `1px solid ${syncDiagnostics?.status === 'error' ? '#ef4444' : '#eab308'}`, borderRadius: '8px', background: '#111318', color: '#e5e7eb', fontSize: '0.72rem', lineHeight: 1.5, boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }}>
+          <strong style={{ color: '#facc15' }}>Account sync check</strong>
+          <div>LIFF mode: {isLiffMode ? 'yes' : 'no'}</div>
+          <div>Supabase account: {maskId(user?.id)}</div>
+          <div>LINE account: {maskId(lineUserId)}</div>
+          <div>Sync: {syncDiagnostics?.status || 'idle'}</div>
+          <div>Database rows: {syncDiagnostics?.remoteCount ?? '-'} | Visible cards: {syncDiagnostics?.visibleCount ?? vocab.length}</div>
+          <div>Last success: {syncDiagnostics?.lastSuccessAt ? new Date(syncDiagnostics.lastSuccessAt).toLocaleTimeString() : '-'}</div>
+          {syncDiagnostics?.error && <div style={{ color: '#f87171', overflowWrap: 'anywhere' }}>Error: {syncDiagnostics.error}</div>}
+          <button type="button" onClick={() => void syncNow()} disabled={syncDiagnostics?.status === 'syncing'} style={{ marginTop: '0.45rem', width: '100%', padding: '0.5rem', border: '1px solid rgba(250,204,21,0.45)', borderRadius: '6px', background: 'rgba(250,204,21,0.12)', color: '#facc15', fontWeight: 700 }}>
+            {syncDiagnostics?.status === 'syncing' ? 'Syncing...' : 'Sync now'}
+          </button>
+        </div>
+      )}
       
       {/* Full-Screen Streak Splash Overlay */}
       <AnimatePresence>
