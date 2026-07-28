@@ -217,9 +217,10 @@ export const VocabProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  const { user } = useAuth();
+  const { user, isLiffMode } = useAuth();
   const resumeSyncTimerRef = useRef(null);
   const syncInFlightRef = useRef(false);
+  const syncQueuedRef = useRef(false);
 
   // Sync local deck and review logs to/from Supabase on login or reconnect
   useEffect(() => {
@@ -239,10 +240,16 @@ export const VocabProvider = ({ children }) => {
       document.addEventListener('visibilitychange', syncOnResume);
       window.addEventListener('focus', syncOnResume);
       window.addEventListener('pageshow', syncOnResume);
+      const liffSyncInterval = isLiffMode
+        ? window.setInterval(syncOnResume, 10000)
+        : null;
       return () => {
         document.removeEventListener('visibilitychange', syncOnResume);
         window.removeEventListener('focus', syncOnResume);
         window.removeEventListener('pageshow', syncOnResume);
+        if (liffSyncInterval) {
+          window.clearInterval(liffSyncInterval);
+        }
         if (resumeSyncTimerRef.current) {
           clearTimeout(resumeSyncTimerRef.current);
           resumeSyncTimerRef.current = null;
@@ -250,10 +257,13 @@ export const VocabProvider = ({ children }) => {
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- This effect has an intentionally controlled lifecycle.
-  }, [user]);
+  }, [user, isLiffMode]);
 
   const syncData = async (userId, isBackground = false) => {
-    if (syncInFlightRef.current) return;
+    if (syncInFlightRef.current) {
+      syncQueuedRef.current = true;
+      return;
+    }
     syncInFlightRef.current = true;
     try {
       if (!isBackground) setLoading(true);
@@ -413,6 +423,10 @@ export const VocabProvider = ({ children }) => {
     } finally {
       syncInFlightRef.current = false;
       setLoading(false);
+      if (syncQueuedRef.current) {
+        syncQueuedRef.current = false;
+        void syncData(userId, true);
+      }
     }
   };
 
