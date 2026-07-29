@@ -268,44 +268,31 @@ export const VocabProvider = ({ children }) => {
   }, [user, isLiffMode]);
 
   const pullRemoteDecks = async (userId) => {
-      // Fetch deck rows and dictionary data separately. Embedded joins can
-      // return partial relations in mobile WebViews while auth is settling.
-      const { data: remoteDecks, error: fetchError } = await supabase
-        .from('user_decks')
-        .select('*')
-        .eq('user_id', userId);
+      // This RPC may read non-public dictionary details only when the card
+      // belongs to the currently authenticated user.
+      const { data: ownedRows, error: ownedDeckError } = await supabase
+        .rpc('get_my_deck_cards');
 
-      if (fetchError) {
-        throw new Error(`Deck sync failed: ${fetchError.message}`);
+      if (ownedDeckError) {
+        throw new Error(`Owned deck sync failed: ${ownedDeckError.message}`);
       }
 
+      const remoteDecks = (ownedRows || []).map(row => ({
+        ...(row.deck || {}),
+        global_dictionary: row.dictionary || null
+      }));
+
       if (remoteDecks) {
-        const dictionaryIds = [...new Set(
-          remoteDecks.map(deck => deck.word_id).filter(Boolean)
-        )];
-        const dictionaryRows = [];
-
-        for (let start = 0; start < dictionaryIds.length; start += 200) {
-          const { data, error } = await supabase
-            .from('global_dictionary')
-            .select('*')
-            .in('id', dictionaryIds.slice(start, start + 200));
-
-          if (error) {
-            throw new Error(`Dictionary sync failed: ${error.message}`);
-          }
-          if (data) dictionaryRows.push(...data);
+        const missingDictionaryCount = remoteDecks.filter(
+          deck => !deck.global_dictionary
+        ).length;
+        if (missingDictionaryCount > 0) {
+          throw new Error(
+            `Deck sync incomplete: ${missingDictionaryCount} card details are unavailable`
+          );
         }
 
-        const dictionaryById = new Map(
-          dictionaryRows.map(row => [row.id, row])
-        );
         const merged = remoteDecks
-          .map(ud => ({
-            ...ud,
-            global_dictionary: dictionaryById.get(ud.word_id)
-          }))
-          .filter(ud => ud.global_dictionary)
           .map(ud => {
             let parsedMeaning = ud.global_dictionary.meaning;
             let parsedRichData = ud.global_dictionary.rich_data;
