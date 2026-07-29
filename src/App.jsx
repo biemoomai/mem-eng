@@ -28,6 +28,7 @@ const ScreenLoading = () => (
 function AppContent() {
   const {
     user,
+    profile,
     signOut,
     deleteAccount,
     loading,
@@ -37,10 +38,21 @@ function AppContent() {
     isLiffMode,
   } = useAuth();
   const needsGoogleLink = isLineUser && !hasGoogleIdentity;
-  const { vocab, streak, clearDeckAndResetStats } = useVocab();
+  const { vocab, streak, clearDeckAndResetStats, syncDiagnostics, syncNow } = useVocab();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const lineUserId =
+    profile?.line_user_id ||
+    user?.app_metadata?.line_user_id ||
+    user?.user_metadata?.line_user_id;
+  const maskAccountId = (value) => {
+    if (!value) return 'not found';
+    const text = String(value);
+    return text.length <= 10 ? text : `${text.slice(0, 4)}...${text.slice(-4)}`;
+  };
+  const lineDisplayName =
+    profile?.display_name || user?.user_metadata?.name || 'LINE learner';
   const [menuOpen, setMenuOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
@@ -430,7 +442,7 @@ function AppContent() {
     w => w.srsLevel !== 'Mastered' && new Date(w.nextReviewDate) <= new Date()
   ).length;
 
-  const showMenuButton = user && location.pathname !== '/login' && !isLiffMode;
+  const showMenuButton = user && location.pathname !== '/login';
 
   const navItems = [
     {
@@ -1042,7 +1054,9 @@ function AppContent() {
               fontWeight: 750
             }}>
               <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', background: isAnonymous ? '#facc15' : (theme === 'theme-3' ? '#000000' : '#cbd5e1') }} />
-              {isAnonymous ? (
+              {isLiffMode ? (
+                <span>LINE: <strong style={{ color: '#22c55e' }}>{lineDisplayName}</strong></span>
+              ) : isAnonymous ? (
                 <span>Now you use <strong style={{ color: '#facc15' }}>Guest mode</strong></span>
               ) : (
                 <span>Signed in as <strong style={{ color: theme === 'theme-3' ? '#000000' : 'inherit' }}>{user?.email || 'Account'}</strong></span>
@@ -1063,6 +1077,54 @@ function AppContent() {
                 WebkitOverflowScrolling: 'touch'
               }}
             >
+              {isLiffMode && (
+                <motion.div
+                  variants={itemVariants}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '12px',
+                    background: 'rgba(34, 197, 94, 0.07)',
+                    border: '1px solid rgba(34, 197, 94, 0.22)',
+                    color: '#e2e8f0'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <User size={16} color="#22c55e" />
+                    <strong style={{ fontSize: '0.86rem' }}>LINE Account & Sync</strong>
+                  </div>
+                  <div style={{ display: 'grid', gap: '3px', color: '#94a3b8', fontSize: '0.7rem', lineHeight: 1.45 }}>
+                    <span>LINE name: <strong style={{ color: '#e2e8f0' }}>{lineDisplayName}</strong></span>
+                    <span>Mem-eng ID: <strong style={{ color: '#e2e8f0' }}>{maskAccountId(user?.id)}</strong></span>
+                    <span>LINE ID: <strong style={{ color: '#e2e8f0' }}>{maskAccountId(lineUserId)}</strong></span>
+                    <span>Server deck: <strong style={{ color: '#e2e8f0' }}>{syncDiagnostics?.remoteCount ?? 'checking'} words</strong></span>
+                    <span>Loaded here: <strong style={{ color: '#e2e8f0' }}>{syncDiagnostics?.visibleCount ?? vocab.length} words</strong></span>
+                    <span>Status: <strong style={{ color: syncDiagnostics?.status === 'error' ? '#f87171' : '#22c55e' }}>{syncDiagnostics?.status || 'idle'}</strong></span>
+                    {syncDiagnostics?.error && <span style={{ color: '#f87171', overflowWrap: 'anywhere' }}>{syncDiagnostics.error}</span>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void syncNow();
+                    }}
+                    disabled={syncDiagnostics?.status === 'syncing'}
+                    style={{
+                      width: '100%',
+                      marginTop: '10px',
+                      padding: '9px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(34, 197, 94, 0.35)',
+                      background: 'rgba(34, 197, 94, 0.12)',
+                      color: '#86efac',
+                      fontSize: '0.76rem',
+                      fontWeight: 800,
+                      cursor: syncDiagnostics?.status === 'syncing' ? 'wait' : 'pointer'
+                    }}
+                  >
+                    {syncDiagnostics?.status === 'syncing' ? 'Syncing LINE deck...' : 'Sync LINE deck now'}
+                  </button>
+                </motion.div>
+              )}
               {/* Exit Study Session */}
               {localStorage.getItem('memeng_is_studying') === 'true' && (
                 <motion.button
