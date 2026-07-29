@@ -53,6 +53,8 @@ function AppContent() {
     const text = String(value);
     return text.length <= 10 ? text : `${text.slice(0, 4)}...${text.slice(-4)}`;
   };
+  const hasVerifiedLineAccount =
+    Boolean(isLineUser || accountMergeStats?.lineConnected);
   const lineDisplayName =
     accountMergeStats?.lineDisplayName ||
     (isLineUser ? profile?.display_name : null) ||
@@ -1063,7 +1065,7 @@ function AppContent() {
               fontWeight: 750
             }}>
               <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', background: isAnonymous ? '#facc15' : (theme === 'theme-3' ? '#000000' : '#cbd5e1') }} />
-              {isLiffMode ? (
+              {hasVerifiedLineAccount ? (
                 <span>LINE: <strong style={{ color: '#22c55e' }}>{lineDisplayName}</strong></span>
               ) : isAnonymous ? (
                 <span>Now you use <strong style={{ color: '#facc15' }}>Guest mode</strong></span>
@@ -1103,7 +1105,7 @@ function AppContent() {
                   </div>
                   <div style={{ display: 'grid', gap: '3px', color: '#94a3b8', fontSize: '0.7rem', lineHeight: 1.45 }}>
                     <span>Google account: <strong style={{ color: '#e2e8f0' }}>{hasGoogleIdentity ? googleDisplayName : 'not connected'}</strong></span>
-                    <span>LINE account: <strong style={{ color: accountMergeStats?.lineConnected || isLineUser ? '#86efac' : '#f87171' }}>{accountMergeStats?.lineConnected || isLineUser ? lineDisplayName : 'not connected'}</strong></span>
+                    <span>LINE account: <strong style={{ color: hasVerifiedLineAccount ? '#86efac' : '#f87171' }}>{hasVerifiedLineAccount ? lineDisplayName : 'not connected'}</strong></span>
                     <span>Mem-eng ID: <strong style={{ color: '#e2e8f0' }}>{maskAccountId(user?.id)}</strong></span>
                     <span>LINE ID: <strong style={{ color: '#e2e8f0' }}>{maskAccountId(lineUserId)}</strong></span>
                     {accountMergeStats?.mergedAt && (

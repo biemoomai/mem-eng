@@ -37,6 +37,12 @@ const rememberLiffMode = () => {
   }
 };
 
+const getGoogleAccountMergeTokenFromUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('merge_token');
+  return /^[0-9a-f]{64}$/.test(token || '') ? token : '';
+};
+
 const getPendingGoogleAccountMergeToken = () => {
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get('merge_token');
@@ -47,8 +53,13 @@ const getPendingGoogleAccountMergeToken = () => {
   return localStorage.getItem('memeng_account_merge_token');
 };
 
-const hasPendingGoogleAccountMerge = () =>
-  Boolean(getPendingGoogleAccountMergeToken());
+const isGoogleAccountMergeCallback = () => {
+  const params = new URLSearchParams(window.location.search);
+  return (
+    params.get('merge') === 'google' &&
+    Boolean(getGoogleAccountMergeTokenFromUrl())
+  );
+};
 
 const shouldInitializeLiff = () => {
   const params = new URLSearchParams(window.location.search);
@@ -80,8 +91,8 @@ export const AuthProvider = ({ children }) => {
 
     const initAuth = async () => {
       const liffModeRequested = shouldInitializeLiff();
-      const pendingGoogleAccountMerge = hasPendingGoogleAccountMerge();
-      const lineModeRequested = liffModeRequested && !pendingGoogleAccountMerge;
+      const googleMergeCallback = isGoogleAccountMergeCallback();
+      const lineModeRequested = liffModeRequested && !googleMergeCallback;
       let lineLoginRedirectStarted = false;
 
       try {
@@ -150,7 +161,7 @@ export const AuthProvider = ({ children }) => {
 
         if (session?.user) {
           if (isMounted) setUser(session.user);
-        } else if (!lineModeRequested && !pendingGoogleAccountMerge) {
+        } else if (!lineModeRequested && !googleMergeCallback) {
           const { data, error } = await supabase.auth.signInAnonymously();
           if (error) throw error;
           if (isMounted) setUser(data?.user ?? null);
@@ -358,6 +369,7 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithLine = async () => {
     localStorage.removeItem('memeng_logged_out');
+    localStorage.removeItem('memeng_account_merge_token');
     rememberLiffMode();
     window.location.assign(`https://liff.line.me/${LIFF_ID}`);
     return { error: null };
@@ -456,6 +468,7 @@ export const AuthProvider = ({ children }) => {
         });
       })
       .catch((error) => {
+        localStorage.removeItem('memeng_account_merge_token');
         setAccountMergeStatus({
           state: 'error',
           result: null,
