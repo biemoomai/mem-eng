@@ -61,6 +61,30 @@ Deno.serve(async (request) => {
     const body = await request.json();
     const action = body?.action;
 
+    if (action === 'status') {
+      const [
+        { data: lineIdentity, error: lineError },
+        { data: latestMerge, error: mergeError },
+        { count: deckCount, error: deckError },
+      ] = await Promise.all([
+        admin.from('line_identities').select('line_user_id,display_name').eq('user_id', user.id).maybeSingle(),
+        admin.from('account_merge_audit')
+          .select('source_deck_count,destination_deck_count_before,destination_deck_count_after,overlap_count,created_at')
+          .eq('destination_user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        admin.from('user_decks').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      ]);
+      if (lineError || mergeError || deckError) throw lineError || mergeError || deckError;
+      return json({
+        lineConnected: Boolean(lineIdentity?.line_user_id),
+        lineDisplayName: lineIdentity?.display_name || null,
+        googleDeckBefore: latestMerge?.destination_deck_count_before ?? null,
+        lineDeckBefore: latestMerge?.source_deck_count ?? null,
+        overlapCount: latestMerge?.overlap_count ?? null,
+        combinedDeckCount: deckCount ?? latestMerge?.destination_deck_count_after ?? 0,
+        mergedAt: latestMerge?.created_at || null,
+      });
+    }
+
     if (action === 'create') {
       const { data: lineIdentity, error: lineError } = await admin
         .from('line_identities')

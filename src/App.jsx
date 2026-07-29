@@ -36,6 +36,8 @@ function AppContent() {
     isLineUser,
     hasGoogleIdentity,
     isLiffMode,
+    accountMergeStats,
+    refreshAccountMergeStats,
   } = useAuth();
   const needsGoogleLink = isLineUser && !hasGoogleIdentity;
   const { vocab, streak, clearDeckAndResetStats, syncDiagnostics, syncNow } = useVocab();
@@ -52,7 +54,14 @@ function AppContent() {
     return text.length <= 10 ? text : `${text.slice(0, 4)}...${text.slice(-4)}`;
   };
   const lineDisplayName =
-    profile?.display_name || user?.user_metadata?.name || 'LINE learner';
+    accountMergeStats?.lineDisplayName ||
+    (isLineUser ? profile?.display_name : null) ||
+    'LINE learner';
+  const googleDisplayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email ||
+    'Google account';
   const [menuOpen, setMenuOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
@@ -1090,14 +1099,22 @@ function AppContent() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                     <User size={16} color="#22c55e" />
-                    <strong style={{ fontSize: '0.86rem' }}>LINE Account & Sync</strong>
+                    <strong style={{ fontSize: '0.86rem' }}>Connected Accounts & Deck</strong>
                   </div>
                   <div style={{ display: 'grid', gap: '3px', color: '#94a3b8', fontSize: '0.7rem', lineHeight: 1.45 }}>
-                    <span>LINE name: <strong style={{ color: '#e2e8f0' }}>{lineDisplayName}</strong></span>
+                    <span>Google account: <strong style={{ color: '#e2e8f0' }}>{hasGoogleIdentity ? googleDisplayName : 'not connected'}</strong></span>
+                    <span>LINE account: <strong style={{ color: accountMergeStats?.lineConnected || isLineUser ? '#86efac' : '#f87171' }}>{accountMergeStats?.lineConnected || isLineUser ? lineDisplayName : 'not connected'}</strong></span>
                     <span>Mem-eng ID: <strong style={{ color: '#e2e8f0' }}>{maskAccountId(user?.id)}</strong></span>
                     <span>LINE ID: <strong style={{ color: '#e2e8f0' }}>{maskAccountId(lineUserId)}</strong></span>
-                    <span>Server deck: <strong style={{ color: '#e2e8f0' }}>{syncDiagnostics?.remoteCount ?? 'checking'} words</strong></span>
-                    <span>Loaded here: <strong style={{ color: '#e2e8f0' }}>{syncDiagnostics?.visibleCount ?? vocab.length} words</strong></span>
+                    {accountMergeStats?.mergedAt && (
+                      <>
+                        <span>Google deck before merge: <strong style={{ color: '#e2e8f0' }}>{accountMergeStats.googleDeckBefore ?? 0} words</strong></span>
+                        <span>LINE deck before merge: <strong style={{ color: '#e2e8f0' }}>{accountMergeStats.lineDeckBefore ?? 0} words</strong></span>
+                        <span>Duplicates combined: <strong style={{ color: '#e2e8f0' }}>{accountMergeStats.overlapCount ?? 0} words</strong></span>
+                      </>
+                    )}
+                    <span>Combined server deck: <strong style={{ color: '#e2e8f0' }}>{accountMergeStats?.combinedDeckCount ?? syncDiagnostics?.remoteCount ?? 'checking'} words</strong></span>
+                    <span>Loaded on this screen: <strong style={{ color: '#e2e8f0' }}>{syncDiagnostics?.visibleCount ?? vocab.length} words</strong></span>
                     <span>Status: <strong style={{ color: syncDiagnostics?.status === 'error' ? '#f87171' : '#22c55e' }}>{syncDiagnostics?.status || 'idle'}</strong></span>
                     {syncDiagnostics?.error && <span style={{ color: '#f87171', overflowWrap: 'anywhere' }}>{syncDiagnostics.error}</span>}
                   </div>
@@ -1105,7 +1122,10 @@ function AppContent() {
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      void syncNow();
+                      void Promise.all([
+                        syncNow(),
+                        refreshAccountMergeStats(),
+                      ]);
                     }}
                     disabled={syncDiagnostics?.status === 'syncing'}
                     style={{
@@ -1121,7 +1141,7 @@ function AppContent() {
                       cursor: syncDiagnostics?.status === 'syncing' ? 'wait' : 'pointer'
                     }}
                   >
-                    {syncDiagnostics?.status === 'syncing' ? 'Syncing LINE deck...' : 'Sync LINE deck now'}
+                    {syncDiagnostics?.status === 'syncing' ? 'Syncing combined deck...' : 'Sync combined deck now'}
                   </button>
                 </motion.div>
               )}

@@ -37,8 +37,18 @@ const rememberLiffMode = () => {
   }
 };
 
+const getPendingGoogleAccountMergeToken = () => {
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get('merge_token');
+  if (/^[0-9a-f]{64}$/.test(urlToken || '')) {
+    localStorage.setItem('memeng_account_merge_token', urlToken);
+    return urlToken;
+  }
+  return localStorage.getItem('memeng_account_merge_token');
+};
+
 const hasPendingGoogleAccountMerge = () =>
-  Boolean(localStorage.getItem('memeng_account_merge_token'));
+  Boolean(getPendingGoogleAccountMergeToken());
 
 const shouldInitializeLiff = () => {
   const params = new URLSearchParams(window.location.search);
@@ -62,6 +72,7 @@ export const AuthProvider = ({ children }) => {
     result: null,
     error: null,
   });
+  const [accountMergeStats, setAccountMergeStats] = useState(null);
   const accountMergeInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -364,16 +375,18 @@ export const AuthProvider = ({ children }) => {
     }
 
     localStorage.setItem('memeng_account_merge_token', data.token);
+    const redirectUrl = new URL('/login', window.location.origin);
+    redirectUrl.searchParams.set('auth', '1');
+    redirectUrl.searchParams.set('merge', 'google');
+    redirectUrl.searchParams.set('merge_token', data.token);
     return supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/login?auth=1&merge=google`,
-      },
+      options: { redirectTo: redirectUrl.toString() },
     });
   };
 
   const completeGoogleAccountMerge = useCallback(async () => {
-    const token = localStorage.getItem('memeng_account_merge_token');
+    const token = getPendingGoogleAccountMergeToken();
     if (!token) {
       return { data: null, error: new Error('Account connection expired') };
     }
@@ -383,6 +396,14 @@ export const AuthProvider = ({ children }) => {
     });
     if (!error && data?.merged) {
       localStorage.removeItem('memeng_account_merge_token');
+      setAccountMergeStats({
+        lineConnected: true,
+        googleDeckBefore: data.destinationDeckCountBefore,
+        lineDeckBefore: data.sourceDeckCount,
+        overlapCount: data.overlapCount,
+        combinedDeckCount: data.destinationDeckCountAfter,
+        mergedAt: new Date().toISOString(),
+      });
       await supabase.auth.refreshSession();
       return { data, error: null };
     }
@@ -392,8 +413,28 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  const refreshAccountMergeStats = useCallback(async () => {
+    if (!user) {
+      setAccountMergeStats(null);
+      return null;
+    }
+    const { data, error } = await supabase.functions.invoke('account-merge', {
+      body: { action: 'status' },
+    });
+    if (error) {
+      console.error('Account merge status failed:', error);
+      return null;
+    }
+    setAccountMergeStats(data);
+    return data;
+  }, [user]);
+
   useEffect(() => {
-    const token = localStorage.getItem('memeng_account_merge_token');
+    void refreshAccountMergeStats();
+  }, [refreshAccountMergeStats]);
+
+  useEffect(() => {
+    const token = getPendingGoogleAccountMergeToken();
     const signedInWithGoogle = user?.identities?.some(
       (identity) => identity.provider === 'google',
     );
@@ -512,6 +553,8 @@ export const AuthProvider = ({ children }) => {
         signInWithGoogle,
         completeGoogleAccountMerge,
         accountMergeStatus,
+        accountMergeStats,
+        refreshAccountMergeStats,
         signOut,
         deleteAccount,
         isAnonymous,
