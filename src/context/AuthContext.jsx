@@ -37,6 +37,9 @@ const rememberLiffMode = () => {
   }
 };
 
+const hasPendingGoogleAccountMerge = () =>
+  Boolean(localStorage.getItem('memeng_account_merge_token'));
+
 const shouldInitializeLiff = () => {
   const params = new URLSearchParams(window.location.search);
   const userAgent = navigator.userAgent || '';
@@ -65,16 +68,21 @@ export const AuthProvider = ({ children }) => {
     let isMounted = true;
 
     const initAuth = async () => {
-      const lineModeRequested = shouldInitializeLiff();
+      const liffModeRequested = shouldInitializeLiff();
+      const pendingGoogleAccountMerge = hasPendingGoogleAccountMerge();
+      const lineModeRequested = liffModeRequested && !pendingGoogleAccountMerge;
       let lineLoginRedirectStarted = false;
 
       try {
+        if (liffModeRequested && isMounted) {
+          setIsLiffMode(true);
+        }
+
         if (lineModeRequested) {
           const { default: liff } = await import('@line/liff');
           await liff.init({ liffId: LIFF_ID });
 
           rememberLiffMode();
-          if (isMounted) setIsLiffMode(true);
 
           if (!liff.isLoggedIn()) {
             lineLoginRedirectStarted = true;
@@ -131,11 +139,11 @@ export const AuthProvider = ({ children }) => {
 
         if (session?.user) {
           if (isMounted) setUser(session.user);
-        } else if (!lineModeRequested) {
+        } else if (!lineModeRequested && !pendingGoogleAccountMerge) {
           const { data, error } = await supabase.auth.signInAnonymously();
           if (error) throw error;
           if (isMounted) setUser(data?.user ?? null);
-        } else {
+        } else if (lineModeRequested) {
           throw new Error('LINE sign-in did not create a session');
         }
       } catch (error) {

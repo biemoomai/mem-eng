@@ -1,5 +1,6 @@
 # Mem-eng Versions
 
+- `mem-eng-linked-accounts-v1.0.1`: Fix Google merge callbacks opened inside LINE without overwriting the Google session.
 - `mem-eng-linked-accounts-v1`: LINE login, safe Google account merge, and duplicate-word consolidation that preserves review progress.
 - `mem-eng-line-sync-stable-v1` (`8080561`): Stable LINE chat, LIFF sign-in, secure deck sync, and private LINE words.
 - `mem-eng-line-sprint-v1` (`5916e12`): First production-ready LINE bot and LIFF sprint.
