@@ -19,3 +19,7 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/liff-auth/deno.json"
 entrypoint = "./functions/liff-auth/index.ts"
+
+[functions.account-merge]
+enabled = true
+verify_jwt = false

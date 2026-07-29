@@ -1444,7 +1444,7 @@ function AppContent() {
                   <span>
                     {isAnonymous
                       ? 'Sign In to save deck'
-                      : needsGoogleLink ? 'Connect Google to back up' : 'Sign Out'}
+                      : needsGoogleLink ? 'Connect & merge Google' : 'Sign Out'}
                   </span>
                 </motion.button>
               </div>

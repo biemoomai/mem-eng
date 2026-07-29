@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,7 +8,9 @@ const Login = () => {
     user,
     signIn,
     signUp,
+    signInWithLine,
     signInWithGoogle,
+    accountMergeStatus,
     isAnonymous,
     isLineUser,
     hasGoogleIdentity,
@@ -32,6 +34,49 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const mergeRedirectRef = useRef(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('merge') !== 'google' || !user) {
+      return;
+    }
+
+    if (accountMergeStatus.state === 'connecting') {
+      setLoading(true);
+      setError(null);
+      setMessage('Combining your LINE and Google decks...');
+      return;
+    }
+
+    if (accountMergeStatus.state === 'success') {
+      setLoading(false);
+      setError(null);
+      setMessage(
+        `Accounts connected. ${accountMergeStatus.result?.overlapCount || 0} duplicate words were combined.`,
+      );
+      if (!mergeRedirectRef.current) {
+        mergeRedirectRef.current = window.setTimeout(
+          () => navigate('/purge', { replace: true }),
+          900,
+        );
+      }
+      return;
+    }
+
+    if (accountMergeStatus.state === 'error') {
+      setLoading(false);
+      setMessage('');
+      setError(accountMergeStatus.error?.message || 'Could not connect accounts');
+    }
+  }, [accountMergeStatus, location.search, navigate, user]);
+
+  useEffect(() => () => {
+    if (mergeRedirectRef.current) {
+      window.clearTimeout(mergeRedirectRef.current);
+      mergeRedirectRef.current = null;
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,7 +146,7 @@ const Login = () => {
             {isLineUser
               ? hasGoogleIdentity
                 ? 'This same deck is available through LINE and your Google account.'
-                : 'Connect Google to keep this same deck available outside LINE.'
+                : 'Connect Google to combine both accounts into one deck.'
               : 'Sign in or create an account to save your deck and keep your progress across devices.'}
           </p>
         </motion.div>
@@ -171,6 +216,54 @@ const Login = () => {
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
         </div>
 
+        {!isLineUser && (
+          <button
+            type="button"
+            onClick={async () => {
+              setLoading(true);
+              setError(null);
+              const { error: lineError } = await signInWithLine();
+              if (lineError) {
+                setError(lineError.message);
+                setLoading(false);
+              }
+            }}
+            className="glass-button animate-scale"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              background: '#06C755',
+              border: 'none',
+              color: '#FFFFFF',
+              fontWeight: 900,
+              fontSize: '0.78rem',
+              padding: '0.65rem 0',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              marginBottom: '0.65rem',
+            }}
+            disabled={loading}
+          >
+            <span style={{
+              display: 'grid',
+              placeItems: 'center',
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              color: '#06C755',
+              fontSize: 8,
+              fontWeight: 950,
+            }}>
+              LINE
+            </span>
+            <span>Sign In with LINE</span>
+          </button>
+        )}
+
         <button
           onClick={async () => {
             setLoading(true);
@@ -212,7 +305,7 @@ const Login = () => {
             {isLineUser
               ? hasGoogleIdentity
                 ? 'Google account connected'
-                : 'Connect Google account'
+                : 'Connect and merge Google'
               : 'Sign In with Google'}
           </span>
         </button>

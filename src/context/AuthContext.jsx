@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
@@ -47,6 +54,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isLiffMode, setIsLiffMode] = useState(false);
   const [lineAuthError, setLineAuthError] = useState('');
+  const [accountMergeStatus, setAccountMergeStatus] = useState({
+    state: 'idle',
+    result: null,
+    error: null,
+  });
+  const accountMergeInFlightRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -76,46 +89,40 @@ export const AuthProvider = ({ children }) => {
             throw new Error('LINE profile has no user ID');
           }
 
-          const { data: existingSession } = await supabase.auth.getSession();
-          const existingUser = existingSession?.session?.user;
-          const existingLineUserId = getAuthLineUserId(existingUser);
+          // Always exchange the current LINE token. After an account merge,
+          // the same LINE identity can point to a new canonical Supabase user.
+          const lineToken = liff.getAccessToken();
+          const supabaseUrl =
+            import.meta.env.VITE_SUPABASE_URL ||
+            localStorage.getItem('supabase_url');
 
-          // Never reuse a Supabase session that belongs to a different LINE
-          // account on the same device.
-          if (existingLineUserId !== currentLineUserId) {
-            const lineToken = liff.getAccessToken();
-            const supabaseUrl =
-              import.meta.env.VITE_SUPABASE_URL ||
-              localStorage.getItem('supabase_url');
-
-            if (!lineToken || !supabaseUrl) {
-              throw new Error('LINE session is incomplete');
-            }
-
-            const response = await fetch(
-              supabaseUrl + '/functions/v1/liff-auth',
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ line_access_token: lineToken }),
-              },
-            );
-            const authData = await response.json();
-
-            if (
-              !response.ok ||
-              !authData.access_token ||
-              !authData.refresh_token
-            ) {
-              throw new Error(authData.error || 'LINE sign-in failed');
-            }
-
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: authData.access_token,
-              refresh_token: authData.refresh_token,
-            });
-            if (sessionError) throw sessionError;
+          if (!lineToken || !supabaseUrl) {
+            throw new Error('LINE session is incomplete');
           }
+
+          const response = await fetch(
+            supabaseUrl + '/functions/v1/liff-auth',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ line_access_token: lineToken }),
+            },
+          );
+          const authData = await response.json();
+
+          if (
+            !response.ok ||
+            !authData.access_token ||
+            !authData.refresh_token
+          ) {
+            throw new Error(authData.error || 'LINE sign-in failed');
+          }
+
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: authData.access_token,
+            refresh_token: authData.refresh_token,
+          });
+          if (sessionError) throw sessionError;
         }
 
         const {
@@ -330,10 +337,94 @@ export const AuthProvider = ({ children }) => {
     return supabase.auth.signInWithPassword({ email, password });
   };
 
+  const signInWithLine = async () => {
+    localStorage.removeItem('memeng_logged_out');
+    rememberLiffMode();
+    window.location.assign(`https://liff.line.me/${LIFF_ID}`);
+    return { error: null };
+  };
+
+  const beginGoogleAccountMerge = async () => {
+    const { data, error } = await supabase.functions.invoke('account-merge', {
+      body: { action: 'create' },
+    });
+    if (error || !data?.token) {
+      return {
+        data: null,
+        error: error || new Error('Could not start account connection'),
+      };
+    }
+
+    localStorage.setItem('memeng_account_merge_token', data.token);
+    return supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/login?auth=1&merge=google`,
+      },
+    });
+  };
+
+  const completeGoogleAccountMerge = useCallback(async () => {
+    const token = localStorage.getItem('memeng_account_merge_token');
+    if (!token) {
+      return { data: null, error: new Error('Account connection expired') };
+    }
+
+    const { data, error } = await supabase.functions.invoke('account-merge', {
+      body: { action: 'complete', token },
+    });
+    if (!error && data?.merged) {
+      localStorage.removeItem('memeng_account_merge_token');
+      await supabase.auth.refreshSession();
+      return { data, error: null };
+    }
+    return {
+      data: null,
+      error: error || new Error(data?.error || 'Could not connect accounts'),
+    };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('memeng_account_merge_token');
+    const signedInWithGoogle = user?.identities?.some(
+      (identity) => identity.provider === 'google',
+    );
+
+    if (!token || !user || !signedInWithGoogle || accountMergeInFlightRef.current) {
+      return;
+    }
+
+    accountMergeInFlightRef.current = true;
+    setAccountMergeStatus({ state: 'connecting', result: null, error: null });
+
+    completeGoogleAccountMerge()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        setAccountMergeStatus({
+          state: 'success',
+          result: data,
+          error: null,
+        });
+      })
+      .catch((error) => {
+        setAccountMergeStatus({
+          state: 'error',
+          result: null,
+          error,
+        });
+      })
+      .finally(() => {
+        accountMergeInFlightRef.current = false;
+      });
+  }, [completeGoogleAccountMerge, user]);
+
   const signInWithGoogle = async () => {
     localStorage.removeItem('memeng_logged_out');
     const options = { redirectTo: window.location.origin };
-    if (isAnonymous || isLineUser) {
+    if (isLineUser && !hasGoogleIdentity) {
+      return beginGoogleAccountMerge();
+    }
+    if (isAnonymous) {
       return supabase.auth.linkIdentity({ provider: 'google', options });
     }
     return supabase.auth.signInWithOAuth({ provider: 'google', options });
@@ -409,7 +500,10 @@ export const AuthProvider = ({ children }) => {
         loading,
         signUp,
         signIn,
+        signInWithLine,
         signInWithGoogle,
+        completeGoogleAccountMerge,
+        accountMergeStatus,
         signOut,
         deleteAccount,
         isAnonymous,
